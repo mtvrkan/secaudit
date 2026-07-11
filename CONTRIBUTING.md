@@ -1,0 +1,49 @@
+# Contributing to SecAudit
+
+Thanks for helping make SecAudit better and safer! Contributions of all sizes are welcome.
+
+## Ground rules
+
+- SecAudit is a **defensive** tool. Contributions must not add weaponized exploits,
+  malware, DoS/brute-force capability, or unauthorized-access tooling. New checks should
+  help owners *find and fix* issues in *their own* systems.
+- Keep the safe-by-default posture: anything active (payloads, probes, fuzzing) must be
+  behind the authorization gate and documented as such.
+
+## Good first contributions
+
+- **New vulnerability checks** — add to the relevant `references/*.md` with the class,
+  detection hint, safe verification, and fix. Map to OWASP + CWE.
+- **Tool integrations** — add a scanner to `references/tooling.md` (detect → invoke →
+  parse), keeping the "works without it" fallback intact.
+- **Language coverage** — new source-language hotspots in `references/code-review.md`.
+- **False-positive fixes** — sharpen a check that over-reports.
+- **Docs & examples** — clearer guides, more sanitized example reports.
+- **Report localization** — additional report languages in `references/report-template.md`.
+
+## How to contribute
+
+1. Fork and create a branch (`feat/…` or `fix/…`).
+2. Make your change. Keep reference files tight and skimmable — they're loaded into
+   Claude's context on demand, so favor signal over volume.
+3. If you touch a manifest (`plugin.json`, `marketplace.json`), validate it:
+   ```bash
+   claude plugin validate .
+   claude plugin validate ./plugins/secaudit
+   ```
+   The CI workflow also lints all JSON and checks the structure.
+4. Test the change in a Claude Code session against a target you own.
+5. Open a PR describing what class/tool it adds and why. Reference any OWASP/CWE IDs.
+
+## Sanitized examples only
+
+Never commit real audit output containing real target names, live session cookies/tokens,
+IP addresses, or PII. Example reports must be **fully sanitized/fictional** (see
+`examples/`).
+
+## Style
+
+- Reference files: Markdown, concrete commands, OWASP/CWE mappings, no fluff.
+- Docs: English. Report *output* may be localized; keep technical IDs canonical.
+
+By contributing you agree your work is licensed under the [MIT License](LICENSE).

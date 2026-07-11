@@ -1,0 +1,36 @@
+# Audit output — never commit real reports (may contain sensitive target data)
+*_findings.md
+*_recon.md
+SECURITY_REPORT.md
+00_scope_and_safety.md
+scope.yaml
+scope.yml
+!templates/scope.example.yaml
+!examples/**
+
+# Scanner artifacts
+*.sarif
+tls.json
+sem.sarif
+bundle.js
+sbom*.json
+trivy*.json
+osv*.json
+gitleaks*.json
+
+# Secrets / env
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Node (if contributors add tooling)
+node_modules/

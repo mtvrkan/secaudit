@@ -1,0 +1,39 @@
+{
+  "name": "secaudit-kit",
+  "owner": {
+    "name": "memobeyle",
+    "url": "https://github.com/mtvrkan"
+  },
+  "description": "Authorized, defensive security audit tooling for Claude Code.",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "name": "secaudit",
+      "displayName": "SecAudit",
+      "source": "./plugins/secaudit",
+      "description": "Authorized, defensive security audit engine: scans a live URL or a source-code repo for known (CVE/dependency) and unknown (logic/code) vulnerabilities and produces a prioritized, remediation-focused report. Safe by default; active testing requires authorization.",
+      "version": "1.0.0",
+      "author": {
+        "name": "memobeyle",
+        "url": "https://github.com/mtvrkan"
+      },
+      "homepage": "https://github.com/mtvrkan/secaudit",
+      "repository": "https://github.com/mtvrkan/secaudit",
+      "license": "MIT",
+      "keywords": [
+        "security",
+        "audit",
+        "vulnerability-scanner",
+        "owasp",
+        "sast",
+        "dependency-audit",
+        "pentest",
+        "appsec",
+        "cve",
+        "secrets-detection"
+      ],
+      "category": "security",
+      "tags": ["scanning", "analysis", "defensive", "owasp"]
+    }
+  ]
+}

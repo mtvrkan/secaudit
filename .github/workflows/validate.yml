@@ -1,0 +1,142 @@
+name: Validate plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Validate JSON manifests
+        run: |
+          set -e
+          for f in .claude-plugin/marketplace.json plugins/secaudit/.claude-plugin/plugin.json; do
+            echo "Checking $f"
+            python3 -c "import json,sys; json.load(open('$f')); print('  valid JSON')"
+          done
+
+      - name: Check required manifest fields
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          mk = json.load(open(".claude-plugin/marketplace.json"))
+          assert mk.get("name"), "marketplace.json: missing name"
+          assert mk.get("owner", {}).get("name"), "marketplace.json: missing owner.name"
+          assert isinstance(mk.get("plugins"), list) and mk["plugins"], "marketplace.json: plugins[] empty"
+          pl = json.load(open("plugins/secaudit/.claude-plugin/plugin.json"))
+          assert pl.get("name"), "plugin.json: missing name"
+          print("Manifest field checks passed.")
+          PY
+
+      - name: Check plugin structure
+        run: |
+          set -e
+          test -f plugins/secaudit/skills/security-audit/SKILL.md      || (echo "missing SKILL.md" && exit 1)
+          test -d plugins/secaudit/commands                            || (echo "missing commands/" && exit 1)
+          test -d plugins/secaudit/agents                              || (echo "missing agents/" && exit 1)
+          test -d plugins/secaudit/skills/security-audit/references     || (echo "missing references/" && exit 1)
+          echo "Structure checks passed."
+
+      - name: Lint SKILL/command frontmatter (has description)
+        run: |
+          python3 - <<'PY'
+          import glob, sys
+          bad = []
+          for f in glob.glob("plugins/secaudit/**/*.md", recursive=True):
+              head = open(f, encoding="utf-8").read(600)
+              if head.lstrip().startswith("---") and "description:" not in head and "SKILL.md" not in f and "/references/" not in f:
+                  bad.append(f)
+          if bad:
+              print("Missing description in frontmatter:", *bad, sep="\n  ")
+              sys.exit(1)
+          print("Frontmatter checks passed.")
+          PY
+
+      - name: Check reference files exist (no dangling references)
+        run: |
+          python3 - <<'PY'
+          import glob, os, re, sys
+          refdir = "plugins/secaudit/skills/security-audit/references"
+          present = {os.path.basename(p) for p in glob.glob(refdir + "/*.md")}
+          # Every `references/NAME.md` or `NAME.md` mentioned in the skill/refs must exist.
+          referenced, missing = set(), []
+          for f in glob.glob("plugins/secaudit/**/*.md", recursive=True):
+              txt = open(f, encoding="utf-8").read()
+              for m in re.findall(r'`?(?:references/)?([a-z0-9-]+\.md)`?', txt):
+                  if m in ("SKILL.md",):
+                      continue
+                  referenced.add(m)
+          for name in sorted(referenced):
+              # only enforce names that look like reference files (kebab-case .md we ship)
+              if name.replace(".md","") and name not in present and name in {
+                  "auth-identity.md","tooling.md","vuln-catalog.md","severity-cvss.md",
+                  "report-template.md","runbook.md","passive-recon.md","attack-surface.md",
+                  "known-vulns-deps.md","web-tests.md","api-tests.md","code-review.md",
+                  "infra-cloud.md","mobile.md","llm-ai-security.md"}:
+                  missing.append(name)
+          if missing:
+              print("Referenced reference file(s) not found:", *sorted(set(missing)), sep="\n  ")
+              sys.exit(1)
+          print(f"Reference integrity OK ({len(present)} reference files).")
+          PY
+
+      - name: Check relative links resolve (README + docs)
+        run: |
+          python3 - <<'PY'
+          import glob, os, re, sys
+          bad = []
+          for f in ["README.md"] + glob.glob("docs/*.md"):
+              base = os.path.dirname(f)
+              txt = open(f, encoding="utf-8").read()
+              for label, target in re.findall(r'\[([^\]]+)\]\(([^)]+)\)', txt):
+                  if target.startswith(("http://","https://","#","mailto:")):
+                      continue
+                  path = target.split("#")[0]
+                  if not path:
+                      continue
+                  if not os.path.exists(os.path.normpath(os.path.join(base, path))):
+                      bad.append(f"{f} -> {target}")
+          if bad:
+              print("Broken relative link(s):", *bad, sep="\n  ")
+              sys.exit(1)
+          print("Relative-link checks passed.")
+          PY
+
+      - name: Guard against accidental real secrets (fixtures excluded)
+        run: |
+          python3 - <<'PY'
+          import glob, os, re, sys
+          # AWS access key ids and private-key headers must not appear outside the test fixture.
+          pats = [re.compile(r'AKIA[0-9A-Z]{16}'),
+                  re.compile(r'-----BEGIN (?:RSA|EC|OPENSSH|PGP) PRIVATE KEY-----')]
+          hits = []
+          for f in glob.glob("**/*", recursive=True):
+              if not os.path.isfile(f) or "tests/fixtures/" in f.replace("\\","/") or f.startswith(".git"):
+                  continue
+              if os.path.splitext(f)[1].lower() not in (".md",".js",".ts",".json",".yaml",".yml",".py",".env",".txt",""):
+                  continue
+              try:
+                  txt = open(f, encoding="utf-8", errors="ignore").read()
+              except Exception:
+                  continue
+              for p in pats:
+                  if p.search(txt):
+                      hits.append(f)
+          if hits:
+              print("Possible real secret outside fixtures:", *sorted(set(hits)), sep="\n  ")
+              sys.exit(1)
+          print("No stray secrets detected.")
+          PY
+
+      - name: Self-lint workflow with zizmor (SHA-pinning / injection)
+        continue-on-error: true
+        run: |
+          pipx install zizmor >/dev/null 2>&1 || pip install zizmor >/dev/null 2>&1 || true
+          command -v zizmor >/dev/null 2>&1 && zizmor .github/workflows/ || echo "zizmor not available; skipping"
