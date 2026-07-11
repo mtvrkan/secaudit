@@ -158,7 +158,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT
 
 ## License
 
-[MIT](LICENSE) © memobeyle
+[MIT](LICENSE) © mtvrkan
 
 <div align="center">
 <sub>Built for <a href="https://docs.claude.com/en/docs/claude-code">Claude Code</a>. Not affiliated with Anthropic or OWASP. If SecAudit helped secure your product, please ⭐ the repo.</sub>

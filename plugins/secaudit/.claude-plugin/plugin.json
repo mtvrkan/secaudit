@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Authorized, defensive security audit engine for Claude Code. Scans a live URL or source-code repo for known (CVE/dependency) and unknown (logic/code) vulnerabilities across the OWASP Web/API/LLM/Mobile Top 10 and CWE Top 25, using installed scanners (semgrep, trivy, osv-scanner, gitleaks, nuclei, testssl.sh) when available and LLM analysis otherwise. Produces a prioritized, remediation-focused report. Safe/passive by default; active testing requires explicit authorization.",
   "author": {
-    "name": "memobeyle",
+    "name": "mtvrkan",
     "url": "https://github.com/mtvrkan"
   },
   "homepage": "https://github.com/mtvrkan/secaudit",
