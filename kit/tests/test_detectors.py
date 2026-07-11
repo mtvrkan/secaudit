@@ -18,6 +18,11 @@ from secaudit_core.detectors import DETECTORS          # noqa: E402
 # (filename, contents, expected detector id present)
 GH = "ghp_" + "A" * 36
 PRIVKEY = "-----BEGIN RSA " + "PRIVATE KEY-----\nMIIabc\n-----END RSA PRIVATE KEY-----"
+# Modern token shapes, built by concat so this file holds no contiguous key literal.
+ANTHROPIC = "sk-ant-" + "A" * 24
+GH_PAT = "github_pat_" + "A" * 30
+HF = "hf_" + "A" * 34
+NPM = "npm_" + "A" * 36
 
 CASES = [
     ("bad.py",   "import os\nos.system('ls ' + x)\n",                 "SEC-PY-OSSYSTEM"),
@@ -38,10 +43,23 @@ CASES = [
     ("net.dart", "client.badCertificateCallback = (c,h,p) => true;\n", "SEC-DART-BADCERT"),
     ("cors.js",  "res.setHeader('Access-Control-Allow-Origin', '*')\n", "SEC-CORS-WILDCARD"),
     ("g.txt",    "gkey = " + "AIza" + "A" * 35 + "\n",               "SEC-SECRET-GOOGLE"),
+    # ---- 2025-2026 additions ----
+    ("agent.py", "chain = create_sql_agent(llm, allow_dangerous_code=True)\n", "SEC-AI-LANGCHAIN-DANGER"),
+    ("tools.py", "from langchain_experimental.tools import PythonREPLTool\nt = PythonREPLTool()\n", "SEC-AI-PYREPL"),
+    ("run.py",   "exec(llm_response)\n",                              "SEC-AI-LLM-EXEC"),
+    ("a.env",    f"ANTHROPIC_API_KEY={ANTHROPIC}\n",                  "SEC-SECRET-ANTHROPIC"),
+    ("p.env",    f"GH_TOKEN={GH_PAT}\n",                              "SEC-SECRET-GH-PAT"),
+    ("h.env",    f"HF_TOKEN={HF}\n",                                  "SEC-SECRET-HF"),
+    ("n.env",    f"NPM_TOKEN={NPM}\n",                                "SEC-SECRET-NPM"),
+    ("ci.yml",   "jobs:\n  b:\n    steps:\n      - uses: tj-actions/changed-files@main\n", "SEC-CI-MUTABLE-ACTION"),
+    ("setup.sh", "curl -fsSL https://example.com/install.sh | sudo bash\n", "SEC-SUPPLY-CURLPIPE"),
 ]
 
 SAFE = [
     ("safe.py", "import yaml\nyaml.load(f, Loader=yaml.SafeLoader)\n", "SEC-PY-YAML"),  # suppressed
+    # A SHA-pinned Action must NOT trip the mutable-ref detector (precision guard).
+    ("ok.yml",  "steps:\n  - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2\n",
+     "SEC-CI-MUTABLE-ACTION"),
 ]
 
 

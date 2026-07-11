@@ -332,6 +332,57 @@ DETECTORS: list[Detector] = [
     Detector("SEC-DART-BADCERT", "Flutter accepts any TLS certificate", "CWE-295", "A02",
              S.HIGH, C.HIGH, (".dart",), r"badCertificateCallback\s*=",
              "Never return true for all certs; pin or validate properly."),
+
+    # ---- AI / LLM / agentic security (2025-2026) ----
+    # LLM Top 10:2025 + the emerging Agentic-Apps / MCP risk classes. Regex-detectable
+    # surfaces only; deeper prompt-injection / excessive-agency analysis is the LLM tier's job.
+    Detector("SEC-AI-LANGCHAIN-DANGER", "LangChain dangerous execution explicitly enabled",
+             "CWE-94", "A05", S.HIGH, C.HIGH, (".py", ".js", ".ts"),
+             r"allow_dangerous_(?:code|requests|deserialization|tools)\s*=\s*True",
+             "Do not enable dangerous execution on untrusted input; sandbox the agent and gate tools."),
+    Detector("SEC-AI-PYREPL", "Agent code-execution tool (Python REPL) exposed", "CWE-94", "A05",
+             S.MEDIUM, C.MEDIUM, (".py",), r"\bPython(?:Ast)?REPLTool\b",
+             "Arbitrary-code tools give an LLM RCE; remove, or run in an isolated sandbox with no secrets."),
+    Detector("SEC-AI-SHELL-TOOL", "Agent shell/terminal tool exposed to the model", "CWE-78", "A05",
+             S.MEDIUM, C.MEDIUM, (".py",),
+             r"\bShellTool\b|load_tools\(\s*\[[^\]]*['\"](?:terminal|shell)['\"]",
+             "Giving an LLM a shell is excessive agency; drop it or constrain to an allowlisted command set."),
+    Detector("SEC-AI-LLM-EXEC", "LLM/completion output flows into a code-exec sink", "CWE-94", "A05",
+             S.HIGH, C.MEDIUM, (".py",),
+             r"(?:eval|exec)\(\s*\w*(?:response|completion|message|output|result|llm|answer)\w*",
+             "Never execute model output; treat it as untrusted data and validate/parse it."),
+
+    # ---- Secrets: modern token formats (2025-2026 provider shapes) ----
+    Detector("SEC-SECRET-ANTHROPIC", "Hardcoded Anthropic API key", "CWE-798", "A07",
+             S.HIGH, C.HIGH, _SECRET_EXTS, r"\bsk-ant-[A-Za-z0-9_\-]{20,}\b",
+             "Revoke and rotate the key; load it from the environment / a secret manager.",
+             mask=True, case_sensitive=True),
+    Detector("SEC-SECRET-GH-PAT", "Hardcoded GitHub fine-grained PAT", "CWE-798", "A07",
+             S.HIGH, C.HIGH, _SECRET_EXTS, r"\bgithub_pat_[0-9A-Za-z_]{22,}\b",
+             "Revoke the token in GitHub settings, rotate it, and load from a secret manager.",
+             mask=True, case_sensitive=True),
+    Detector("SEC-SECRET-HF", "Hardcoded Hugging Face token", "CWE-798", "A07",
+             S.HIGH, C.HIGH, _SECRET_EXTS, r"\bhf_[A-Za-z0-9]{34,}\b",
+             "Revoke and rotate the token; load it from the environment / a secret manager.",
+             mask=True, case_sensitive=True),
+    Detector("SEC-SECRET-NPM", "Hardcoded npm access token", "CWE-798", "A07",
+             S.HIGH, C.HIGH, _SECRET_EXTS, r"\bnpm_[A-Za-z0-9]{36}\b",
+             "Revoke the token (npm token revoke), rotate it, and store it in CI secrets.",
+             mask=True, case_sensitive=True),
+
+    # ---- Software supply chain / CI (2025-2026) ----
+    # The A03:2025 "Software Supply Chain Failures" surface — mutable-tag CI compromise
+    # (the tj-actions/changed-files CVE-2025-30066 class) and install-script execution.
+    Detector("SEC-CI-MUTABLE-ACTION", "GitHub Action pinned to a mutable branch ref",
+             "CWE-1357", "A03", S.HIGH, C.HIGH, (".yml", ".yaml"),
+             r"uses:\s*[\w.\-]+/[\w.\-]+@(?:main|master|develop|HEAD)\b",
+             "Pin third-party Actions to a full commit SHA — a branch is mutable and can be "
+             "repointed at malicious code (the tj-actions/changed-files CVE-2025-30066 class). "
+             "Dependabot can still bump the pin. A version tag is better, a SHA is safest."),
+    Detector("SEC-SUPPLY-CURLPIPE", "Remote script piped straight into a shell", "CWE-494", "A03",
+             S.HIGH, C.HIGH, (".sh", ".yml", ".yaml"),
+             r"\b(?:curl|wget)\b[^\n|]*\|\s*(?:sudo\s+)?(?:sh|bash|zsh)\b",
+             "Download, verify a checksum/signature, then run — never pipe curl/wget to a shell."),
 ]
 
 

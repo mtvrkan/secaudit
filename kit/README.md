@@ -77,8 +77,12 @@ cleanly otherwise — so you can validate the live path yourself.
 > **Honest bound:** the built-in detectors are regex, tuned against the shipped fixtures; on
 > arbitrary real code recall is lower (precision holds up better — see the dogfood test). This
 > tier is the reproducible *floor*, not a guarantee. Installed scanners (semgrep/osv/gitleaks)
-> and the LLM tier raise the ceiling. The 66 built-in detectors span JS/TS, Python, Go, Java,
-> PHP, Ruby, C#, Kotlin, Swift, Dart, Dockerfile, Terraform, Kubernetes, and secret patterns.
+> and the LLM tier raise the ceiling. The 76 built-in detectors span JS/TS, Python, Go, Java,
+> PHP, Ruby, C#, Kotlin, Swift, Dart, Dockerfile, Terraform, Kubernetes, and secret patterns —
+> including 2025–2026 classes: **AI/agent** sinks (LangChain `allow_dangerous_*`, exposed Python-REPL/
+> shell tools, model output into `eval`/`exec`), **modern token secrets** (Anthropic `sk-ant-`,
+> GitHub fine-grained PATs, Hugging Face, npm), and **software-supply-chain / CI** (mutable-branch
+> GitHub Action pins — the tj-actions CVE-2025-30066 class — and `curl | sh` install piping).
 
 ## CI & GitHub code scanning
 
