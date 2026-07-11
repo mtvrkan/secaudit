@@ -31,7 +31,7 @@ SecAudit works with zero tools, but installing a few unlocks deeper scanning. Th
 
 ```
 semgrep      # SAST (code)         → pipx install semgrep
-osv-scanner  # dependency CVEs     → go install github.com/google/osv-scanner/cmd/osv-scanner@latest
+osv-scanner  # dependency CVEs     → go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest
 gitleaks     # secret detection    → brew/scoop install gitleaks
 testssl.sh   # TLS posture         → git clone https://github.com/drwetter/testssl.sh
 ```

@@ -66,7 +66,10 @@ Fix: strong system/user/tool **message-role separation**, spotlighting/delimitin
 content, input **and** output guardrails, stripping invisible Unicode, and never letting
 retrieved/tool text change the agent's authorization or tool scope.
 
-## §Agentic — autonomous-agent security (OWASP Agentic Apps 2026)
+## §Agentic — autonomous-agent security (OWASP Agentic Apps 2026, draft/emerging)
+
+> The Agentic-Apps Top 10 is an evolving OWASP draft, not a finalized standard. Use the classes
+> below as a working taxonomy; confirm the current draft when citing category names in a report.
 
 When the target is an **agent** (plans multi-step, calls tools, keeps memory), add:
 
@@ -90,7 +93,8 @@ When the target is an **agent** (plans multi-step, calls tools, keeps memory), a
 ## §MCP — Model Context Protocol server/client security
 
 MCP is the dominant 2025–2026 way to give agents tools; it has its own risk class (**OWASP
-MCP Top 10, 2025**). If the app is an MCP host/client or ships an MCP server, check:
+MCP Top 10, 2025 — draft/emerging**, not yet a finalized standard). If the app is an MCP
+host/client or ships an MCP server, check:
 
 - **Tool poisoning** — malicious instructions hidden in a **tool description / metadata** that
   the model reads but the user never sees. Most clients accept server-provided metadata without

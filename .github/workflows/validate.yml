@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Validate JSON manifests
         run: |
@@ -33,6 +35,36 @@ jobs:
           pl = json.load(open("plugins/secaudit/.claude-plugin/plugin.json"))
           assert pl.get("name"), "plugin.json: missing name"
           print("Manifest field checks passed.")
+          PY
+
+      - name: Reject unknown manifest fields (mirrors `claude plugin validate --strict`)
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          # Documented field sets — an unrecognized key is silently ignored by Claude Code,
+          # so we fail on it here to catch typos like `displayName` before publishing.
+          PLUGIN = {"$schema","name","version","description","author","homepage","repository",
+                    "license","keywords","dependencies","hooks","commands","agents","skills",
+                    "mcpServers","lspServers","monitors","channels","userConfig","settings"}
+          MK_ROOT = {"$schema","name","owner","plugins","version","description","metadata",
+                     "forceRemoveDeletedPlugins","allowCrossMarketplaceDependenciesOn"}
+          MK_PLUGIN = PLUGIN | {"source","category","tags","strict","url","sha","ref","path"}
+          bad = []
+          def check(obj, allowed, where):
+              for k in obj:
+                  if k not in allowed:
+                      bad.append(f"{where}: unknown field `{k}`")
+          pl = json.load(open("plugins/secaudit/.claude-plugin/plugin.json"))
+          check(pl, PLUGIN, "plugin.json")
+          mk = json.load(open(".claude-plugin/marketplace.json"))
+          check(mk, MK_ROOT, "marketplace.json")
+          for i, entry in enumerate(mk.get("plugins", [])):
+              if isinstance(entry, dict):
+                  check(entry, MK_PLUGIN, f"marketplace.json plugins[{i}]")
+          if bad:
+              print("Unknown manifest field(s):", *bad, sep="\n  ")
+              sys.exit(1)
+          print("No unknown manifest fields.")
           PY
 
       - name: Check plugin structure
@@ -59,40 +91,67 @@ jobs:
           print("Frontmatter checks passed.")
           PY
 
+      - name: Check command Bash allowlist is a subset of the skill's
+        run: |
+          python3 - <<'PY'
+          import re, sys, glob, os
+
+          def frontmatter(path):
+              txt = open(path, encoding="utf-8").read()
+              if not txt.lstrip().startswith("---"):
+                  return ""
+              body = txt.split("---", 2)
+              return body[1] if len(body) >= 3 else ""
+
+          def bash_perms(path):
+              fm = frontmatter(path)
+              # grab the allowed-tools value (may be a folded/multi-line block)
+              m = re.search(r'allowed-tools:\s*(.*?)(?:\n[a-zA-Z][\w-]*:|\Z)', fm, re.S)
+              chunk = m.group(1) if m else ""
+              return {b.strip() for b in re.findall(r'Bash\(([^)]*)\)', chunk)}
+
+          skill = bash_perms("plugins/secaudit/skills/security-audit/SKILL.md")
+          if not skill:
+              print("Could not parse skill allowed-tools"); sys.exit(1)
+          bad = []
+          for cmd in glob.glob("plugins/secaudit/commands/*.md"):
+              extra = bash_perms(cmd) - skill
+              if extra:
+                  bad.append(f"{os.path.basename(cmd)} permits Bash not in the skill: {sorted(extra)}")
+          if bad:
+              print("Command allowlist drift (command ⊄ skill):", *bad, sep="\n  ")
+              sys.exit(1)
+          print(f"Command Bash allowlists are subsets of the skill ({len(skill)} skill perms).")
+          PY
+
       - name: Check reference files exist (no dangling references)
         run: |
           python3 - <<'PY'
           import glob, os, re, sys
           refdir = "plugins/secaudit/skills/security-audit/references"
           present = {os.path.basename(p) for p in glob.glob(refdir + "/*.md")}
-          # Every `references/NAME.md` or `NAME.md` mentioned in the skill/refs must exist.
-          referenced, missing = set(), []
+          # Auto-discovering: any `references/NAME.md` path mentioned anywhere in the plugin
+          # must resolve to a shipped reference file. No hardcoded filename list to drift.
+          missing = set()
           for f in glob.glob("plugins/secaudit/**/*.md", recursive=True):
               txt = open(f, encoding="utf-8").read()
-              for m in re.findall(r'`?(?:references/)?([a-z0-9-]+\.md)`?', txt):
-                  if m in ("SKILL.md",):
-                      continue
-                  referenced.add(m)
-          for name in sorted(referenced):
-              # only enforce names that look like reference files (kebab-case .md we ship)
-              if name.replace(".md","") and name not in present and name in {
-                  "auth-identity.md","tooling.md","vuln-catalog.md","severity-cvss.md",
-                  "report-template.md","runbook.md","passive-recon.md","attack-surface.md",
-                  "known-vulns-deps.md","web-tests.md","api-tests.md","code-review.md",
-                  "infra-cloud.md","mobile.md","llm-ai-security.md"}:
-                  missing.append(name)
+              for name in re.findall(r'references/([a-z0-9-]+\.md)', txt):
+                  if name not in present:
+                      missing.add(name)
           if missing:
-              print("Referenced reference file(s) not found:", *sorted(set(missing)), sep="\n  ")
+              print("Referenced reference file(s) not found:", *sorted(missing), sep="\n  ")
               sys.exit(1)
-          print(f"Reference integrity OK ({len(present)} reference files).")
+          print(f"Reference integrity OK ({len(present)} reference files, all references resolve).")
           PY
 
-      - name: Check relative links resolve (README + docs)
+      - name: Check relative links resolve (all Markdown)
         run: |
           python3 - <<'PY'
           import glob, os, re, sys
           bad = []
-          for f in ["README.md"] + glob.glob("docs/*.md"):
+          for f in glob.glob("**/*.md", recursive=True):
+              if f.replace("\\","/").startswith(("node_modules/", ".git/")):
+                  continue
               base = os.path.dirname(f)
               txt = open(f, encoding="utf-8").read()
               for label, target in re.findall(r'\[([^\]]+)\]\(([^)]+)\)', txt):
@@ -135,8 +194,68 @@ jobs:
           print("No stray secrets detected.")
           PY
 
-      - name: Self-lint workflow with zizmor (SHA-pinning / injection)
-        continue-on-error: true
+      - name: Fixture self-test (20 sinks + secrets + dep audit + secure negative control)
+        run: python3 tests/selftest.py
+
+      - name: Grade reference report against golden set (coverage regression gate)
         run: |
-          pipx install zizmor >/dev/null 2>&1 || pip install zizmor >/dev/null 2>&1 || true
-          command -v zizmor >/dev/null 2>&1 && zizmor .github/workflows/ || echo "zizmor not available; skipping"
+          set -e
+          python3 tests/grade-report.py --selftest
+          python3 tests/grade-report.py examples/self-test-report.md --min 20
+
+      - name: Standalone kit — compile + Tier-0 recall/precision measurement (no LLM)
+        run: |
+          set -e
+          python3 -m compileall -q kit/secaudit_core
+          # Deterministic floor: 19/19 target classes found on the vulnerable corpus and
+          # zero HIGH-confidence false positives on the secure negative control.
+          python3 kit/tests/test_engine.py
+          # Scanner adapters (semgrep/gitleaks/osv) — parser correctness + secret masking, offline.
+          python3 kit/tests/test_scanners.py
+          # Multi-language / secret / IaC detector pack — sinks fire, safe variants suppressed.
+          python3 kit/tests/test_detectors.py
+          # Tier-1 enrichment plumbing (no key/network): triage merge + LLM-added logic finding.
+          python3 kit/tests/test_backends.py
+          # SARIF renderer — valid 2.1.0 for GitHub code scanning.
+          python3 kit/tests/test_report.py
+          # End-to-end two-tier pipeline (replayed model response, no key): triage + IDOR added.
+          python3 kit/tests/test_enrich_e2e.py
+          # Real-code precision: 0 High/Critical false positives on the kit's own source.
+          python3 kit/tests/test_dogfood.py
+          # CLI boundary: --min CI-gate exit codes, json/sarif formats, -o output, secret masking.
+          python3 kit/tests/test_cli.py
+          # Optional live-LLM smoke test — skips cleanly with no key (a user with one runs it).
+          python3 kit/tests/test_live_llm.py
+          # Packaging: pyproject parses, console entry point resolves, zero runtime deps.
+          python3 - <<'PY'
+          import tomllib, importlib, sys
+          d = tomllib.load(open("kit/pyproject.toml", "rb"))
+          assert d["project"]["dependencies"] == [], "kit must stay zero-runtime-dep"
+          mod, fn = d["project"]["scripts"]["secaudit"].split(":")
+          sys.path.insert(0, "kit")
+          assert hasattr(importlib.import_module(mod), fn), "console entry point missing"
+          print("pyproject OK — secaudit entry resolves, zero runtime deps")
+          PY
+          # The CLI must run end-to-end with no LLM and gate on severity.
+          python3 -m secaudit_core.cli tests/fixtures/secure-app --no-deps --min high
+        env:
+          PYTHONPATH: kit
+
+      - name: Validate hook config + active-scan guard self-test
+        run: |
+          set -e
+          python3 -c "import json; c=json.load(open('plugins/secaudit/hooks/hooks.json')); \
+            assert 'PreToolUse' in c['hooks'], 'hooks.json missing PreToolUse'; print('hooks.json valid')"
+          # The plugin.json hooks path must resolve to a shipped file.
+          python3 -c "import json,os; p=json.load(open('plugins/secaudit/.claude-plugin/plugin.json')).get('hooks'); \
+            assert p and os.path.isfile(os.path.join('plugins/secaudit', p)), f'plugin hooks path missing: {p}'; \
+            print('plugin.json hooks path resolves')"
+          python3 plugins/secaudit/hooks/active-scan-guard.py --selftest
+
+      - name: Self-lint workflows with zizmor (SHA-pinning / injection)
+        run: |
+          set -e
+          # Pinned + blocking: a security tool must gate its own supply-chain hygiene.
+          # `pipx run` isolates the install (PEP-668 safe on ubuntu-latest, no venv juggling).
+          # Bump the pin deliberately when upgrading (see https://pypi.org/project/zizmor/).
+          pipx run --spec "zizmor==1.26.1" zizmor --persona=regular .github/workflows/

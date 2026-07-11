@@ -64,9 +64,9 @@ For each candidate CVE:
   Grep manifests for `preinstall`/`postinstall`/`prepare` running network/exec; prefer
   `--ignore-scripts` for untrusted installs.
 - **Provenance / attestation** — prefer packages published with **npm provenance** (SLSA build
-  attestation via Sigstore). Verify with `npm audit signatures`. SLSA v1.2 (Nov 2025) adds a
-  Source track; GitHub Artifact Attestations and npm **trusted publishing** (OIDC, no long-lived
-  tokens) are the 2026 baseline.
+  attestation via Sigstore). Verify with `npm audit signatures`. GitHub Artifact Attestations and
+  npm **trusted publishing** (OIDC, no long-lived tokens) are the current baseline. (Check the
+  latest [SLSA](https://slsa.dev) level/track definitions rather than assuming a version.)
 - **GitHub Actions** not pinned to a full commit **SHA** (tag pinning is bypassable — see below).
 - **`npm ci` vs `npm install`** in CI (use `ci` for reproducible, lockfile-faithful installs).
 
@@ -75,8 +75,10 @@ For each candidate CVE:
 Use these as pattern templates — don't assume a specific package is still affected; **look up
 current advisories**. The point is to recognize the *class*.
 
-- **Self-replicating npm/PyPI worms — "Shai-Hulud" family (Sept 2025 → "Mini Shai-Hulud" May
-  2026, first to span npm + PyPI).** A compromised package's `postinstall` steals credentials
+- **Self-replicating npm/PyPI worms — "Shai-Hulud" family (first widely reported Sept 2025).**
+  Expect variants that spread across more than one ecosystem (npm + PyPI); confirm the current
+  campaign/package details against live advisories rather than this note. A compromised package's
+  `postinstall` steals credentials
   (often abusing secret-scanners like TruffleHog against the dev's own machine/CI), exfiltrates
   them, and **auto-republishes malware to every package the stolen npm token can reach**.
   Detection: unexpected `postinstall`, credential-harvesting code, outbound POSTs to unknown
@@ -84,9 +86,10 @@ current advisories**. The point is to recognize the *class*.
   repos. Mitigation: `--ignore-scripts`, short-lived/scoped tokens + trusted publishing, MFA on
   publish, pin + verify provenance, and audit token scopes.
 - **Compromised GitHub Action via mutable tags — `tj-actions/changed-files` (CVE-2025-30066,
-  Mar 2025).** The attacker repointed **all** version tags to a malicious commit that dumped CI
-  secrets into build logs (23k+ repos). This is exactly why **tags are not trustworthy** — pin
-  every third-party Action to a full commit SHA and review the pinned code.
+  Mar 2025).** The attacker repointed the action's version tags to a malicious commit that dumped
+  CI secrets into build logs; the action was used by 23k+ repos (those whose runs executed it
+  during the window were exposed). This is exactly why **tags are not trustworthy** — pin every
+  third-party Action to a full commit SHA and review the pinned code.
 - **Maintainer social-engineering + obfuscated build payload — `xz-utils` backdoor
   (CVE-2024-3094).** A long-game trusted-contributor takeover hid a backdoor in **build
   scripts / test blobs**, not the source diff. When reviewing deps, don't trust "it's a

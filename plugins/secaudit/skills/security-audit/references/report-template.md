@@ -106,4 +106,3 @@ source review, infra, mobile/LLM), and which tools (installed) vs LLM analysis.
 - Separate CONFIRMED from PLAUSIBLE from NOT-TESTED. Never overclaim.
 - Mask every secret/PII/token. Use canaries for proof, never real data.
 - Offer to write the report to a file and, if the user wants, a shareable summary.
-```

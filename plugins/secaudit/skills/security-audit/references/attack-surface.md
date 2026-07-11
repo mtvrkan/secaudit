@@ -25,6 +25,7 @@ start submitting forms (that's P4/P5, gated).
 # fetch a bundle, then grep for API paths / routes (read-only)
 curl -sS --max-time 25 https://TARGET/assets/index-XXXX.js -o bundle.js
 grep -oE '"/api/[a-zA-Z0-9/_-]+"' bundle.js | sort -u
+# single-quoted, so the backtick is literal (matches template-literal calls, e.g. fetch(`/x`))
 grep -oE '(fetch|axios\.[a-z]+)\(`?[^`")]+' bundle.js | sort -u
 ```
 

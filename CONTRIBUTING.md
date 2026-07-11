@@ -28,12 +28,17 @@ Thanks for helping make SecAudit better and safer! Contributions of all sizes ar
    Claude's context on demand, so favor signal over volume.
 3. If you touch a manifest (`plugin.json`, `marketplace.json`), validate it:
    ```bash
-   claude plugin validate .
-   claude plugin validate ./plugins/secaudit
+   claude plugin validate . --strict
+   claude plugin validate ./plugins/secaudit --strict
    ```
-   The CI workflow also lints all JSON and checks the structure.
-4. Test the change in a Claude Code session against a target you own.
-5. Open a PR describing what class/tool it adds and why. Reference any OWASP/CWE IDs.
+   `--strict` turns unknown-field warnings into errors. The CI workflow also lints all JSON,
+   rejects unknown manifest fields, and checks the structure.
+4. If you touch the fixture or golden set, run the deterministic self-test:
+   ```bash
+   python3 tests/selftest.py
+   ```
+5. Test the change in a Claude Code session against a target you own.
+6. Open a PR describing what class/tool it adds and why. Reference any OWASP/CWE IDs.
 
 ## Sanitized examples only
 

@@ -3,12 +3,11 @@ name: secaudit-verifier
 description: Adversarial verifier for security findings. Given a candidate vulnerability (with its evidence and repro), it tries to REFUTE it — checking reachability, exploitability, whether the flagged version is actually affected, and whether a control elsewhere mitigates it. Use to triage high/critical findings before they go in the report, and to filter scanner false positives.
 model: sonnet
 effort: high
-tools: >-
-  Read, Grep, Glob, WebFetch, WebSearch,
-  Bash(command -v*), Bash(curl -sS*), Bash(curl -I*),
-  Bash(osv-scanner*), Bash(npm audit*), Bash(pnpm audit*), Bash(pip-audit*),
-  Bash(govulncheck*), Bash(cargo audit*), Bash(composer audit*),
-  Bash(trivy fs*), Bash(trivy config*), Bash(semgrep*), Bash(opengrep*)
+# The subagent `tools:` field takes plain tool NAMES only — fine-grained Bash
+# scoping (e.g. `Bash(npm audit*)`) is not honored here and would leave the agent
+# with no Bash at all. Scope Bash via the parent command's `allowed-tools` and the
+# session's settings.json `permissions.allow/deny` instead.
+tools: Read, Grep, Glob, WebFetch, WebSearch, Bash
 disallowedTools: Write, Edit
 ---
 

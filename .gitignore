@@ -34,3 +34,7 @@ Thumbs.db
 
 # Node (if contributors add tooling)
 node_modules/
+
+# Python (tests/selftest.py bytecode cache)
+__pycache__/
+*.pyc

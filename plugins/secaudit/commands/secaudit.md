@@ -1,7 +1,7 @@
 ---
 description: Run an authorized, defensive security audit on a target (live URL or source-code path) and produce a prioritized, remediation-focused report.
 argument-hint: "<url | path> [--lang tr|en] [--passive] [--active] [--code] [--deps]"
-allowed-tools: Read, Grep, Glob, WebFetch, WebSearch, Task, Bash(curl -sS*), Bash(curl -I*), Bash(command -v*), Bash(semgrep*), Bash(osv-scanner*), Bash(trivy fs*), Bash(trivy config*), Bash(trivy image*), Bash(gitleaks detect*), Bash(trufflehog filesystem*), Bash(testssl.sh*), Bash(npm audit*), Bash(pnpm audit*), Bash(pip-audit*), Bash(govulncheck*), Bash(cargo audit*), Bash(composer audit*), Bash(checkov*), Bash(tfsec*)
+allowed-tools: Read, Grep, Glob, WebFetch, WebSearch, Task, Bash(curl -sS*), Bash(curl -I*), Bash(command -v*), Bash(dig*), Bash(nslookup*), Bash(semgrep*), Bash(opengrep*), Bash(osv-scanner*), Bash(trivy fs*), Bash(trivy config*), Bash(trivy image*), Bash(gitleaks detect*), Bash(trufflehog filesystem*), Bash(noseyparker*), Bash(testssl.sh*), Bash(sslscan*), Bash(npm audit*), Bash(npm audit signatures*), Bash(pnpm audit*), Bash(yarn npm audit*), Bash(pip-audit*), Bash(safety check*), Bash(govulncheck*), Bash(cargo audit*), Bash(composer audit*), Bash(bundle audit*), Bash(dotnet list package*), Bash(checkov*), Bash(tfsec*), Bash(kics*), Bash(kube-score*), Bash(kube-bench*), Bash(zizmor*), Bash(grype*), Bash(syft*), Bash(retire*)
 ---
 
 Run the **security-audit** skill against the target below.

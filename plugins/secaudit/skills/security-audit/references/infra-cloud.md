@@ -64,12 +64,13 @@ short-lived credentials. Flag every `*` in an action or resource for justificati
 
 ## CI/CD (A03 supply chain)
 
-CI is now a top-tier target (tj-actions `CVE-2025-30066` leaked secrets from 23k+ repos by
-repointing mutable tags; the Shai-Hulud worm family spreads through CI tokens). Check:
+CI is now a top-tier target (tj-actions `CVE-2025-30066`, an action used by 23k+ repos, leaked
+CI secrets into build logs by repointing mutable tags; the Shai-Hulud worm family spreads through
+CI tokens). Check:
 
 - **Pin every third-party Action to a full commit SHA** — tags/branches are mutable and were
   the exact vector in 2025's biggest CI compromise. Run **`zizmor`** (GitHub Actions static
-  auditor, 24+ rules: unpinned actions, script injection, dangerous triggers, over-broad tokens).
+  auditor: unpinned actions, script injection, dangerous triggers, over-broad tokens).
 - **Least-privilege `GITHUB_TOKEN`** — set a top-level `permissions:` block (default read-only);
   grant write only per-job where needed.
 - **`pull_request_target` / `workflow_run`** running untrusted PR code **with secrets** — the

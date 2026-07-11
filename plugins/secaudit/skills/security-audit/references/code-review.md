@@ -39,6 +39,17 @@ dangerous sink**. Prioritize reachable issues over theoretical ones. No live req
   allowlisting (`../`, absolute paths, null bytes; `fs.readFile(join(base, req.query.f))`,
   CWE-22); unrestricted upload destinations, `include`/`require` with user input, zip-slip.
 - **SSRF** — server-side fetch of user-supplied URLs without allowlist/private-range block.
+- **XXE (XML external entities, CWE-611)** — an XML parser that resolves external entities on
+  untrusted input → local-file read (`file://`) and SSRF via a remote DTD. Look for
+  `etree.XMLParser(resolve_entities=True)`/`no_network=False` (Python `lxml`), `DocumentBuilderFactory`
+  without `disallow-doctype-decl`/`FEATURE_SECURE_PROCESSING` (Java), `libxml_disable_entity_loader`
+  off (PHP), `XmlResolver` set (.NET). Fix: disable DTD/external-entity resolution (`defusedxml`,
+  `resolve_entities=False`, secure-processing features).
+- **Disabled TLS/cert verification (CWE-295)** — a client that turns off certificate validation
+  → network MITM. `requests.get(..., verify=False)`, `ssl._create_unverified_context()`,
+  `curl -k`/`--insecure`, `rejectUnauthorized: false` (Node), `InsecureSkipVerify: true` (Go),
+  a trust-all `TrustManager`/`HostnameVerifier` (Java). Fix: keep verification on; pin/trust the
+  proper CA bundle instead.
 - **Weak crypto / randomness** — `Math.random()`/`rand()` for tokens, MD5/SHA1 for
   passwords, ECB mode, hardcoded IV/keys, no salt; passwords not argon2/bcrypt/scrypt.
 - **Hardcoded secrets** — API keys, DB creds, JWT/signing secrets, private keys in code.
@@ -60,7 +71,7 @@ dangerous sink**. Prioritize reachable issues over theoretical ones. No live req
 
 ```
 JS/TS:  eval  innerHTML  dangerouslySetInnerHTML  child_process  \.exec\(  document\.write  new Function
-Python: pickle\.loads  yaml\.load\(  subprocess.*shell=True  os\.system  eval\(  \.format\(.*request  f".*SELECT
+Python: pickle\.loads  yaml\.load\(  subprocess.*shell=True  os\.system  eval\(  \.format\(.*request  f".*SELECT  verify=False  resolve_entities=True
 Go:     fmt\.Sprintf\(.*(SELECT|INSERT|UPDATE)  exec\.Command  os/exec  template\.HTML
 Java:   ObjectInputStream  Runtime\.getRuntime\(\)\.exec  createQuery\(".*\+  JdbcTemplate.*\+  new File\(.*request
 PHP:    eval\(  system\(  exec\(  unserialize\(  include\(.*\$_  mysqli_query\(.*\$_  \$_(GET|POST|REQUEST)

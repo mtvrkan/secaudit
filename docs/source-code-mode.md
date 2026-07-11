@@ -20,7 +20,7 @@ Static audit of a codebase. No live/network requests — safe on any repo you ca
   each lockfile-pinned version on OSV/GHSA. Cross-references CISA KEV.
 - **Secrets** — `gitleaks`/`trufflehog` (code + git history) or pattern grep. Secrets are
   reported masked (type + `file:line` + masked prefix); values are never printed.
-- **P7 Infra/IaC** — Dockerfile, Terraform, K8s, Compose, CI/CD workflows (if present).
+- **P7 Infra/IaC** — Dockerfile, Terraform, CloudFormation, K8s, Compose, CI/CD workflows (if present).
 - **P8 Mobile** / **P9 AI-LLM** — if the repo is a mobile app or calls an LLM.
 
 ## Why it's strong

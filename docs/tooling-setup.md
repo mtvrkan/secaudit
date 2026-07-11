@@ -9,7 +9,7 @@ to LLM analysis — you're never blocked.
 | Tool | Purpose | Install |
 |---|---|---|
 | `semgrep` | SAST (source code) | `pipx install semgrep` |
-| `osv-scanner` | dependency CVEs (all ecosystems) | `go install github.com/google/osv-scanner/cmd/osv-scanner@latest` |
+| `osv-scanner` | dependency CVEs (all ecosystems) | `go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest` |
 | `gitleaks` | secret detection (code + git history) | `brew install gitleaks` / `scoop install gitleaks` |
 | `testssl.sh` | TLS/cert posture | `git clone https://github.com/drwetter/testssl.sh` |
 

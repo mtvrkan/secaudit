@@ -27,9 +27,10 @@ Examples of unacceptable behavior:
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the
-maintainers via a GitHub issue marked confidential or the contact in
-[.github/SECURITY.md](.github/SECURITY.md). All complaints will be reviewed and
-investigated promptly and fairly.
+maintainers privately through GitHub's **[Private vulnerability reporting](https://github.com/mtvrkan/secaudit/security/advisories/new)**
+channel (the same private inbox described in [.github/SECURITY.md](.github/SECURITY.md)), or
+by opening a GitHub Discussion for non-sensitive concerns. Do not put private information in
+a public issue. All complaints will be reviewed and investigated promptly and fairly.
 
 This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org),
 version 2.1.

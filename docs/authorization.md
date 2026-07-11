@@ -29,6 +29,28 @@ Either:
 
 `scope.yaml` is gitignored — don't commit a filled-in copy.
 
+## Deterministic enforcement (PreToolUse hook)
+
+The passive/active boundary is not left to model discipline alone. The plugin ships a
+**PreToolUse hook** (`plugins/secaudit/hooks/active-scan-guard.py`) that runs before every
+`Bash` call and **blocks** these active patterns at the harness level:
+
+- offensive/active scanners (`nuclei`, `nmap`, `sqlmap`, ZAP, `hydra`, `ffuf`, `nikto`, …),
+- state-changing / payload-bearing HTTP requests (`curl`/`wget`/`httpie` with
+  `-X POST|PUT|DELETE|PATCH`, a request body, or a file upload), and
+- read-only `GET` requests that nonetheless carry a crafted probe/injection payload in the
+  URL or query string (SQLi canary, path-traversal to a system file, cloud-metadata SSRF,
+  XSS/SSTI marker, CRLF/null-byte) — a probe, not passive recon.
+
+It allows them only once authorization is asserted — either a `scope.yaml` with
+`i_am_authorized: true` in the working directory, or `SECAUDIT_ACTIVE=1` in the session.
+Passive recon (a plain read-only `GET`/`HEAD` of a real resource) and all local static
+analysis (SAST / dependency / secret scans) are never blocked. The probe-payload check targets
+the common OWASP canaries with high precision; a sufficiently obfuscated/encoded payload, or
+one sent via the `WebFetch` tool (not a shell command), still relies on the skill's
+authorization discipline — the hook is defense-in-depth, not a complete WAF. Even when
+authorized, the absolute limits below always hold.
+
 ## Absolute limits (never crossed, even when authorized)
 
 - No DoS / stress / high-volume fuzzing / resource exhaustion.

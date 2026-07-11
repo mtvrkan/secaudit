@@ -31,7 +31,7 @@ destructive payloads, no data extraction, no brute-force. Gate first (`SKILL.md`
 > cross-cutting **`auth-identity.md`** reference and load it whenever the target uses federated
 > login, social login, SSO, or token-based sessions.
 
-## 4.3 Injection (A03)
+## 4.3 Injection (A05)
 
 Canaries only in search, filters, forms, headers, JSON bodies, path params, file names,
 GraphQL vars. Classes: SQL/NoSQL, command, SSTI, LDAP/XML/XPath, header/log, HTML/JS.
@@ -46,7 +46,7 @@ GraphQL vars. Classes: SQL/NoSQL, command, SSTI, LDAP/XML/XPath, header/log, HTM
   DTD/external-entity resolution (`FEATURE_SECURE_PROCESSING`, `disallow-doctype-decl`).
 - **Never** dump DB content, run OS commands, write files, or alter records.
 
-## 4.4 XSS & content injection (A03)
+## 4.4 XSS & content injection (A05)
 
 - Reflected: is input echoed encoded (`&lt;script&gt;`) or raw?
 - Stored: submit a clearly-labeled test-record canary (`<b>xssTESTcanary</b>`) in your
@@ -58,7 +58,7 @@ GraphQL vars. Classes: SQL/NoSQL, command, SSTI, LDAP/XML/XPath, header/log, HTM
 - If a script-execution PoC is truly needed, a benign `alert`-style probe **in a test
   account/page only** — never steal cookies/tokens/storage.
 
-## 4.5 CSRF & CORS (A01/A05)
+## 4.5 CSRF & CORS (CSRF → A01 · CORS → A02)
 
 - State-changing requests need anti-CSRF token (session-bound, server-validated,
   non-reusable across users) or strict `SameSite`. Test by POSTing without/with a bad
@@ -73,7 +73,7 @@ Server-side type enforcement (not extension/MIME only), stored outside executabl
 safe rename, sandboxed processing, authorized direct access, sanitized filenames/metadata.
 Upload **harmless test files only** — never web shells/malware/exploit files.
 
-## 4.7 SSRF / open redirect / URL fetching (A10-adjacent)
+## 4.7 SSRF / open redirect / URL fetching (A01 — SSRF folded into Broken Access Control in 2025)
 
 - URL-preview/import/webhook features must block internal IPs, `localhost`,
   link-local/**cloud metadata** (`169.254.169.254`), private ranges. **Use only
@@ -81,13 +81,13 @@ Upload **harmless test files only** — never web shells/malware/exploit files.
 - Open redirect: test `redirect`/`next`/`return_to`/`url`/`goto`/`callback` params —
   do they redirect off-domain? Destinations should be allowlisted.
 
-## 4.8 Security misconfiguration (A05/A02)
+## 4.8 Security misconfiguration (A02)
 
 Debug off, stack traces hidden, admin protected, no default creds, directory listing
 off, backup/config files not public, restrictive CORS, appropriate CSP, no secrets in
 client JS/source maps/logs/errors, sensitive pages not publicly cached.
 
-## 4.9 Crypto & sensitive data (A02/A04)
+## 4.9 Crypto & sensitive data (A04)
 
 HTTPS everywhere + HSTS, no sensitive data in URLs, modern password hashing (argon2/
 bcrypt/scrypt), random long scoped expiring tokens, secrets not committed/exposed, PII
@@ -138,14 +138,16 @@ bypassing front-end auth/WAF.
   to the back-end where feasible. Ref: PortSwigger request-smuggling research (2025 "HTTP/1.1
   Must Die"). Often better confirmed by config review than live probing.
 
-## 4.12 Web cache poisoning & cache deception (CWE-524/525)
+## 4.12 Web cache poisoning & cache deception (poisoning → CWE-349 · deception → CWE-524)
 
-- **Cache poisoning:** an unkeyed input (a header like `X-Forwarded-Host`, `X-Forwarded-Scheme`,
+- **Cache poisoning (CWE-349, untrusted data accepted into a cached response):** an unkeyed
+  input (a header like `X-Forwarded-Host`, `X-Forwarded-Scheme`,
   or a quirky param) influences a cached response → the poisoned response is served to others.
   Safe test: send a benign unique marker in a candidate unkeyed header to a **cacheable** path,
   confirm it reflects, then confirm (carefully, once) it's cached. Never poison a shared prod
   cache with anything harmful.
-- **Cache deception:** trick the cache into storing a victim's *authenticated* page under a URL
+- **Cache deception (CWE-524, sensitive content stored in a shared cache):** trick the cache
+  into storing a victim's *authenticated* page under a URL
   the attacker can fetch (path-confusion: `/account/profile.css`, delimiter/extension tricks).
   Confirm sensitive pages are `Cache-Control: no-store` and the CDN doesn't cache by extension
   alone. Fix: cache keys include all security-relevant inputs; never cache authenticated content;

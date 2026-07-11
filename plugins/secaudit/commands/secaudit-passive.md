@@ -1,7 +1,7 @@
 ---
 description: Passive, zero-authorization-needed recon of a live URL (headers, TLS, cookies, public files, tech fingerprint, exposure checks). No payloads, no active probing.
 argument-hint: "<url> [--lang tr|en]"
-allowed-tools: Read, Grep, Glob, WebFetch, WebSearch, Bash(curl -sS*), Bash(curl -I*), Bash(command -v*), Bash(testssl.sh*), Bash(sslscan*)
+allowed-tools: Read, Grep, Glob, WebFetch, WebSearch, Bash(curl -sS*), Bash(curl -I*), Bash(command -v*), Bash(dig*), Bash(nslookup*), Bash(testssl.sh*), Bash(sslscan*)
 ---
 
 Run the **security-audit** skill in **passive-only mode** against: `$ARGUMENTS`

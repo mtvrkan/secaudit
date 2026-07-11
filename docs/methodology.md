@@ -14,9 +14,9 @@ runs, keeping analysis focused).
 | **P4 OWASP web tests** | live + authorized | access control, authn/session, injection, XSS, CSRF/CORS, upload, SSRF, misconfig, crypto, business logic |
 | **P5 API tests** | API + authorized | OWASP API Top 10 (BOLA, mass assignment, BFLA, …) |
 | **P6 Source review (SAST)** | source target | taint tracing to sinks, authz gaps, secrets, weak crypto |
-| **P7 Infra / cloud / IaC** | IaC/containers/cloud config | Dockerfile, Terraform, K8s, Compose, exposure, CI/CD |
+| **P7 Infra / cloud / IaC** | IaC/containers/cloud config | Dockerfile, Terraform, CloudFormation, K8s, Compose, exposure, CI/CD |
 | **P8 Mobile** | mobile app | OWASP MASVS / Mobile Top 10 |
-| **P9 AI / LLM security** | app calls an LLM / is an agent / uses MCP | OWASP LLM Top 10 (2025) + Agentic Apps (2026) + MCP Top 10 — prompt injection (direct + indirect), output handling, excessive agency, tool poisoning, cost |
+| **P9 AI / LLM security** | app calls an LLM / is an agent / uses MCP | OWASP LLM Top 10 (2025) + Agentic Apps (2026, draft) + MCP Top 10 (draft) — prompt injection (direct + indirect), output handling, excessive agency, tool poisoning, cost |
 
 A cross-cutting **`auth-identity.md`** reference (OAuth 2.0 / OIDC / SAML / JWT / sessions / MFA /
 passkeys) is loaded on top of these whenever the target uses federated login or token sessions.
@@ -38,10 +38,11 @@ A real audit needs both. Dependency scanners alone miss the unknown class entire
    through the adversarial `secaudit-verifier` agent, which tries to *refute* them.
 2. **Prioritize.** CISA KEV (actively exploited) → internet-exposed unauthenticated →
    auth/authz bypass → sensitive-data exposure → RCE/SSRF → reachable vulnerable deps →
-   misconfig → hardening. See `references/severity-cvss.md`.
+   misconfig → hardening. EPSS ranks the non-KEV tail by exploitation probability; CVSS
+   rates severity, context decides. See `references/severity-cvss.md`.
 3. **Report.** Severity-ranked findings, each with impact, evidence, root cause, a specific
    fix, and a retest step; plus a dependency/CVE register, the positive controls you already
-   have, and a 24h/7d/30d remediation roadmap.
+   have, and a 24–72h / 7–14d / 30–60d remediation roadmap.
 
 ## Honesty
 
@@ -51,7 +52,7 @@ separated from plausible (code-review-only) ones and from untested areas.
 
 ## Standards referenced
 
-OWASP WSTG · OWASP Top 10 (2021) · OWASP API Top 10 (2023) · OWASP LLM Top 10 (2025) ·
-OWASP Top 10 for Agentic Applications (2026) · OWASP MCP Top 10 (2025) · OWASP Mobile Top 10
+OWASP WSTG · OWASP Top 10 (2025) · OWASP API Top 10 (2023) · OWASP LLM Top 10 (2025) ·
+OWASP Top 10 for Agentic Applications (2026, draft) · OWASP MCP Top 10 (2025, draft) · OWASP Mobile Top 10
 (2024) · CWE Top 25 · CISA KEV · NVD/CVE · OSV.dev · GitHub Advisory DB · SLSA / Sigstore
 (provenance) · PortSwigger research (request smuggling / desync).

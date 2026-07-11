@@ -1,0 +1,13 @@
+{
+  "name": "secure-app-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SECURE negative-control fixture for SecAudit precision testing. Safe by construction; dependencies pinned to patched versions. Do not deploy.",
+  "dependencies": {
+    "express": "4.21.2",
+    "marked": "12.0.2",
+    "dompurify": "3.1.7",
+    "lodash": "4.17.21",
+    "minimist": "1.2.8"
+  }
+}

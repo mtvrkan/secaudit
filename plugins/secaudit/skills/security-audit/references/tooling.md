@@ -11,8 +11,8 @@ Check availability without failing. Cross-platform (Git Bash / PowerShell / Linu
 ```bash
 for t in curl semgrep opengrep trivy osv-scanner grype syft gitleaks trufflehog \
          noseyparker nuclei httpx katana subfinder testssl.sh sslscan nmap \
-         npm pnpm yarn pip-audit safety govulncheck cargo-audit bundler-audit \
-         composer dotnet checkov trivy-config kics tfsec kube-score kube-bench \
+         npm pnpm yarn pip-audit safety govulncheck cargo-audit bundle-audit \
+         composer dotnet checkov kics tfsec kube-score kube-bench \
          zizmor dependency-check retire; do
   command -v "$t" >/dev/null 2>&1 && echo "OK   $t" || echo "MISS $t"
 done
@@ -21,7 +21,16 @@ done
 `opengrep` is the maintained community fork of Semgrep CE (Jan 2025) — restores cross-function
 taint tracking; same rule format/SARIF, so it's a drop-in where `semgrep` is absent.
 
-On Windows PowerShell: `Get-Command <tool> -ErrorAction SilentlyContinue`.
+On Windows PowerShell (native, no Git Bash), the same detect loop is:
+
+```powershell
+'curl','semgrep','opengrep','trivy','osv-scanner','grype','syft','gitleaks',
+'trufflehog','noseyparker','nuclei','httpx','katana','subfinder','testssl.sh',
+'sslscan','nmap','npm','pnpm','yarn','pip-audit','safety','govulncheck','cargo-audit',
+'bundle-audit','composer','dotnet','checkov','kics','tfsec','kube-score','kube-bench',
+'zizmor','dependency-check','retire' |
+  ForEach-Object { if (Get-Command $_ -ErrorAction SilentlyContinue) { "OK   $_" } else { "MISS $_" } }
+```
 
 Record which are present. Pick tools per phase from the table below. Prefer:
 `osv-scanner`/`trivy` for deps, `semgrep` for SAST, `gitleaks`/`trufflehog` for
@@ -31,8 +40,10 @@ templates require authorization** (§Active-testing note).
 > **Allowlist note.** The commands' `allowed-tools` frontmatter permits only passive/static
 > scanners (SAST, dependency, secret, config, TLS-read) so nothing active runs unprompted.
 > Active-recon tools listed below — `nuclei`, `httpx`, `katana`, `subfinder`, `nmap`,
-> OWASP ZAP, `dependency-check`, `safety` — are **intentionally not** in that allowlist; they
-> only run against an authorized live target after the user explicitly approves the Bash call.
+> OWASP ZAP — are **intentionally not** in that allowlist; they only run against an
+> authorized live target after the user explicitly approves the Bash call. (`safety` and
+> `dependency-check` are passive local dependency scanners, not active-recon — `safety` is
+> already in the allowlist as `Bash(safety check*)`.)
 
 ## Tool matrix
 
@@ -61,7 +72,7 @@ templates require authorization** (§Active-testing note).
 | HTTP headers / probing | `httpx -title -tech-detect -status-code` | `curl -sSI -L` | (curl always available) |
 | Endpoint/crawl discovery (passive) | `katana -jc -d 2` (read-only crawl) | grep JS bundles | manual (`attack-surface.md`) |
 | Subdomain enum (passive) | `subfinder -silent -d <domain>` | cert-transparency lookup | passive only |
-| Live web misconfig/exposure | `nuclei -t http/exposures,http/misconfiguration` | — | manual path checks (`passive-recon.md`) |
+| Live web misconfig/exposure | `nuclei -t http/exposures,http/misconfiguration` (authorized) | — | manual path checks (`passive-recon.md`) |
 | Port/service exposure | `nmap -sV --top-ports 1000` (authorized) | — | passive fingerprint only |
 | DAST baseline | OWASP ZAP baseline (authorized) | `nuclei` safe templates | manual OWASP tests (`web-tests.md`) |
 
@@ -72,7 +83,7 @@ templates require authorization** (§Active-testing note).
 semgrep:      pipx install semgrep            (or: pip install semgrep)
 opengrep:     https://github.com/opengrep/opengrep   (maintained Semgrep-CE fork)
 trivy:        https://trivy.dev/latest/getting-started/installation/
-osv-scanner:  go install github.com/google/osv-scanner/cmd/osv-scanner/v2@latest
+osv-scanner:  go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest
 gitleaks:     https://github.com/gitleaks/gitleaks#installing  (brew/scoop/go)
 trufflehog:   https://github.com/trufflesecurity/trufflehog    (verifies live secrets)
 noseyparker:  https://github.com/praetorian-inc/noseyparker    (low-false-positive, ML)
@@ -95,8 +106,10 @@ Windows binaries.
 ## `osv-scanner` guided remediation
 
 `osv-scanner` can propose the minimum-impact upgrade set: run `osv-scanner fix --non-interactive
--r .` (or `--strategy in-place`) to compute lockfile changes that clear the most vulns with the
-fewest major bumps. Review the diff — never auto-apply upgrades in an audit.
+--strategy=in-place -M <manifest> -L <lockfile>` (e.g. `-M package.json -L package-lock.json`;
+`fix` takes explicit `-M`/`-L` targets, not the `scan` command's `-r`, and `--strategy=relock`
+allows larger bumps) to compute lockfile changes that clear the most vulns with the fewest major
+bumps. Review the diff — never auto-apply upgrades in an audit.
 
 ## Safe invocation rules
 

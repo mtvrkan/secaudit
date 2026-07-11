@@ -28,6 +28,13 @@ Check for and grade each **security header**:
 Note **duplicated/conflicting** headers (e.g. proxy + app both set `X-Frame-Options`
 with different values) — real-world finding.
 
+**Grade CSP strength, not just presence.** A header that reflects into the page is worth
+little if it's bypassable. Flag: `unsafe-inline`/`unsafe-eval` in `script-src`; a wildcard
+`*` or `https:` source; a permissive host allowlist that includes a JSONP-capable or
+user-content CDN (a known CSP-bypass vector); and **missing `object-src 'none'` and
+`base-uri 'none'`** (dangling-markup / base-tag injection). `report-uri`/`report-to` without
+enforcement is monitor-only. Prefer nonce/hash-based CSP with `strict-dynamic`.
+
 ## Cookies
 
 Inspect every `Set-Cookie`. Session cookies must have `Secure`, `HttpOnly`, and an
@@ -66,6 +73,27 @@ missing files — that is NOT exposure. Confirm real exposure by checking conten
 and body (a real `.env`/`.git/config` has recognizable content; a 200 HTML fallback of
 the same byte-size for every path is the SPA router). The example reports do this well.
 
+## Email & DNS hygiene (passive DNS lookups)
+
+Spoofing/phishing exposure is read-only DNS — no authorization needed. Check the apex
+and mail domains:
+
+```bash
+dig +short TXT TARGET                 # SPF (v=spf1 …) and other TXT
+dig +short TXT _dmarc.TARGET          # DMARC policy
+dig +short TXT default._domainkey.TARGET   # DKIM (selector varies)
+dig +short CAA TARGET                  # who may issue certs
+```
+
+Flag:
+- **No SPF**, or SPF ending `~all`/`+all` instead of `-all` (soft/no fail → spoofable).
+- **No DMARC**, or `p=none` (monitor-only, doesn't block spoofed mail). Want `p=quarantine`
+  or `p=reject` with `rua` reporting.
+- **Missing DKIM** on a domain that sends mail.
+- **No CAA record** (any CA may issue certs for the domain).
+- **Dangling DNS** (CNAME → a de-provisioned cloud resource) → subdomain takeover; see
+  `infra-cloud.md`.
+
 ## Error pages & tech fingerprint
 
 - Request a nonexistent path; a verbose framework 404 (`Cannot GET /x` = Express) or a
@@ -74,7 +102,9 @@ the same byte-size for every path is the SPA router). The example reports do thi
   `connect.sid`, `laravel_session`), HTML meta/generator, JS bundle names
   (`vue-*`, `react-*`, `/_next/`, `index-*.js` = Vite), CDN/WAF headers (`CF-*`,
   `X-Amz-*`, `X-Vercel-*`). Record versions where visible → feed P3.
-- `nuclei -t http/technologies` (info-only templates) can automate fingerprinting.
+- *(Active — authorization required, NOT passive recon.)* `nuclei -t http/technologies`
+  can automate fingerprinting, but even "info" templates fire many crafted probes beyond
+  what a normal browser sends. Run it only after the authorization gate (see `tooling.md`).
 
 ## Deliverable
 

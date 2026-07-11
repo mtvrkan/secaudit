@@ -54,12 +54,14 @@ follow along. Otherwise keep them in memory and emit only the final report.
 | P5 | `05_api_findings.md` |
 | P6 | `06_code_review.md` |
 | P7 | `07_infra_findings.md` |
+| P8 | `08_mobile_findings.md` (if a mobile app) |
+| P9 | `09_llm_ai_findings.md` (if the app uses an LLM / is an agent / uses MCP) |
 | — | `SECURITY_REPORT.md` — final consolidated report |
 
 ## Trusted sources to check during a run
 
 - OWASP Web Security Testing Guide — methodology.
-- OWASP Top 10 (2021) — web risk categories. `vuln-catalog.md`.
+- OWASP Top 10 (2025) — web risk categories. `vuln-catalog.md`.
 - OWASP API Security Top 10 (2023) — API risks.
 - OWASP LLM Top 10 & Mobile Top 10 — when applicable.
 - OWASP Cheat Sheet Series — remediation patterns.

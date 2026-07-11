@@ -2,7 +2,7 @@
 name: security-audit
 allowed-tools: >-
   Read, Grep, Glob, WebFetch, WebSearch, Task,
-  Bash(curl -sS*), Bash(curl -I*), Bash(command -v*), Bash(semgrep*),
+  Bash(curl -sS*), Bash(curl -I*), Bash(command -v*), Bash(dig*), Bash(nslookup*), Bash(semgrep*),
   Bash(osv-scanner*), Bash(trivy fs*), Bash(trivy config*), Bash(trivy image*),
   Bash(gitleaks detect*), Bash(trufflehog filesystem*), Bash(testssl.sh*),
   Bash(sslscan*), Bash(npm audit*), Bash(pnpm audit*), Bash(yarn npm audit*),
@@ -22,9 +22,10 @@ description: >-
   Runs a phased methodology (passive recon → attack-surface mapping → known-CVE
   & dependency research → OWASP web/API tests → source review → infra) using
   installed tools when available (semgrep, trivy, osv-scanner, gitleaks,
-  nuclei, testssl.sh) and falling back to LLM analysis otherwise. Produces a
+  testssl.sh) and falling back to LLM analysis otherwise. Produces a
   prioritized, remediation-focused report. Defaults to safe/passive; active
-  testing requires explicit authorization.
+  testing requires explicit authorization. Active-only tools (e.g. nuclei, ZAP)
+  are gated behind the authorization prompt, not run by default.
 license: MIT
 ---
 
@@ -52,7 +53,7 @@ availability, privacy, or data integrity.
      cross-reference (code confirms live findings, live confirms code findings).
 2. **Set report language.** Default English. If the user writes in Turkish or passes
    `--lang tr`, write the report in Turkish (keep technical terms/CWE/CVE in English).
-   `--lang en` forces English. Match the existing report style in `report-template.md`.
+   `--lang en` forces English. Match the existing report style in `references/report-template.md`.
 3. **Establish the authorization gate** — see §1. Do this *before* any request that
    leaves the machine toward a live target.
 4. **Inventory available tools** once, quietly — see `references/tooling.md` §"Detect".

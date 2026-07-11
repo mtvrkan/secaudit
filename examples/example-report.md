@@ -48,7 +48,7 @@ lookup (OSV/GHSA/KEV), source-code review (SAST), and AI/LLM-security review. To
 ## Detailed Findings
 
 ### F-001 — AI chat response rendered without sanitization → XSS  ·  Severity: High
-- **Class / OWASP / CWE:** A03 Injection / OWASP LLM05 Improper Output Handling · CWE-79
+- **Class / OWASP / CWE:** A05 Injection / OWASP LLM05 Improper Output Handling · CWE-79
 - **Affected asset:** `web/src/chat/render.js:142`
 - **Verdict:** PLAUSIBLE — found via code review; not live-triggered (paid AI endpoint).
 - **Evidence:**
@@ -75,7 +75,7 @@ lookup (OSV/GHSA/KEV), source-code review (SAST), and AI/LLM-security review. To
 - **References:** OWASP LLM Top 10 (LLM05); CWE-79; DOMPurify docs.
 
 ### F-002 — Session cookie missing HttpOnly / Secure / SameSite  ·  Severity: High
-- **Class / OWASP / CWE:** A05 / A07 · CWE-1004, CWE-614
+- **Class / OWASP / CWE:** A02 / A07 · CWE-1004, CWE-614
 - **Affected asset:** `Set-Cookie: SESSIONID=...; path=/`
 - **Verdict:** CONFIRMED
 - **Evidence:** response omits all three flags.
@@ -142,6 +142,15 @@ Restrict to admin/monitoring or return a minimal `{status:"healthy"}`.
 | F-001 | High | payload renders escaped, no script exec | ☐ |
 | F-002 | High | `curl -I` shows all cookie flags | ☐ |
 | F-003 | Medium | identical login error messages | ☐ |
+
+## Appendix A — Activity Log
+
+| Timestamp | Action | Target | Result |
+|---|---|---|---|
+| 2026-07-11 09:12 | Passive recon (headers/TLS/cookies) | `demo-app.example.com` | F-002, F-004–F-008 |
+| 2026-07-11 09:31 | Dependency + secret scan (source repo) | provided repo | register populated |
+| 2026-07-11 10:05 | Source review (AI-chat render path) | `web/src/chat/` | F-001 (code review) |
+| 2026-07-11 10:40 | Authorized read-only session checks | login/enumeration | F-003 |
 
 ## Appendix B — Assumptions & Limitations
 

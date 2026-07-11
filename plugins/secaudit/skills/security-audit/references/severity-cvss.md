@@ -12,10 +12,29 @@
 
 ## CVSS (optional, adds rigor)
 
-When useful, compute a CVSS v3.1/v4.0 base score and include the vector string, e.g.
-`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`. Don't let a score override context:
-a "medium" CVSS that is internet-facing, unauthenticated, and KEV-listed is a
-top-priority fix. Severity in the report reflects **contextual risk**, not raw CVSS.
+When useful, compute a CVSS base score and include the vector string. Prefer **v4.0**
+where you can (it splits impact into Vulnerable/Subsequent systems and drops Scope), and
+fall back to v3.1:
+
+```
+CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N   # v4.0
+CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N                       # v3.1
+```
+
+Don't let a score override context: a "medium" CVSS that is internet-facing,
+unauthenticated, and KEV-listed is a top-priority fix. Severity in the report reflects
+**contextual risk**, not raw CVSS.
+
+## EPSS & KEV (exploitation likelihood)
+
+CVSS rates *severity*, not *probability of exploitation*. Pair it with:
+- **CISA KEV** — binary "known exploited in the wild." A KEV listing overrides a modest
+  CVSS every time; remediate on the KEV timeline.
+- **EPSS** ([FIRST](https://www.first.org/epss/)) — a 0–1 probability that a CVE will be
+  exploited in the next 30 days. Use it to rank the long tail of non-KEV CVEs: a high-EPSS
+  (e.g. ≥0.5), internet-reachable dependency jumps the queue over a higher-CVSS but
+  low-EPSS, unreachable one. Note EPSS is population-level prediction, not a
+  reachability check — still confirm the code path (see Triage).
 
 ## Prioritization order
 
