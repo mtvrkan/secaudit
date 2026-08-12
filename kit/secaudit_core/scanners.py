@@ -122,7 +122,9 @@ def parse_osv_json(text: str) -> list[Finding]:
                     file=str(src).replace("\\", "/"), line=1,
                     evidence=(v.get("summary") or vid)[:200],
                     fix=f"Upgrade `{name}` beyond the affected range ({vid}).",
-                    source="osv", verdict=Verdict.CONFIRMED))
+                    # `package` is what `engine.apply_vex` keys reachability on — without it an
+                    # osv advisory would silently skip the VEX pass npm-audit findings get.
+                    source="osv", verdict=Verdict.CONFIRMED, package=name))
     return findings
 
 
