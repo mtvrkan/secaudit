@@ -38,3 +38,11 @@ node_modules/
 # Python (tests/selftest.py bytecode cache)
 __pycache__/
 *.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+
+# Landing page — the template and generator ARE committed (they are small, and every number
+# on the page is derived from this repo at build time, so they cannot live apart from it).
+# Only the rendered output is ignored; CI publishes that to gh-pages.
+site/dist/

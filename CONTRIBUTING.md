@@ -21,6 +21,31 @@ Thanks for helping make SecAudit better and safer! Contributions of all sizes ar
 - **Docs & examples** — clearer guides, more sanitized example reports.
 - **Report localization** — additional report languages in `references/report-template.md`.
 
+## Run the checks locally
+
+Every gate CI runs is a script you can run yourself. There is no check that only exists in
+the workflow file:
+
+```bash
+python3 scripts/run_checks.py          # all 15 gates, same as CI
+python3 scripts/run_checks.py --fast   # structure + consistency + hook guard (seconds)
+python3 scripts/run_checks.py --list   # what each gate is and how to run it alone
+```
+
+Two gates deserve a note, because they fail in ways that look like a bug and are not:
+
+- **`check_repo.py` (checks 11–20)** — manifests, plugin layout, frontmatter, the
+  command-allowlist subset rule, dangling references, relative links, hook wiring, stray
+  secrets.
+- **`check_consistency.py` (checks 01–10)** — recomputes every number the docs state about
+  the kit from the detector table, the golden set and the shipped plugin tree. **If you add a
+  detector or a golden finding, a stated count somewhere will now be wrong and the gate will
+  say which.** That is the gate working. Fix the document, never the derivation.
+  `python3 scripts/check_consistency.py --facts` prints the current derived values.
+
+If you add a gate to `validate.yml`, add it to `GATES` in `scripts/run_checks.py` too — the
+two are kept in sync by hand.
+
 ## How to contribute
 
 1. Fork and create a branch (`feat/…` or `fix/…`).
@@ -31,12 +56,9 @@ Thanks for helping make SecAudit better and safer! Contributions of all sizes ar
    claude plugin validate . --strict
    claude plugin validate ./plugins/secaudit --strict
    ```
-   `--strict` turns unknown-field warnings into errors. The CI workflow also lints all JSON,
-   rejects unknown manifest fields, and checks the structure.
-4. If you touch the fixture or golden set, run the deterministic self-test:
-   ```bash
-   python3 tests/selftest.py
-   ```
+   `--strict` turns unknown-field warnings into errors. `scripts/check_repo.py` runs the same
+   field-strictness rules offline, so you get the answer without the CLI.
+4. Run `python3 scripts/run_checks.py` and make it green before opening the PR.
 5. Test the change in a Claude Code session against a target you own.
 6. Open a PR describing what class/tool it adds and why. Reference any OWASP/CWE IDs.
 

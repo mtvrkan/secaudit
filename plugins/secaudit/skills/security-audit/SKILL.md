@@ -131,7 +131,11 @@ Cross-cutting references (load when relevant, once per session):
 - *Only a URL* → P1 → P2 → P3 → (gate) → P4 → P5 → P7. State passive-only limits if
   no authorization/source.
 - *Only source code* → P6 + P3 + P7 (+ P8/P9 if applicable). No live requests needed.
-- *URL + source* → run both tracks; use code to confirm/triage live findings.
+- *URL + source* → run both tracks **in parallel**, not sequentially: dispatch the source
+  track (P3/P6/P7) to a background subagent while the foreground does live recon +
+  authenticated testing (P1/P2/P4/P5); cross-reference at the end. See `runbook.md`
+  §"Parallelizing a Both engagement" — this materially cuts wall-clock time with no
+  coverage loss and each track sharpens the other's evidence.
 
 ## 3. Finding discipline
 

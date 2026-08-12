@@ -29,6 +29,44 @@ only; no real-user enumeration; no high-volume fuzzing.
 - **Token/auth** — for JWT/OAuth/OIDC-protected APIs, run the `auth-identity.md` checklist
   (`alg:none`, algorithm confusion, `kid`/`jku` injection, missing `aud`/`exp`, PKCE).
 
+### API3 — config/settings endpoints: the highest-value excessive-data-exposure check
+
+A single "settings" or "site-config" DB row commonly mixes public-safe fields (site title,
+social links, feature flags) with genuinely secret ones (SMTP credentials, third-party API
+keys, payment provider secrets) — and it's routinely serialized wholesale, with no
+field-level allowlist, to **every** endpoint that reads it. This is a recurring, high-impact,
+easy-to-check real-world bug class — confirmed critical finding in a past engagement (a
+public "site settings" endpoint, intentionally unauthenticated for legitimate frontend use,
+leaked the newsletter SMTP password to every page load). Check specifically:
+
+1. **Enumerate every endpoint that returns a config/settings object** — public AND admin
+   (`/api/settings`, `/api/public/site-settings`, `/api/admin/site-settings`, `/config`,
+   `/api/site-info`, GraphQL `settings { ... }`). Note that a bug in a *shared serializer*
+   affects all of them identically — if one leaks, check the others immediately, they very
+   likely share the same root cause.
+2. **Diff the full response against what the UI actually consumes.** Open the same page in a
+   browser / read the frontend source for what fields it reads from that response, then
+   compare to the full raw JSON — every extra field the UI never touches is a candidate leak.
+   Look especially for field names containing `smtp`, `key`, `secret`, `token`, `password`,
+   `credential`, `api_key`, `webhook`, `dsn`, `connection_string`.
+3. **Check both the intentionally-public endpoint and any admin-only sibling** — an admin
+   settings endpoint that's *missing* its auth middleware (simple oversight) is just as
+   likely to exist alongside a *by-design* public one that over-serializes; both routes
+   often return the identical unfiltered row, so one grep of the handler/serializer code
+   finds both bugs at once.
+4. **Safely test the write side without ever mutating real data — the no-op replay
+   technique:** to confirm whether a state-changing endpoint (`PUT`/`PATCH`/`POST` on that
+   same settings object) is actually authorization-protected, `GET` the current values first,
+   then replay the **exact same values** back through the write endpoint (net change: zero).
+   A `401`/`403` proves write is protected without ever having risked altering real
+   configuration; a `200` that echoes success is a confirmed write-side finding you obtained
+   with zero risk. This same replay-only technique generalizes to any state-changing endpoint
+   you need to authz-test but must not actually mutate.
+- **Severity note:** even if the write side is fully protected (so defacement/injection via
+  that field isn't possible), a **secret credential** leaking through the read side alone is
+  still Critical — the impact (credential theft → third-party system compromise) doesn't
+  depend on being able to write back through the same endpoint.
+
 ## GraphQL specifics
 
 - **Introspection** exposed in prod → full schema map for attackers. Disable or restrict.

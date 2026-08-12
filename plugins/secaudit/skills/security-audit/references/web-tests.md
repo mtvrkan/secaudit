@@ -26,6 +26,30 @@ destructive payloads, no data extraction, no brute-force. Gate first (`SKILL.md`
   server-side, cookie flags (P1), session fixation (cookie-swap test without password).
 - JWT: storage (localStorage = XSS-stealable), expiry, `alg:none` rejection, signature
   validation, issuer/audience — verify in P6 if source available.
+- **CAPTCHA / anti-automation strength — don't take it at face value.** A CAPTCHA that
+  *looks* effective can be trivially machine-solvable if the answer leaks through the
+  challenge response itself, not just through weak entropy. Check, in order:
+  1. **Does the challenge response leak its own answer?** Fetch the challenge and inspect
+     the raw body/headers — an SVG/HTML challenge with the answer as literal `<text>`/DOM
+     content (not rasterized to an image, not a font-outline path) is solved by a one-line
+     regex, no OCR needed. Same class of bug: answer echoed in a response header, a hidden
+     form field, an HTML comment, or derivable from a predictable/seeded RNG.
+     Confirmed real-world finding — see the dogfood case in `examples/` where
+     `<text>t</text><text>m</text>...` in the SVG body was the literal answer.
+  2. If the raw response doesn't leak it, check **entropy/space** (charset size × length —
+     is brute-forcing the answer itself feasible within the endpoint's own rate limit?).
+  3. Confirm the challenge is actually **bound and single-use** — same `captchaId`/token
+     reusable across multiple submit attempts, or accepted without ever being fetched, is
+     also a finding (bypasses the control entirely regardless of #1/#2).
+  - **Fix:** rasterize to an image (PNG/JPEG) with no embedded text node, or render glyphs as
+    SVG `<path>` outlines (no `<text>`); bind the challenge id to one verification attempt;
+    for anything beyond hobby-scale, prefer a proven third-party service (hCaptcha,
+    Turnstile, reCAPTCHA) over a homegrown renderer.
+  - **Severity guidance:** if login/register still has effective IP+account rate-limiting
+    and lockout behind the broken CAPTCHA, this is usually **Medium** (anti-automation
+    layer removed, but brute-force is still bounded) — not Critical/High by itself. If the
+    rate-limiter is *also* weak or per-IP-only (trivially distributed across proxies), the
+    combination escalates the severity — chain the findings.
 
 > **OAuth 2.0 / OIDC / SAML / JWT / passkeys** have their own deep checklist — see the
 > cross-cutting **`auth-identity.md`** reference and load it whenever the target uses federated
@@ -66,6 +90,11 @@ GraphQL vars. Classes: SQL/NoSQL, command, SSTI, LDAP/XML/XPath, header/log, HTM
 - CORS: does it reflect arbitrary `Origin` with credentials? Send
   `Origin: https://evil.example` → the response must NOT echo it into
   `Access-Control-Allow-Origin` with `Allow-Credentials: true`.
+- CORS error-path robustness: a rejected foreign origin should return a clean `204`/`403`,
+  not throw. If the origin-validation callback `throw`s on rejection (a common `cors`
+  middleware pattern: `callback(new Error(...))` instead of `callback(null, false)`), a
+  foreign-origin preflight can trigger an unhandled `500` — low severity by itself (the
+  rejection still holds), but a signal of uncontrolled error-path behavior worth noting.
 
 ## 4.6 File upload & handling
 
@@ -86,6 +115,36 @@ Upload **harmless test files only** — never web shells/malware/exploit files.
 Debug off, stack traces hidden, admin protected, no default creds, directory listing
 off, backup/config files not public, restrictive CORS, appropriate CSP, no secrets in
 client JS/source maps/logs/errors, sensitive pages not publicly cached.
+
+- **Sample security headers (especially CSP) from more than one route class before
+  generalizing.** Page routes (SSR/SPA HTML) and API/JSON routes are frequently served by
+  different middleware stacks with *different* policies — e.g. a page-level CSP that adds
+  `script-src 'unsafe-inline'` for Google Analytics/AdSense/GTM bootstrap snippets, while
+  the API layer's CSP has no `unsafe-inline` at all. A single `curl -I` against one path is
+  not evidence for the whole app. Check at minimum: one public page, one authenticated
+  page (if applicable), and one `/api/*` JSON endpoint — report each policy separately and
+  flag the weakest one as the one that actually matters for that route class's own
+  injection surface.
+- **Duplicate/conflicting headers from two layers (reverse proxy + app middleware) is its
+  own finding**, independent of whether either value alone is secure. E.g. nginx setting
+  `X-Frame-Options: SAMEORIGIN` while Express/Helmet also sets `X-Frame-Options: DENY` on
+  the same response — the browser behavior when a header repeats with different values is
+  under-specified/inconsistent across browsers, and it signals two uncoordinated
+  configuration sources that will drift further apart over time. Fix: pick one layer as the
+  single source of truth (prefer the app-level one, since it can be unit-tested) and remove
+  the other.
+
+## 4.15 Reflected-parameter encoding checks (framework-internal payloads too)
+
+- When probing for reflected XSS, don't stop at "the raw payload doesn't render as HTML" —
+  check the *actual* encoding used. Modern SSR/hydration frameworks (Next.js RSC payloads,
+  Nuxt payloads, etc.) often echo query/route params back inside an embedded JSON/JS blob
+  for hydration. Confirm the framework encoded it safely for *that* context (e.g.
+  `<`/`>` inside a `<script>`-embedded JSON string is inert; a literal `<`/`>` or
+  an HTML-entity-decoded value re-inserted into the DOM without a corresponding
+  encode/escape step is not). Grep the raw response for the exact injected string and read
+  20–30 bytes of surrounding context before concluding either way — a substring match alone
+  (e.g. finding `alert(1)` present) proves nothing about whether it's executable.
 
 ## 4.9 Crypto & sensitive data (A04)
 
@@ -174,6 +233,28 @@ bypassing front-end auth/WAF.
   and read/act as the victim. Check the handshake validates `Origin` and uses a per-session token.
 - Also check: authz on each message (not just at connect), input validation on WS payloads
   (same injection sinks), and rate limits.
+- **Live active test for room/broadcast authorization (Socket.IO and equivalents):** client-side
+  room-join logic (`socket.emit('join_admin')`, `socket.emit('join_user', userId)`) is a
+  strong signal the server *might* be trusting client-asserted role/identity for what gets
+  broadcast to that connection — but don't flag it from source alone if the server can't be
+  read, and don't assume the worst from source alone either: confirm live. Safe recipe:
+  1. Connect a real Socket.IO/WS client **without any auth cookie/token**.
+  2. Emit the client-observed join events for the highest-privilege room you can find in the
+     bundle (e.g. `join_admin`, `join_room:*`), and any user-scoped join with an arbitrary/
+     guessed id.
+  3. Attach a catch-all listener (`socket.onAny(...)` or equivalent) and listen for a bounded
+     window (~10-15s) while triggering an unrelated, harmless public action from another tab/
+     request (e.g. a public page view) that *should* generate a broadcast if the room/event
+     wiring is real.
+  4. **No privileged event arriving = the room join was accepted but not wired to any
+     sensitive broadcast** — note this as a confirmed-safe result, not a finding (many apps
+     serve all sensitive data over authenticated REST and use sockets only for low-value
+     real-time UI, in which case the missing handshake auth is a defense-in-depth gap, not an
+     active data leak — say so explicitly and rate it accordingly, don't over-claim severity).
+     **Any privileged event arriving = confirmed live data-leak finding**, rate by what leaked.
+  5. Either way, still flag the missing handshake authentication itself (CWE-306) as a
+     defense-in-depth finding — it means a *future* feature that does broadcast sensitive data
+     over that same unauthenticated connection would be unprotected on day one.
 
 ## Automation (authorized, rate-limited)
 
