@@ -1,0 +1,610 @@
+{
+  "note": "Written by copying the RealVuln benchmark's OWN scorer output \u2014 dashboard.json for the aggregate and one scorecard-*.json per repo. Nothing here is computed by this repository; a tool that grades itself against someone else's corpus has reintroduced the problem the corpus was there to solve. Regenerate with the commands in README.md.",
+  "benchmark": "https://github.com/kolega-ai/Real-Vuln-Benchmark",
+  "benchmark_version": "2.0.0",
+  "ground_truth_content_hash": "sha256:af5901bffc94380b50f31909655c12edfe0762e82162051d8b1238c66698593f",
+  "scanner": "secaudit",
+  "tier": "Tier 0 only (--no-deps --no-scanners, no LLM)",
+  "run_date": "2026-08-12",
+  "repos_scored": 62,
+  "repos_total": 66,
+  "repos_missing": [
+    "realvuln-owasp-web-playground",
+    "realvuln-pygoat",
+    "realvuln-python-app",
+    "realvuln-vulnerable-api"
+  ],
+  "repos_missing_reason": "Upstream repositories are gone - `git clone` returns 'Repository not found' for all four. Not a choice made here, and not a random sample: all four are deliberately vulnerable teaching apps, the densest and most pattern-obvious repos in the corpus, so their absence works against this score rather than for it.",
+  "overall": {
+    "tp": 204,
+    "fp": 297,
+    "fn": 1558,
+    "tn": 253,
+    "precision": 0.4072,
+    "recall": 0.1158,
+    "f2_score": 13.5,
+    "f3_score": 12.5
+  },
+  "strict_micro": {
+    "tp": 204,
+    "fp": 297,
+    "fn": 1699,
+    "tn": 276,
+    "precision": 0.4072,
+    "recall": 0.1072,
+    "f2_score": 12.6,
+    "f3_score": 11.6
+  },
+  "by_family": {
+    "other": {
+      "tp": 35,
+      "total": 831
+    },
+    "sensitive_data_exposure": {
+      "tp": 0,
+      "total": 141
+    },
+    "security_misconfiguration": {
+      "tp": 17,
+      "total": 108
+    },
+    "xss": {
+      "tp": 1,
+      "total": 98
+    },
+    "broken_access_control": {
+      "tp": 0,
+      "total": 76
+    },
+    "missing_auth": {
+      "tp": 0,
+      "total": 74
+    },
+    "sql_injection": {
+      "tp": 2,
+      "total": 71
+    },
+    "hardcoded_credentials": {
+      "tp": 5,
+      "total": 52
+    },
+    "command_injection": {
+      "tp": 39,
+      "total": 46
+    },
+    "denial_of_service": {
+      "tp": 0,
+      "total": 44
+    },
+    "open_redirect": {
+      "tp": 0,
+      "total": 40
+    },
+    "path_traversal": {
+      "tp": 3,
+      "total": 39
+    },
+    "ssrf": {
+      "tp": 16,
+      "total": 37
+    },
+    "xxe": {
+      "tp": 31,
+      "total": 36
+    },
+    "insecure_deserialization": {
+      "tp": 27,
+      "total": 34
+    },
+    "code_injection": {
+      "tp": 28,
+      "total": 30
+    },
+    "xpath_injection": {
+      "tp": 0,
+      "total": 4
+    },
+    "http_header_injection": {
+      "tp": 0,
+      "total": 1
+    }
+  },
+  "by_repo": {
+    "realvuln-intentionally-vulnerable-python-application": {
+      "f3": 45.5,
+      "precision": 1.0,
+      "recall": 0.4286,
+      "tp": 3,
+      "fp": 0,
+      "fn": 4
+    },
+    "vc-codex-high-seeded-v2-property-management-fastapi": {
+      "f3": 25.0,
+      "precision": 1.0,
+      "recall": 0.2308,
+      "tp": 6,
+      "fp": 0,
+      "fn": 20
+    },
+    "realvuln-damn-vulnerable-flask-application": {
+      "f3": 21.7,
+      "precision": 1.0,
+      "recall": 0.2,
+      "tp": 3,
+      "fp": 0,
+      "fn": 12
+    },
+    "vc-codex-seeded-v2-property-management-fastapi": {
+      "f3": 20.9,
+      "precision": 0.75,
+      "recall": 0.1935,
+      "tp": 6,
+      "fp": 2,
+      "fn": 25
+    },
+    "vc-kimi-code-seeded-v2-logistics-dispatch-fastapi": {
+      "f3": 20.8,
+      "precision": 0.6667,
+      "recall": 0.1935,
+      "tp": 6,
+      "fp": 3,
+      "fn": 25
+    },
+    "vc-claude-code-seeded-v2-hr-payroll-django": {
+      "f3": 20.1,
+      "precision": 0.8333,
+      "recall": 0.1852,
+      "tp": 5,
+      "fp": 1,
+      "fn": 22
+    },
+    "vc-codex-high-seeded-v2-logistics-dispatch-fastapi": {
+      "f3": 18.5,
+      "precision": 0.5556,
+      "recall": 0.1724,
+      "tp": 5,
+      "fp": 4,
+      "fn": 24
+    },
+    "vc-kimi-code-seeded-v2-property-management-fastapi": {
+      "f3": 18.1,
+      "precision": 0.8333,
+      "recall": 0.1667,
+      "tp": 5,
+      "fp": 1,
+      "fn": 25
+    },
+    "vc-codex-high-seeded-v2-marketplace-commerce-fastapi": {
+      "f3": 17.2,
+      "precision": 0.5,
+      "recall": 0.16,
+      "tp": 4,
+      "fp": 4,
+      "fn": 21
+    },
+    "vc-codex-high-seeded-v2-hr-payroll-django": {
+      "f3": 16.9,
+      "precision": 0.3636,
+      "recall": 0.16,
+      "tp": 4,
+      "fp": 7,
+      "fn": 21
+    },
+    "vc-kimi-code-seeded-v2-legal-case-django": {
+      "f3": 16.8,
+      "precision": 1.0,
+      "recall": 0.1538,
+      "tp": 4,
+      "fp": 0,
+      "fn": 22
+    },
+    "realvuln-threatbyte": {
+      "f3": 16.7,
+      "precision": 0.8,
+      "recall": 0.1538,
+      "tp": 4,
+      "fp": 1,
+      "fn": 22
+    },
+    "vc-codex-high-seeded-v2-healthcare-clinic-django": {
+      "f3": 16.7,
+      "precision": 0.6667,
+      "recall": 0.1538,
+      "tp": 4,
+      "fp": 2,
+      "fn": 22
+    },
+    "vc-kimi-code-seeded-v2-fintech-lending-fastapi": {
+      "f3": 16.5,
+      "precision": 0.8333,
+      "recall": 0.1515,
+      "tp": 5,
+      "fp": 1,
+      "fn": 28
+    },
+    "realvuln-vulnpy": {
+      "f3": 16.3,
+      "precision": 0.8,
+      "recall": 0.15,
+      "tp": 12,
+      "fp": 3,
+      "fn": 68
+    },
+    "realvuln-dsvw": {
+      "f3": 16.2,
+      "precision": 1.0,
+      "recall": 0.1481,
+      "tp": 4,
+      "fp": 0,
+      "fn": 23
+    },
+    "vc-claude-code-seeded-v2-crm-saas-django": {
+      "f3": 15.4,
+      "precision": 0.5,
+      "recall": 0.1429,
+      "tp": 4,
+      "fp": 4,
+      "fn": 24
+    },
+    "vc-claude-code-seeded-v2-fintech-lending-fastapi": {
+      "f3": 15.0,
+      "precision": 0.8,
+      "recall": 0.1379,
+      "tp": 4,
+      "fp": 1,
+      "fn": 25
+    },
+    "vc-claude-code-seeded-v2-healthcare-clinic-django": {
+      "f3": 15.0,
+      "precision": 0.6667,
+      "recall": 0.1379,
+      "tp": 4,
+      "fp": 2,
+      "fn": 25
+    },
+    "vc-codex-high-seeded-v2-fintech-lending-fastapi": {
+      "f3": 15.0,
+      "precision": 0.6667,
+      "recall": 0.1379,
+      "tp": 4,
+      "fp": 2,
+      "fn": 25
+    },
+    "vc-codex-seeded-v2-marketplace-commerce-fastapi": {
+      "f3": 14.9,
+      "precision": 0.5714,
+      "recall": 0.1379,
+      "tp": 4,
+      "fp": 3,
+      "fn": 25
+    },
+    "realvuln-dvblab": {
+      "f3": 14.7,
+      "precision": 0.5,
+      "recall": 0.1364,
+      "tp": 3,
+      "fp": 3,
+      "fn": 19
+    },
+    "vc-codex-seeded-v2-logistics-dispatch-fastapi": {
+      "f3": 14.5,
+      "precision": 0.6667,
+      "recall": 0.1333,
+      "tp": 4,
+      "fp": 2,
+      "fn": 26
+    },
+    "realvuln-dvpwa": {
+      "f3": 14.0,
+      "precision": 0.375,
+      "recall": 0.1304,
+      "tp": 3,
+      "fp": 5,
+      "fn": 20
+    },
+    "vc-claude-code-seeded-v2-property-management-fastapi": {
+      "f3": 13.2,
+      "precision": 0.8,
+      "recall": 0.1212,
+      "tp": 4,
+      "fp": 1,
+      "fn": 29
+    },
+    "vc-codex-seeded-v2-legal-case-django": {
+      "f3": 13.1,
+      "precision": 0.5,
+      "recall": 0.1212,
+      "tp": 4,
+      "fp": 4,
+      "fn": 29
+    },
+    "vc-codex-high-seeded-v2-crm-saas-django": {
+      "f3": 13.0,
+      "precision": 0.6,
+      "recall": 0.12,
+      "tp": 3,
+      "fp": 2,
+      "fn": 22
+    },
+    "vc-codex-high-seeded-v2-education-lms-django": {
+      "f3": 13.0,
+      "precision": 0.5,
+      "recall": 0.12,
+      "tp": 3,
+      "fp": 3,
+      "fn": 22
+    },
+    "vc-codex-high-seeded-v2-legal-case-django": {
+      "f3": 13.0,
+      "precision": 0.6,
+      "recall": 0.12,
+      "tp": 3,
+      "fp": 2,
+      "fn": 22
+    },
+    "realvuln-lets-be-bad-guys": {
+      "f3": 12.6,
+      "precision": 0.1364,
+      "recall": 0.125,
+      "tp": 3,
+      "fp": 19,
+      "fn": 21
+    },
+    "vc-codex-seeded-v2-education-lms-django": {
+      "f3": 12.5,
+      "precision": 0.6667,
+      "recall": 0.1143,
+      "tp": 4,
+      "fp": 2,
+      "fn": 31
+    },
+    "realvuln-djangoat": {
+      "f3": 12.0,
+      "precision": 0.2,
+      "recall": 0.1154,
+      "tp": 6,
+      "fp": 24,
+      "fn": 46
+    },
+    "realvuln-insecure-web": {
+      "f3": 12.0,
+      "precision": 0.5,
+      "recall": 0.1111,
+      "tp": 1,
+      "fp": 1,
+      "fn": 8
+    },
+    "vc-kimi-code-seeded-v2-marketplace-commerce-fastapi": {
+      "f3": 12.0,
+      "precision": 0.4286,
+      "recall": 0.1111,
+      "tp": 3,
+      "fp": 4,
+      "fn": 24
+    },
+    "vc-kimi-code-seeded-v2-crm-saas-django": {
+      "f3": 11.9,
+      "precision": 0.3333,
+      "recall": 0.1111,
+      "tp": 3,
+      "fp": 6,
+      "fn": 24
+    },
+    "vc-codex-seeded-v2-fintech-lending-fastapi": {
+      "f3": 11.8,
+      "precision": 0.6667,
+      "recall": 0.1081,
+      "tp": 4,
+      "fp": 2,
+      "fn": 33
+    },
+    "vc-kimi-code-seeded-v2-support-desk-fastapi": {
+      "f3": 11.7,
+      "precision": 0.75,
+      "recall": 0.1071,
+      "tp": 3,
+      "fp": 1,
+      "fn": 25
+    },
+    "vc-codex-seeded-v2-hr-payroll-django": {
+      "f3": 11.0,
+      "precision": 0.2857,
+      "recall": 0.1026,
+      "tp": 4,
+      "fp": 10,
+      "fn": 35
+    },
+    "vc-codex-seeded-v2-support-desk-fastapi": {
+      "f3": 10.9,
+      "precision": 0.6,
+      "recall": 0.1,
+      "tp": 3,
+      "fp": 2,
+      "fn": 27
+    },
+    "vc-kimi-code-seeded-v2-education-lms-django": {
+      "f3": 10.9,
+      "precision": 0.1364,
+      "recall": 0.1071,
+      "tp": 3,
+      "fp": 19,
+      "fn": 25
+    },
+    "vc-claude-code-seeded-v2-legal-case-django": {
+      "f3": 10.6,
+      "precision": 0.75,
+      "recall": 0.0968,
+      "tp": 3,
+      "fp": 1,
+      "fn": 28
+    },
+    "realvuln-dsvpwa": {
+      "f3": 10.2,
+      "precision": 0.4286,
+      "recall": 0.0938,
+      "tp": 3,
+      "fp": 4,
+      "fn": 29
+    },
+    "vc-claude-code-seeded-v2-education-lms-django": {
+      "f3": 10.2,
+      "precision": 0.4286,
+      "recall": 0.0938,
+      "tp": 3,
+      "fp": 4,
+      "fn": 29
+    },
+    "vc-claude-code-seeded-v2-logistics-dispatch-fastapi": {
+      "f3": 9.9,
+      "precision": 0.4286,
+      "recall": 0.0909,
+      "tp": 3,
+      "fp": 4,
+      "fn": 30
+    },
+    "realvuln-vulpy": {
+      "f3": 9.6,
+      "precision": 0.625,
+      "recall": 0.0877,
+      "tp": 5,
+      "fp": 3,
+      "fn": 52
+    },
+    "vc-claude-code-seeded-v2-support-desk-fastapi": {
+      "f3": 9.6,
+      "precision": 0.6,
+      "recall": 0.0882,
+      "tp": 3,
+      "fp": 2,
+      "fn": 31
+    },
+    "realvuln-vulnerable-flask-app": {
+      "f3": 9.5,
+      "precision": 0.0952,
+      "recall": 0.0952,
+      "tp": 2,
+      "fp": 19,
+      "fn": 19
+    },
+    "vc-codex-seeded-v2-crm-saas-django": {
+      "f3": 9.5,
+      "precision": 0.3333,
+      "recall": 0.0882,
+      "tp": 3,
+      "fp": 6,
+      "fn": 31
+    },
+    "vc-codex-seeded-v2-healthcare-clinic-django": {
+      "f3": 8.0,
+      "precision": 0.6,
+      "recall": 0.0732,
+      "tp": 3,
+      "fp": 2,
+      "fn": 38
+    },
+    "vc-codex-high-seeded-v2-support-desk-fastapi": {
+      "f3": 7.8,
+      "precision": 0.3333,
+      "recall": 0.0714,
+      "tp": 2,
+      "fp": 4,
+      "fn": 26
+    },
+    "realvuln-vampi": {
+      "f3": 7.2,
+      "precision": 0.3333,
+      "recall": 0.0667,
+      "tp": 1,
+      "fp": 2,
+      "fn": 14
+    },
+    "vc-kimi-code-seeded-v2-hr-payroll-django": {
+      "f3": 7.0,
+      "precision": 0.08,
+      "recall": 0.069,
+      "tp": 2,
+      "fp": 23,
+      "fn": 27
+    },
+    "vc-claude-code-seeded-v2-marketplace-commerce-fastapi": {
+      "f3": 6.8,
+      "precision": 0.5,
+      "recall": 0.0625,
+      "tp": 2,
+      "fp": 2,
+      "fn": 30
+    },
+    "realvuln-damn-vulnerable-graphql-application": {
+      "f3": 5.6,
+      "precision": 0.0556,
+      "recall": 0.0556,
+      "tp": 2,
+      "fp": 34,
+      "fn": 34
+    },
+    "realvuln-vulnerable-python-apps": {
+      "f3": 5.0,
+      "precision": 1.0,
+      "recall": 0.0455,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21
+    },
+    "realvuln-extremely-vulnerable-flask-app": {
+      "f3": 3.5,
+      "precision": 1.0,
+      "recall": 0.0312,
+      "tp": 1,
+      "fp": 0,
+      "fn": 31
+    },
+    "vc-kimi-code-seeded-v2-healthcare-clinic-django": {
+      "f3": 3.4,
+      "precision": 0.0455,
+      "recall": 0.0333,
+      "tp": 1,
+      "fp": 21,
+      "fn": 29
+    },
+    "realvuln-flask-xss": {
+      "f3": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 30
+    },
+    "realvuln-python-insecure-app": {
+      "f3": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 8
+    },
+    "realvuln-pythonssti": {
+      "f3": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2
+    },
+    "realvuln-vfapi": {
+      "f3": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0,
+      "fp": 3,
+      "fn": 9
+    },
+    "realvuln-vulnerable-tornado-app": {
+      "f3": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0,
+      "fp": 10,
+      "fn": 14
+    }
+  }
+}

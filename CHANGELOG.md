@@ -25,6 +25,31 @@ All notable changes to SecAudit are documented here. This project follows
   makes it a property of the gate rather than advice. Exercised against real directories and a
   real git index in the guard's self-test. [2026-08-12]
 
+### Added
+- **RealVuln has been run, and the result is published unedited: F3 12.5.** 62 of the 66
+  benchmark repositories (four are gone from GitHub — all four deliberately vulnerable teaching
+  apps, the densest and most pattern-obvious in the corpus, so their absence works against this
+  number rather than for it), Tier 0 only, scored by the benchmark's own scorer. That is
+  **below** rule-based SAST's published 17.7: precision 0.407 against Semgrep's 0.205, recall
+  0.116 against its 0.175, and F3 weights recall nine times as heavily as precision. The engine
+  reaches 80–90% on classes with a syntactic sink and 0% on the classes `what-we-miss.md`
+  already said it cannot decide. One result was not predicted and is the most useful thing the
+  run produced: **SQL injection 2 of 71** — the flagship class, missed on real Django and
+  FastAPI code that reaches SQL through ORM escapes our sources do not treat as request-rooted.
+  Full per-family and per-repo breakdown in `eval/realvuln/README.md`; the scorer's raw output
+  is committed as `eval/realvuln/result.json`. [2026-08-12]
+- **Consistency check 27 puts the external number under the same gate as every other number.**
+  It is the figure with the strongest pull toward drift — third-party, unflattering, and
+  destined for a launch post — and nothing in the repo would have had to change for a
+  rounded-up retelling to go unnoticed. Each stated F3, precision and recall is anchored to a
+  phrase that names *our* result (so the pages can still quote Semgrep's 17.7) and checked
+  against `result.json`; deleting the row a number lives in fails the check too, so the gate
+  cannot be made vacuous by an edit. [2026-08-12]
+- **The documented reproduction command did not exist.** `score.py --all-repos` is not a flag
+  the benchmark has; it scores one repository at a time. The runner's docs now carry the
+  invocation that was actually used, plus the `PYTHONUTF8=1` a Windows console needs before
+  `score.py` can write its own report. [2026-08-12]
+
 ### Fixed
 - **`const { name } = req.query` reached no sink.** Destructuring was listed as an unmodeled
   bound and had been one since the JS scanner was written — which meant the single most common

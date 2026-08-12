@@ -282,12 +282,20 @@ Make the claims falsifiable, then publish them.
 - ✅ **Semgrep JSON output** — the interchange format external benchmarks and SAST tooling
   ingest.
 - ✅ **RealVuln runner** (`eval/realvuln/`) — reproduction steps and an honest reading guide.
-  **Not yet run.**
+- ✅ **RealVuln, run and published: F3 12.5** on 62 of 66 repositories (four are gone from
+  GitHub), Tier 0, scored by the benchmark's own scorer. That is **below** rule-based SAST's
+  published 17.7 — roughly twice the precision (0.407 vs 0.205) and two thirds the recall
+  (0.116 vs 0.175), and F3 weights recall 9x. The full result, including every class where
+  recall is zero, is in [`eval/realvuln/README.md`](eval/realvuln/README.md); the scorer's raw
+  output is committed as `result.json` and consistency check 27 fails the build if any stated
+  figure stops matching it. The most actionable finding: **SQL injection 2/71** — the flagship
+  class, missed on real Django/FastAPI code that reaches SQL through ORM escapes.
 
 **Remaining:**
 
-- **Run RealVuln and publish the result**, whatever it is. This is the single
-  highest-credibility item on the whole roadmap and everything needed for it now exists.
+- **Close the gap RealVuln measured.** G1 below was written from Semgrep's 17.7; it now has
+  our own number to beat, and the per-family table says where: ORM-mediated SQL injection
+  first, then the sources and sinks behind `xss` (1/98) and `path_traversal` (3/39).
 - ✅ **Fixture expansion** — 61 planted flaws across 15 languages, each with a paired
   safe twin implementing the same feature. Ten languages had detectors and no fixtures
   before this; one of those detectors (`SEC-RS-CMDI`) turned out to have never been able

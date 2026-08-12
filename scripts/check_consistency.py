@@ -414,6 +414,65 @@ def check_26_every_local_gate_runs_in_ci(f: dict) -> list[str]:
             for s in sorted(set(scripts)) if s not in ci]
 
 
+def check_27_realvuln_claims_match_the_scorer(f: dict) -> list[str]:
+    """Every stated RealVuln figure must equal what the benchmark's scorer wrote.
+
+    This is the number with the strongest pull toward drift, in one direction. It is the only
+    figure here that a third party produced, it is unflattering, and it will be quoted in a
+    README, a roadmap and eventually a launch post — three places where a rounded-up retelling
+    would never be noticed, because nothing in this repo would have to change for the prose to
+    stop being true. `eval/realvuln/result.json` is the scorer's own output, committed verbatim;
+    every place that names an F3, precision or recall for RealVuln is checked against it.
+
+    Rerunning the benchmark is what changes these numbers. Editing the prose is not.
+    """
+    path = os.path.join(REPO, "eval", "realvuln", "result.json")
+    if not os.path.isfile(path):
+        return ["check 27: eval/realvuln/result.json is missing — it is the committed output of "
+                "the benchmark's own scorer and the source for every stated RealVuln figure"]
+    with open(path, encoding="utf-8") as fh:
+        overall = json.load(fh)["overall"]
+
+    # Anchored on phrases that name OUR result, not on any number that looks like a score. The
+    # same pages quote RealVuln's published baselines (Semgrep 17.7) and this repo's own fixture
+    # F3, and a check that cannot tell those apart either fails on correct prose or gets loosened
+    # until it proves nothing. Every anchor is also required to be PRESENT: deleting the row a
+    # number lives in must fail this check, or the gate is one edit away from vacuous.
+    f3, prec, rec = overall["f3_score"], overall["precision"], overall["recall"]
+    anchors = [
+        ("README.md", "the external-number heading",
+         r"external number:\s*F3\s*([\d.]+)", f3, 1),
+        ("README.md", "the baseline-comparison row",
+         r"\|\s*\*\*SecAudit Tier 0\*\*\s*\|\s*\*\*([\d.]+)\*\*", f3, 1),
+        ("README.md", "the baseline-comparison row's precision",
+         r"\|\s*\*\*SecAudit Tier 0\*\*\s*\|\s*\*\*[\d.]+\*\*\s*\|\s*\*\*([\d.]+)\*\*", prec, 3),
+        ("README.md", "the baseline-comparison row's recall",
+         r"\|\s*\*\*SecAudit Tier 0\*\*\s*\|\s*\*\*[\d.]+\*\*\s*\|\s*\*\*[\d.]+\*\*\s*\|"
+         r"\s*\*\*([\d.]+)\*\*", rec, 3),
+        ("ROADMAP.md", "the roadmap's published result",
+         r"RealVuln, run and published: F3\s*([\d.]+)", f3, 1),
+        ("ROADMAP.md", "the roadmap's precision comparison",
+         r"precision \(([\d.]+) vs", prec, 3),
+        ("ROADMAP.md", "the roadmap's recall comparison",
+         r"recall\s*\n?\s*\(([\d.]+) vs", rec, 3),
+        (os.path.join("eval", "realvuln", "README.md"), "the result headline",
+         r"\*\*Result: F3\s*([\d.]+)", f3, 1),
+        (os.path.join("eval", "realvuln", "README.md"), "the headline metric table",
+         r"RealVuln's primary metric\)\s*\|\s*\*\*([\d.]+)\*\*", f3, 1),
+    ]
+
+    fails = []
+    for name, what, pattern, actual, places in anchors:
+        m = re.search(pattern, read(os.path.join(REPO, name)))
+        if not m:
+            fails.append(f"check 27: {name} lost {what} — the RealVuln figure it carried is no "
+                         f"longer checked against eval/realvuln/result.json")
+        elif round(float(m.group(1)), places) != round(actual, places):
+            fails.append(f"check 27: {name} states {m.group(1)} in {what}, the committed scorer "
+                         f"output says {round(actual, places)}")
+    return fails
+
+
 CHECKS = [
     check_01_detector_ids_unique,
     check_02_detector_regexes_compile,
@@ -431,6 +490,7 @@ CHECKS = [
     check_24_compliance_mapping_is_complete,
     check_25_detector_subset_claims_are_derived,
     check_26_every_local_gate_runs_in_ci,
+    check_27_realvuln_claims_match_the_scorer,
 ]
 
 

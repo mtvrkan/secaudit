@@ -187,11 +187,34 @@ live in [`eval/thresholds.json`](eval/thresholds.json), and CI fails if the comm
 [scorecard](eval/scorecard.md) stops matching what the engine measures.
 
 **This is a regression floor, not a forecast.** These fixtures were written alongside the
-detectors, so the number says "this still works", not "this will work on your code". The
-comparison that means something is an external corpus nobody here labelled —
-[`eval/realvuln/`](eval/realvuln) holds the runner for the
-[RealVuln benchmark](https://github.com/kolega-ai/Real-Vuln-Benchmark) and its result will be
-published there verbatim, whatever it is. It has not been run yet.
+detectors, so the number says "this still works", not "this will work on your code".
+
+### The external number: F3 12.5
+
+Measured on the [RealVuln benchmark](https://github.com/kolega-ai/Real-Vuln-Benchmark) — 66 real
+vulnerable repositories labelled by people who have never seen this code, scored by their scorer,
+not ours. **Tier 0 scores below Semgrep's published 17.7**: precision 0.407 against Semgrep's
+0.205, recall 0.116 against its 0.175, and F3 weights recall nine times as heavily as precision,
+so being right more often does not pay for finding less.
+
+| | F3 | Precision | Recall |
+|---|---|---|---|
+| Purpose-built (Kolega.Dev) | 73.0 | 0.388 | 0.809 |
+| General-purpose LLM (Claude Sonnet 4.6) | 51.7 | 0.785 | 0.498 |
+| Rule-based SAST (Semgrep) | 17.7 | 0.205 | 0.175 |
+| **SecAudit Tier 0** | **12.5** | **0.407** | **0.116** |
+
+The engine reaches 80–90% on classes with a syntactic sink (command injection, XXE,
+deserialization, code injection) and 0% on the classes `what-we-miss.md` says it cannot decide
+(access control, missing authentication, sensitive-data exposure). One number was *not*
+predicted and is the most useful thing the run produced: **SQL injection, 2 of 71** — the
+flagship class, on real Django and FastAPI code, where SQL is reached through ORM escapes our
+sources do not treat as request-rooted.
+
+Full result — per-family, per-repo, what could not be cloned and why —
+[`eval/realvuln/`](eval/realvuln). The raw scorer output is committed and CI fails if these
+figures stop matching it. Two numbers, both true: 0.986 is what the engine still does on the
+corpus it was built against, 12.5 is what it does on code nobody here has seen.
 
 ## What you get
 
