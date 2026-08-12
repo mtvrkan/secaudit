@@ -1,0 +1,35 @@
+# Hooks this repository provides to *other* repositories, via:
+#
+#   repos:
+#     - repo: https://github.com/mtvrkan/secaudit
+#       rev: v1.0.0
+#       hooks:
+#         - id: secaudit
+#
+# Budget matters more than coverage in a pre-commit hook. A hook that takes ten seconds gets
+# bypassed with `--no-verify` within a week, and a bypassed hook catches nothing — so the
+# default is the fast deterministic pass over the staged files only, with dependency and
+# external-scanner passes off. The full audit belongs in CI, where it can afford to be slow.
+
+- id: secaudit
+  name: SecAudit (staged files, deterministic pass)
+  description: >-
+    Deterministic security scan of the files being committed. Fails on a High or Critical
+    finding. No network, no LLM, no external scanners.
+  entry: secaudit
+  args: ["--min", "high", "--no-deps", "--no-scanners"]
+  language: python
+  pass_filenames: true
+  types: [text]
+
+- id: secaudit-secrets
+  name: SecAudit (secrets only)
+  description: >-
+    Hardcoded credentials in the files being committed. Narrower and faster than the full pass;
+    use this one if the full hook is too slow to survive on your repository. A secret is the
+    finding least recoverable after the fact — once it is in a commit it is in the history.
+  entry: secaudit
+  args: ["--min", "high", "--no-deps", "--no-scanners", "--no-taint", "--only", "secret"]
+  language: python
+  pass_filenames: true
+  types: [text]

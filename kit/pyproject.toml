@@ -9,9 +9,10 @@ description = "Self-running, provider-agnostic security audit — deterministic 
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "mtvrkan", email = "" }]
+authors = [{ name = "mtvrkan" }]
 keywords = ["security", "audit", "sast", "owasp", "cwe", "vulnerability-scanner",
-            "secrets-detection", "dependency-audit", "appsec", "ci"]
+            "secrets-detection", "dependency-audit", "appsec", "ci", "mcp", "sbom",
+            "cyclonedx", "openvex", "cra", "taint-analysis"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -29,6 +30,16 @@ Repository = "https://github.com/mtvrkan/secaudit"
 
 [project.scripts]
 secaudit = "secaudit_core.cli:main"
+# The MCP entry point every non-Claude client's config points at. Same engine as the CLI and
+# the plugin — a second implementation per harness is how two clients end up disagreeing about
+# whether a file is safe.
+secaudit-mcp = "secaudit_mcp.server:main"
 
 [tool.setuptools]
-packages = ["secaudit_core"]
+packages = ["secaudit_core", "secaudit_mcp"]
+
+# The locale bundles are data the renderer reads at runtime, so they must travel in the wheel.
+# Without this they exist only in a checkout and `--lang tr` silently renders English on every
+# installed copy — a failure indistinguishable from a translation nobody wrote.
+[tool.setuptools.package-data]
+secaudit_core = ["locales/*.json"]
