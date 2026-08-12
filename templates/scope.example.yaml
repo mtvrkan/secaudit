@@ -1,7 +1,10 @@
 # SecAudit scope & authorization file.
 # Copy to `scope.yaml` and fill in BEFORE requesting any ACTIVE testing.
 # Passive recon and source-code review do not require this file, but it's good practice.
-# NOTE: `scope.yaml` is gitignored — do not commit a filled-in copy.
+# NOTE: `scope.yaml` is gitignored — do not commit a filled-in copy. This is enforced, not
+# just advised: the PreToolUse guard asks git whether the file is tracked and refuses to accept
+# a committed one as authorization, since a file that arrives with a clone is not an assertion
+# the operator made. Use SECAUDIT_ACTIVE=1 if you have no git.
 
 authorization:
   owner_name: "<site owner / company>"

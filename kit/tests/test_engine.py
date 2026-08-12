@@ -81,8 +81,40 @@ LLM_TIER_ONLY = {"V3"}
 RECALL_TARGET = ALL_SINKS - LLM_TIER_ONLY   # the classes the deterministic tier should catch
 
 
+def test_corroboration_keeps_distinct_bugs() -> list[str]:
+    """Two bugs of the same class, a few lines apart, must both survive corroboration.
+
+    Corroboration folds a taint path into the pattern finding for the SAME bug so one bug is
+    not reported twice. It matched on file + CWE + proximity, in list order — and proximity is
+    not identity. A second SQL injection three lines below the first absorbed the first one's
+    path, and that finding then vanished from the report entirely: a false negative produced by
+    the deduplication layer, on code the engine had already correctly analysed. Scanned end to
+    end rather than by calling `_corroborate` on hand-built findings, because what has to hold
+    is what the user gets out of `scan()`.
+    """
+    import tempfile
+    fails: list[str] = []
+    code = ("app.get('/a', (req, res) => {\n"
+            "  const { name } = req.query;\n"
+            "  db.query(`SELECT * FROM u WHERE n = '${name}'`);\n"
+            "});\n"
+            "app.get('/b', (req, res) => {\n"
+            "  db.query('SELECT * FROM u WHERE id = ' + req.query.id);\n"
+            "});\n")
+    with tempfile.TemporaryDirectory() as tmp:
+        with open(os.path.join(tmp, "routes.js"), "w", encoding="utf-8") as f:
+            f.write(code)
+        findings = engine.scan(tmp, run_deps=False).findings
+    lines = sorted(f.line for f in findings if f.cwe == "CWE-89")
+    if lines != [3, 6]:
+        fails.append(f"corroboration: two distinct SQL injections must both be reported, "
+                     f"got CWE-89 findings on lines {lines}")
+    return fails
+
+
 def main() -> int:
     fails: list[str] = []
+    fails += test_corroboration_keeps_distinct_bugs()
 
     # ---- recall on the vulnerable fixture ----
     vres = engine.scan(VULN, run_deps=False)

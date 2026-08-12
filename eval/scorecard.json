@@ -1,12 +1,12 @@
 {
   "overall": {
-    "tp": 60,
+    "tp": 61,
     "fn": 1,
     "fp": 0,
     "precision": 1.0,
-    "recall": 0.9836,
-    "f1": 0.9917,
-    "f3": 0.9852
+    "recall": 0.9839,
+    "f1": 0.9919,
+    "f3": 0.9855
   },
   "by_class": {
     "Action pinned to a mutable ref": {
@@ -441,6 +441,15 @@
       "f1": 1.0,
       "f3": 1.0
     },
+    "SQL injection via a destructured request binding": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
     "SSRF": {
       "tp": 1,
       "fn": 0,
@@ -606,13 +615,13 @@
       "f3": 1.0
     },
     "javascript": {
-      "tp": 16,
+      "tp": 17,
       "fn": 1,
       "fp": 0,
       "precision": 1.0,
-      "recall": 0.9412,
-      "f1": 0.9697,
-      "f3": 0.9467
+      "recall": 0.9444,
+      "f1": 0.9714,
+      "f3": 0.9497
     },
     "json": {
       "tp": 2,
@@ -923,7 +932,7 @@
       "f3": 1.0
     },
     "CWE-89": {
-      "tp": 6,
+      "tp": 7,
       "fn": 0,
       "fp": 0,
       "precision": 1.0,
@@ -982,9 +991,9 @@
   ],
   "trap_hits": [],
   "unlabelled_results": 7,
-  "labelled_vulnerabilities": 61,
-  "false_positive_traps": 61,
-  "total_results": 69,
+  "labelled_vulnerabilities": 62,
+  "false_positive_traps": 62,
+  "total_results": 70,
   "corpus": "secaudit-fixtures",
   "ground_truth_schema": "1.0.0"
 }

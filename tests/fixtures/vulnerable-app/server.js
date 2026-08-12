@@ -67,4 +67,14 @@ app.get('/report', (req, res) => {
   res.json({ ok: true });
 });
 
+// V62 — SQL injection through a destructured request binding (CWE-89): the value is read
+// with `const { … } = req.query`, which is how request data is read in most Express code
+// written this decade. Nothing about the injection is different — only the shape of the
+// read — so a scanner that follows `req.query.name` but not this one is silent on the
+// common case while looking like it covers the class.
+app.get('/search', (req, res) => {
+  const { term } = req.query;
+  db.query(`SELECT * FROM products WHERE title LIKE '%${term}%'`, (e, r) => res.json(r));
+});
+
 module.exports = { app, hashPassword, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY };

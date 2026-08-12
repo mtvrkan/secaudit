@@ -22,9 +22,14 @@ See [`../../../docs/authorization.md`](../../../docs/authorization.md).
 
 Either of:
 
-- a `scope.yaml` in the working directory containing `i_am_authorized: true`
-  (start from [`../../../templates/scope.example.yaml`](../../../templates/scope.example.yaml)), or
+- a `scope.yaml` in the working directory containing `i_am_authorized: true`, **kept untracked
+  by git** (start from [`../../../templates/scope.example.yaml`](../../../templates/scope.example.yaml)), or
 - the environment variable `SECAUDIT_ACTIVE=1` for the session.
+
+A `scope.yaml` that is committed to the repository is ignored: it arrived with a clone, so it
+is not an assertion this operator made, and treating it as one would let any project you open
+unlock active scanning. The guard checks with `git ls-files`; if git cannot answer, the file is
+refused rather than trusted.
 
 Even when authorized, the guard's absolute limits still stand: no DoS, brute-force, or data
 exfiltration.

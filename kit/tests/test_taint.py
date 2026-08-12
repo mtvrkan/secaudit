@@ -543,6 +543,109 @@ def test_js_rules() -> None:
           "js: taint leaked out of the block it was declared in")
 
 
+def test_js_destructuring() -> None:
+    """`const { name } = req.query` — the shape most Express handlers are written in.
+
+    Worth its own block because it was a silent miss: the sink fired, the source was read, and
+    nothing connected them, so the single most common way of reading a request produced no
+    finding at all while a report full of other findings said the scan had run.
+    """
+    expect("a.js", "app.get('/u', (req, res) => {\n"
+                   "  const { name } = req.query;\n"
+                   "  db.query(`SELECT * FROM u WHERE n = '${name}'`);\n"
+                   "});\n",
+           "TAINT-JS-SQLI", True, "js: destructured request binding reaches a sink")
+
+    expect("a.js", "app.get('/u', (req, res) => {\n"
+                   "  const { name } = req.query;\n"
+                   "  db.query('SELECT * FROM u WHERE n = ?', [name]);\n"
+                   "});\n",
+           "TAINT-JS-SQLI", False, "js: a destructured value BOUND as a parameter is the fix")
+
+    expect("a.js", "app.get('/p', (req, res) => {\n"
+                   "  const { host: target = 'localhost' } = req.query;\n"
+                   "  exec('ping ' + target, cb);\n"
+                   "});\n",
+           "TAINT-JS-CMDI", True, "js: rename + default in a destructuring pattern")
+
+    expect("a.ts", "app.get('/p', (req, res) => {\n"
+                   "  const { host }: Query = req.query;\n"
+                   "  exec('ping ' + host, cb);\n"
+                   "});\n",
+           "TAINT-JS-CMDI", True, "ts: a type annotation must not hide the pattern")
+
+    expect("a.js", "app.get('/p', (req, res) => {\n"
+                   "  const [first] = req.body.hosts;\n"
+                   "  exec('ping ' + first, cb);\n"
+                   "});\n",
+           "TAINT-JS-CMDI", True, "js: array destructuring of an untrusted list")
+
+    expect("a.js", "app.post('/x', ({ body }, res) => {\n"
+                   "  eval(body.code);\n"
+                   "});\n",
+           "TAINT-JS-EVAL", True, "js: a destructured PARAMETER of the handler itself")
+
+    expect("a.js", "app.get('/u', (req, res) => {\n"
+                   "  const { name } = ALLOWED;\n"
+                   "  db.query(`SELECT * FROM u WHERE n = '${name}'`);\n"
+                   "});\n",
+           "TAINT-JS-SQLI", False, "js: destructuring an untainted object taints nothing")
+
+    # The property name has to reach the report: `req.query.name` is the thing an attacker
+    # sets, `req.query` is the bag it arrived in, and only the first is refutable by a reader.
+    paths = taint.analyze("a.js", "app.get('/u', (req, res) => {\n"
+                                  "  const { name: n } = req.query;\n"
+                                  "  db.query(`SELECT * FROM u WHERE n = '${n}'`);\n"
+                                  "});\n")
+    check(any(p.source == "req.query.name" for p in paths),
+          f"js: destructured source must name the property, got "
+          f"{[p.source for p in paths] or 'no path'}")
+
+    # A nested pattern is declined, not guessed at — and declining must be quiet, not a crash.
+    nested = taint.analyze("a.js", "app.get('/u', (req, res) => {\n"
+                                   "  const { a: { b } } = req.body;\n"
+                                   "  eval(b);\n"
+                                   "});\n")
+    check(all(p.sink.id != "TAINT-JS-EVAL" for p in nested),
+          "js: a nested destructuring pattern must not be resolved (documented bound)")
+
+
+def test_js_param_positions() -> None:
+    """A destructured parameter must hold its POSITION in the parameter list.
+
+    Dropping it shifted every later parameter one place left, so a call's second argument was
+    resolved against the third parameter — an interprocedural finding reported against an
+    argument that never carried the taint."""
+    check(taint._js_param_names("a, {b}, c") == ["a", "", "c"],
+          f"js: destructured parameter must hold its position, got "
+          f"{taint._js_param_names('a, {b}, c')}")
+    check(taint._js_param_names("req: Request, res: Response") == ["req", "res"],
+          "js: TypeScript annotations must still be stripped from parameter names")
+
+    # End to end: the sink is reached through the THIRD parameter, so a call must taint on its
+    # third argument and not on the one that pattern-shifting would have picked.
+    code = ("function run(a, {opts}, cmd) {\n"
+            "  exec(cmd);\n"
+            "}\n"
+            "app.get('/x', (req, res) => {\n"
+            "  run('safe', {}, req.query.cmd);\n"
+            "});\n")
+    hits = [p for p in taint.analyze("a.js", code) if p.sink.id == "TAINT-JS-CMDI"]
+    check(any(p.source.startswith("req.query") for p in hits),
+          "js: sink behind a destructured parameter was not reached from the right argument")
+
+    safe = ("function run(a, {opts}, cmd) {\n"
+            "  exec(cmd);\n"
+            "}\n"
+            "app.get('/x', (req, res) => {\n"
+            "  run(req.query.a, {}, 'ls');\n"
+            "});\n")
+    shifted = [p for p in taint.analyze("a.js", safe)
+               if p.sink.id == "TAINT-JS-CMDI" and p.source.startswith("req.query")]
+    check(not shifted,
+          "js: an untainted argument was blamed for a sink reached by a different parameter")
+
+
 # --------------------------------------------------------------------------- 3. corpus
 
 def corpus_paths(root: str) -> list[taint.TaintPath]:
@@ -590,6 +693,8 @@ def main() -> int:
     test_python_rules()
     test_python_interprocedural()
     test_js_rules()
+    test_js_destructuring()
+    test_js_param_positions()
     test_js_interprocedural()
     test_cross_module()
     test_module_graph_is_order_independent()

@@ -8,7 +8,7 @@ This page is generated. Improve the engine and a line disappears from it on the 
 
 ## 1. Measured misses on our own corpus
 
-Recall **98.4%** (60/61) on [the shipped fixtures](../eval/scorecard.md). What the engine did not find:
+Recall **98.4%** (61/62) on [the shipped fixtures](../eval/scorecard.md). What the engine did not find:
 
 - **vulnerable-app:V3 — Broken access control (IDOR) (vulnerable-app/server.js:22)** — no detector or taint path reached it.
 
@@ -45,7 +45,7 @@ The taint tier's own list, printed in every report's limitations appendix:
 - Taint analysis follows a value across calls to functions resolved by simple name, and across import edges into other files in the scanned set, to any depth — but only files that were scanned. A chain that passes through an excluded directory, a third-party package, or a language without taint depth stops there. In JavaScript only named declarations and named function/arrow expressions carry a summary — not object-property or class methods — and a namespace import (`const u = require('./util'); u.run(x)`) is not resolved.
 - Function parameters are treated as a weak (MEDIUM-confidence) source because whether they carry untrusted data depends on callers, which are not analyzed.
 - A validation guard (`if (bad(x)) return/throw`) is assumed to sanitize; an ineffective guard therefore hides its sink from this tier.
-- The JavaScript/TypeScript scanner is a brace-aware statement scanner, not a parser: destructuring, cross-boundary closures, dynamic property access and JSX are not modeled.
+- The JavaScript/TypeScript scanner is a brace-aware statement scanner, not a parser. Flat destructuring of a tainted value (`const { name } = req.query`, including renames, defaults and rest) is followed; a NESTED pattern (`const { a: { b } } = req.body`) is not, and neither are cross-boundary closures, dynamic property access or JSX.
 
 ## 5. Language gaps
 

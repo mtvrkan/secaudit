@@ -1177,11 +1177,32 @@
       "language": "javascript",
       "location": {
         "start_line": 60,
-        "end_line": 70
+        "end_line": 69
       },
       "evidence": {
         "source": "secaudit-fixture",
         "description": "`server.js` `/report` → `util.js` `runReport` (imported helper builds the shell string)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V62",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection via a destructured request binding",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 70,
+        "end_line": 80
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/search` (`const { term } = req.query`)"
       }
     },
     {
@@ -2468,6 +2489,27 @@
       "evidence": {
         "source": "secaudit-fixture",
         "description": "Safe implementation of OS command injection across a MODULE boundary — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S62",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection via a destructured request binding",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 102,
+        "end_line": 117
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection via a destructured request binding — a correct scanner stays quiet here (false-positive trap)."
       }
     },
     {

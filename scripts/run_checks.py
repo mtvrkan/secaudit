@@ -6,8 +6,10 @@
     python3 scripts/run_checks.py --list     # show the gates without running them
 
 The point is that a contributor can reproduce a red build locally. Every gate here is also a
-step in `.github/workflows/validate.yml`; if you add one there, add it here — check 21 in
-`check_repo.py`'s sibling suite is not a substitute for the two staying in sync by hand.
+step in `.github/workflows/validate.yml`, and that is now checked rather than promised: check 26
+in `scripts/check_consistency.py` fails the build if a gate in this list runs in no workflow.
+It exists because this docstring used to ask for the two to be kept in sync by hand and they
+were not — the advertised-Python-floor gate lived here and nowhere in CI.
 
 Exit code is the number of failed gates (0 = all green), so a shell can branch on it.
 """

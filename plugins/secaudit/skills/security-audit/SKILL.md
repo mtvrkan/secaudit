@@ -83,7 +83,9 @@ There are two impact tiers. Know which one every action falls into.
 Before ANY active testing against a live target, confirm authorization. The clean way:
 create a `scope.yaml` in the target repo from the template shipped with this plugin
 (`templates/scope.example.yaml` in the secaudit repo) — owner, approval, in-scope
-domains, test accounts, excluded paths, rate limits — and ask the user to fill it. If
+domains, test accounts, excluded paths, rate limits — and ask the user to fill it. Leave it
+**untracked** (it is gitignored): the PreToolUse hook refuses a committed `scope.yaml`,
+because a file that arrives with a clone is not an assertion this operator made. If
 they assert ownership/authorization in-chat, that is acceptable — record it in the
 report's scope section.
 If authorization is unclear, **stay passive** and say so; do not guess.

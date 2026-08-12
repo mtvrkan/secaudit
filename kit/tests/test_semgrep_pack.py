@@ -120,7 +120,7 @@ def _hits(pattern: re.Pattern, globs: list[str], corpus: list) -> set:
 
 
 def test_every_exportable_detector_is_exported() -> None:
-    expected = {d.id for d in DETECTORS if not pack.exportable(d)}
+    expected = {d.id for d in DETECTORS if not pack.withheld_reason(d)}
     actual = set(parsed_rules())
     missing = sorted(expected - actual)
     extra = sorted(actual - expected)
@@ -135,7 +135,7 @@ def test_withheld_detectors_stay_withheld() -> None:
     changes shape should change side — and be noticed, not silently exported."""
     exported = set(parsed_rules())
     for d in DETECTORS:
-        reason = pack.exportable(d)
+        reason = pack.withheld_reason(d)
         if reason and d.id in exported:
             check(False, f"{d.id} is exported but cannot be reproduced faithfully: {reason}")
 
@@ -224,7 +224,7 @@ def main() -> int:
         print("SEMGREP PACK TESTS FAILED:")
         print("\n".join("  - " + f for f in fails))
         return 1
-    withheld = sum(1 for d in DETECTORS if pack.exportable(d))
+    withheld = sum(1 for d in DETECTORS if pack.withheld_reason(d))
     print(f"SEMGREP PACK TESTS PASSED — {compared} exported rule(s) produce the identical "
           f"(file, line, span) hits as their detectors on the fixtures; {withheld} detector(s) "
           f"correctly withheld; flags preserved; committed pack is current.")

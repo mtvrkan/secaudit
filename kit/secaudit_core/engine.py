@@ -154,22 +154,38 @@ def _corroborate(findings: list[Finding]) -> list[Finding]:
     So the pattern finding absorbs the path — and, when the path is rooted in a framework
     request object, its confidence too, because reachability from untrusted input is exactly
     what "high confidence" is supposed to mean. Uncorroborated taint paths stay as their own
-    findings; they are the ones the pattern pack could not see at all."""
+    findings; they are the ones the pattern pack could not see at all.
+
+    Pairing is **nearest-first and one-to-one**, which is the part that has to be right. The
+    window exists because a path is reported at the line the untrusted value entered while the
+    pattern matched the line of the dangerous call, so the two are close but rarely equal. What
+    the window does NOT establish is identity: two SQL injections a few lines apart in one file
+    are the same file and the same CWE, and pairing in list order let the second one's pattern
+    finding absorb the first one's path — deleting a real bug from the report while keeping the
+    count plausible. Matching the closest pair first, and letting each finding be used once,
+    means an exactly-coincident pair always wins and a genuinely separate bug is never consumed
+    by its neighbour."""
     patterns = [f for f in findings if f.source != "taint"]
     paths = [f for f in findings if f.source == "taint"]
-    absorbed: set[int] = set()
 
-    for pattern in patterns:
-        for i, path in enumerate(paths):
-            if i in absorbed or path.file != pattern.file or path.cwe != pattern.cwe:
-                continue
-            if abs(path.line - pattern.line) > _CORROBORATION_WINDOW:
-                continue
-            pattern.taint_path = path.taint_path
-            if path.confidence == Confidence.HIGH:
-                pattern.confidence = Confidence.HIGH
-            absorbed.add(i)
-            break
+    candidates = sorted(
+        (abs(path.line - pattern.line), pi, qi)
+        for pi, pattern in enumerate(patterns)
+        for qi, path in enumerate(paths)
+        if path.file == pattern.file and path.cwe == pattern.cwe
+        and abs(path.line - pattern.line) <= _CORROBORATION_WINDOW)
+
+    paired_patterns: set[int] = set()
+    absorbed: set[int] = set()
+    for _, pi, qi in candidates:                  # ties break on index, so this is deterministic
+        if pi in paired_patterns or qi in absorbed:
+            continue
+        pattern, path = patterns[pi], paths[qi]
+        pattern.taint_path = path.taint_path
+        if path.confidence == Confidence.HIGH:
+            pattern.confidence = Confidence.HIGH
+        paired_patterns.add(pi)
+        absorbed.add(qi)
 
     return patterns + [p for i, p in enumerate(paths) if i not in absorbed]
 

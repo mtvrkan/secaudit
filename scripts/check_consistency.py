@@ -327,6 +327,93 @@ def check_24_compliance_mapping_is_complete(f: dict) -> list[str]:
     return fails
 
 
+# Documents that quote a derived *subset* of the detector table. `rules/secaudit/README.md` is
+# generated so it tracks on its own; these are hand-written and do not.
+_SUBSET_CLAIM_DOCS = ("README.md", "ROADMAP.md", "kit/README.md", "docs/ci.md")
+
+# A phrase of the form "N of M detectors" says nothing on its own about WHICH subset N counts.
+# Rather than guess, each subset is recognised by a marker that has to appear near the claim —
+# so a new kind of subset claim is not silently checked against the wrong denominator. An
+# unattributed claim is still checked on its total, which is the half we can always attribute.
+_SUBSET_MARKERS = (
+    ("semgrep_exported", re.compile(r"semgrep|exported", re.I)),
+    ("code_shape",       re.compile(r"blanked view|literals and comments", re.I)),
+)
+
+
+def check_25_detector_subset_claims_are_derived(f: dict) -> list[str]:
+    """Every "N of M detectors" claim must be recomputed, not remembered.
+
+    Two subsets of the detector table are quoted in prose: how many survive translation into
+    the Semgrep pack, and how many scan the blanked code view. Both move whenever a detector
+    changes shape — gaining a `suppress_if`, or being added to `CODE_SHAPE_DETECTORS` — and
+    both had drifted by one, in opposite documents, before this check existed. Check 08 did not
+    catch it because it only reads the *total* in that same sentence, which was right the whole
+    time. That is this repo's own declared failure mode: a number typed once and then left to
+    decay. The fix is the gate, not the correction."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import gen_semgrep_pack as pack                                        # noqa: PLC0415
+    from secaudit_core.detectors import CODE_SHAPE_DETECTORS               # noqa: PLC0415
+
+    total = len(DETECTORS)
+    withheld = sum(1 for d in DETECTORS if pack.withheld_reason(d))
+    subsets = {
+        "semgrep_exported": (total - withheld, "exported to the Semgrep pack"),
+        "code_shape": (len(CODE_SHAPE_DETECTORS), "scanning the blanked code view"),
+    }
+
+    fails = []
+    for rel in _SUBSET_CLAIM_DOCS:
+        path = os.path.join(REPO, rel)
+        if not os.path.isfile(path):
+            continue
+        body = _outside_snapshots(read(path))
+        for m in re.finditer(r"(\d+)\s+of\s+(?:the\s+)?(\d+)\s+detectors", body):
+            stated, stated_total = int(m.group(1)), int(m.group(2))
+            if stated_total != total:
+                fails.append(f"check 25: {rel} states a subset of {stated_total} detectors; "
+                             f"the table has {total}")
+            context = body[max(0, m.start() - 200): m.end() + 200]
+            for name, marker in _SUBSET_MARKERS:
+                if not marker.search(context):
+                    continue
+                expected, label = subsets[name]
+                if stated != expected:
+                    fails.append(f"check 25: {rel} states {stated} of {stated_total} detectors "
+                                 f"{label}; the derived count is {expected}")
+        # The other half of the Semgrep split, stated separately from the "N of M" phrase.
+        for m in re.finditer(r"(\d+)\s+(?:are\s+)?withheld", body):
+            if int(m.group(1)) != withheld:
+                fails.append(f"check 25: {rel} states {m.group(1)} withheld detectors; the "
+                             f"generator withholds {withheld}")
+    return fails
+
+
+def check_26_every_local_gate_runs_in_ci(f: dict) -> list[str]:
+    """A gate only the local runner knows about is a gate a pull request goes around.
+
+    `scripts/run_checks.py` and `.github/workflows/validate.yml` are two hand-maintained copies
+    of the same list, and run_checks' own docstring asked for them to be kept in sync by hand.
+    They were not: the advertised-Python-floor check sat in the local runner and in no workflow
+    at all, so the promise `requires-python` makes to pip was enforced by a script that only ran
+    when a contributor remembered to run it. Two lists, one of them authoritative, and nothing
+    comparing them is the same shape of bug as a typed number — so it gets the same treatment.
+    """
+    runner = read(os.path.join(REPO, "scripts", "run_checks.py"))
+    workflows_dir = os.path.join(REPO, ".github", "workflows")
+    ci = "\n".join(read(os.path.join(workflows_dir, name))
+                   for name in sorted(os.listdir(workflows_dir)) if name.endswith(".yml"))
+
+    # The script each gate invokes: the first entry of every argv list in GATES.
+    scripts = re.findall(r'\(\s*"[^"]+",\s*\[\s*"([^"]+\.py)"', runner)
+    if not scripts:
+        return ["check 26: could not read the gate list out of scripts/run_checks.py — the "
+                "GATES table changed shape and this check is now blind"]
+    return [f"check 26: `{s}` is a gate in scripts/run_checks.py but runs in no workflow — "
+            f"a gate CI does not run is one a pull request can go around"
+            for s in sorted(set(scripts)) if s not in ci]
+
+
 CHECKS = [
     check_01_detector_ids_unique,
     check_02_detector_regexes_compile,
@@ -342,6 +429,8 @@ CHECKS = [
     check_22_taint_sinks_have_fixes,
     check_23_readme_matches_scorecard,
     check_24_compliance_mapping_is_complete,
+    check_25_detector_subset_claims_are_derived,
+    check_26_every_local_gate_runs_in_ci,
 ]
 
 

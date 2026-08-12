@@ -5,7 +5,84 @@ All notable changes to SecAudit are documented here. This project follows
 
 ## [Unreleased]
 
+### Security
+- **The Pages workflow held `pages: write` and `id-token: write` at workflow level**, so the
+  build job — which checks out the tree and runs a generator over it — ran holding a token that
+  can publish the site. Both scopes moved to the `deploy` job that actually needs them. Found by
+  running the pinned `zizmor==1.26.1` locally for the first time: it reported two HIGH findings,
+  which means this step would have failed the next CI run. Both CI-only steps have now been
+  executed at their pinned versions on this machine — `semgrep==1.140.0 --validate` accepts the
+  exported pack (41 rules, 0 configuration errors) and zizmor is clean at exit 0 — so neither is
+  an unverified claim any more. [2026-08-12]
+- **A committed `scope.yaml` no longer authorizes active testing.** The PreToolUse guard read
+  the file from the working directory and trusted `i_am_authorized: true` in it, so cloning any
+  repository that shipped one and opening a session there would have opened the authorization
+  gate before the user had seen the file — the assertion travelled with the repo instead of
+  coming from the operator. The guard now asks `git ls-files` whether the file is tracked and
+  refuses it if so, with a block message that says why and how to fix it. When git cannot answer
+  the file is refused rather than assumed trustworthy; `SECAUDIT_ACTIVE=1` remains the channel a
+  repository cannot supply. The docs had asked for the file to stay uncommitted all along — this
+  makes it a property of the gate rather than advice. Exercised against real directories and a
+  real git index in the guard's self-test. [2026-08-12]
+
+### Fixed
+- **`const { name } = req.query` reached no sink.** Destructuring was listed as an unmodeled
+  bound and had been one since the JS scanner was written — which meant the single most common
+  way an Express handler reads request data produced no taint path at all, while the same code
+  written as `const name = req.query.name` was reported as Critical. A documented gap is still a
+  gap when it sits on the majority shape. Flat patterns are now followed in declarations and in
+  parameter lists, including renames, defaults, rest elements, array patterns and TypeScript
+  annotations, and the bound property is named in the reported source (`req.query.name`, not
+  `req.query`) so a reader can refute it. Nested patterns remain declined rather than guessed
+  at, and the docstring, `limitations()` and the generated what-we-miss page say so. A paired
+  V62/S62 fixture puts both the flaw and its safe twin in the measured corpus. [2026-08-12]
+- **Corroboration deleted findings it was supposed to merge.** A taint path and a pattern hit at
+  the same spot are one bug seen twice, so the pattern finding absorbs the path — but pairing
+  matched on file + CWE + a 3-line window, in list order, and proximity is not identity. Two SQL
+  injections a few lines apart in one file meant the second one's pattern finding absorbed the
+  first one's path, and that finding then vanished from the report: a false negative manufactured
+  by the deduplication layer, on code the engine had already analysed correctly. Pairing is now
+  nearest-first and one-to-one, so an exactly-coincident pair always wins and a separate bug is
+  never consumed by its neighbour. [2026-08-12]
+- **A destructured parameter shifted every parameter after it.** `_js_param_names` dropped a
+  pattern it could not name, so `f(a, {b}, c)` reported two parameters and a call's second
+  argument resolved against the third parameter — an interprocedural finding attributed to an
+  argument that never carried the taint. The position is now held by an empty name, which
+  matches no summary entry: unknown rather than misattributed. [2026-08-12]
+- **Four stated numbers had drifted from what the repo derives.** README and ROADMAP said 40 of
+  79 detectors were exported to the Semgrep pack with 39 withheld; the generator exports 41 and
+  withholds 38. ROADMAP said 39 detectors scan the blanked code view; there are 38. Check 08 had
+  not caught any of it because it only reads the *total* in those sentences, which was right the
+  whole time. New check 25 recomputes both subsets and attributes each "N of M detectors" claim
+  by the marker next to it, so a new kind of subset claim is not silently compared against the
+  wrong denominator. [2026-08-12]
+- **`taint.py`'s own docstring understated the engine by several modules.** Its "honest bounds"
+  section still said one cross-module hop and that a chain through a third module was not
+  followed, while `limitations()` — the list that actually ships in reports — said any depth.
+  The code has run to a fixed point over the import graph since cross-module resolution landed,
+  and `test_cross_module` has pinned a three-module chain the whole time; only the prose was
+  stale. Understating a bound is the same failure as overstating one: it is a claim nobody
+  measured. [2026-08-12]
+- **One of the 32 gates ran in no workflow.** `scripts/check_python_floor.py` — the only thing
+  enforcing `requires-python = ">=3.9"`, since the suite itself runs on a newer interpreter —
+  lived in the local runner alone, and `run_checks.py`'s docstring asked for the two lists to be
+  kept in sync by hand. New check 26 fails the build when a gate in the local runner runs in no
+  workflow, which is the same treatment a typed number gets. [2026-08-12]
+- **`gen_semgrep_pack.exportable()` returned a reason when a detector was *not* exportable** — a
+  predicate whose name asserted the opposite of its truthiness. Renamed to `withheld_reason()`.
+  The test suite's summary line already counted the wrong-looking set while printing the right
+  number, which is how long an inverted name survives. [2026-08-12]
+
 ### Added
+- **CI runs the whole gate set on Windows.** The kit makes Windows-specific claims that
+  ubuntu-latest cannot execute even once: the hook's `python3 || python || py` fallback chain
+  exists because python.org installs have no `python3`, the engine normalises `\` into the `/`
+  paths every finding and SARIF location is keyed on, `npm audit` is invoked with `shell=True`
+  only on `nt`, and diff mode shells out to git. The new job runs `scripts/run_checks.py` rather
+  than a second copy of the step list, so the two cannot drift. [2026-08-12]
+- **The Python version CI runs on is pinned** instead of being whatever `python3` the runner
+  image happens to ship — a runner bump would otherwise change what a green build means without
+  a line of the workflow changing. [2026-08-12]
 - **Open Graph card (`site/og.png`), generated — no headless Chrome.** The roadmap had this
   down as needing a browser, which is why it stayed unfinished: an asset only regenerable by
   installing Chrome stops matching the numbers printed on it the first time those numbers move,

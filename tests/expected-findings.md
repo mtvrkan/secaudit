@@ -8,9 +8,9 @@ Extra findings are fine if valid; **misses are failures**.
 > [`expected-clean.md`](expected-clean.md) — the **precision** half, which asserts a correct
 > audit stays quiet on the safe `fixtures/secure-app` (no false positives). Measure both.
 
-## Code findings (SAST — must all be found: 61 total)
+## Code findings (SAST — must all be found: 62 total)
 
-The fixture is **multi-language on purpose**: JavaScript/Node (V1–V16, V22, V23), Python
+The fixture is **multi-language on purpose**: JavaScript/Node (V1–V16, V22, V23, V62), Python
 (V17–V21, V49–V52), Go (V24–V26), Java (V27–V29), PHP (V30–V32), Ruby (V33, V34), C#
 (V35, V36), Rust (V37–V39), Terraform (V40–V44), Kubernetes (V45–V48), GitHub Actions
 (V53, V54), Kotlin/Android (V55–V57), Dart (V58), plist/iOS (V59) and JSON config (V60,
@@ -100,6 +100,7 @@ indistinguishable from improving a scanner if nobody is watching.
 | V59 | App Transport Security disabled | A02 / CWE-319 | `Info.plist` `NSAllowsArbitraryLoads` |
 | V60 | Hardcoded Stripe secret key | A07 / CWE-798 | `config.json` `stripe_secret_key` |
 | V61 | Hardcoded Google API key | A07 / CWE-798 | `config.json` `google_api_key` |
+| V62 | SQL injection via a destructured request binding | A03 / CWE-89 | `server.js` `/search` (`const { term } = req.query`) |
 
 ## Dependency findings (must be found if a lockfile exists or lookups run)
 
@@ -135,6 +136,6 @@ indistinguishable from improving a scanner if nobody is watching.
 
 ## Pass criteria
 
-- **All 61 code findings** present, across 15 languages (csharp 2, dart 1, docker 1, go 3, java 3, javascript 17, json 2, kotlin 3, php 3, plist 1, python 9, ruby 2, rust 3, terraform 5, yaml 6) → coverage pass.
+- **All 62 code findings** present, across 15 languages (csharp 2, dart 1, docker 1, go 3, java 3, javascript 18, json 2, kotlin 3, php 3, plist 1, python 9, ruby 2, rust 3, terraform 5, yaml 6) → coverage pass.
 - Dependency + secret sections populated (or clearly marked "tool/lookup unavailable").
 - No false "all clear"; no leaked secret values.

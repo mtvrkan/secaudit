@@ -99,6 +99,16 @@ app.get('/report', (req, res) => {
   res.json({ ok: true });
 });
 
+// S62 — SQL injection through a destructured binding fixed (CWE-89, ↔ V62): read exactly the
+// same way, with `const { … } = req.query`, and then BOUND as a query parameter instead of
+// interpolated. This is the trap the destructuring support has to survive: the source is
+// untrusted and the scanner now follows it, so the only thing keeping this quiet is that the
+// value reaches the driver as data rather than as SQL.
+app.get('/search', (req, res) => {
+  const { term } = req.query;
+  db.query('SELECT * FROM products WHERE title LIKE ?', [`%${term}%`], (e, r) => res.json(r));
+});
+
 function requireAuth(req, res, next) {
   if (!req.user) return res.status(401).send('auth required');
   next();

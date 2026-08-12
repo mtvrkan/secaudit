@@ -50,8 +50,15 @@ SEVERITY = {Severity.CRITICAL: "ERROR", Severity.HIGH: "ERROR", Severity.MEDIUM:
             Severity.LOW: "INFO", Severity.INFO: "INFO"}
 
 
-def exportable(detector) -> str:
-    """"" if the rule survives translation, else the reason it does not."""
+def withheld_reason(detector) -> str:
+    """The reason this detector is NOT exported, or "" if the rule survives translation.
+
+    Named for what a truthy return means. This used to be `exportable()`, which returned a
+    reason string when the detector was *not* exportable — a predicate whose name asserts the
+    opposite of its truthiness. Every call site had to be read twice, and one of them (the
+    test suite's summary line) counted the wrong set at a glance while printing the right
+    number, which is the kind of thing that stays wrong until it is renamed.
+    """
     if not detector.literal:
         return ("matches a view with comments and string literals blanked; `pattern-regex` "
                 "runs on raw text, so the exported rule would fire inside a comment or a "
@@ -221,7 +228,7 @@ def render() -> dict[str, str]:
     exported: dict[str, list] = {}
     withheld: list = []
     for d in DETECTORS:
-        reason = exportable(d)
+        reason = withheld_reason(d)
         if reason:
             withheld.append((d, reason))
         else:
@@ -267,7 +274,7 @@ def main(argv: list[str]) -> int:
         with open(os.path.join(OUT_DIR, name), "w", encoding="utf-8") as f:
             f.write(body)
 
-    rules = sum(1 for d in DETECTORS if not exportable(d))
+    rules = sum(1 for d in DETECTORS if not withheld_reason(d))
     print(f"Wrote rules/secaudit/ — {rules} rule(s) in {len(files) - 1} group file(s); "
           f"{len(DETECTORS) - rules} detector(s) withheld with reasons in README.md.")
     return 0

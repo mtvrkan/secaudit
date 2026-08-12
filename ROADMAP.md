@@ -224,7 +224,7 @@ The current pack cannot survive an honest external benchmark. Rebuild the floor.
 - ✅ **Confidence is earned** — request-rooted paths are HIGH, parameter-rooted paths are
   MEDIUM and drop a severity rung, because whether a parameter carries untrusted data is
   caller knowledge the analysis does not have.
-- ✅ **Code-shape rules stop matching inside literals and comments** — 39 of 79 detectors now
+- ✅ **Code-shape rules stop matching inside literals and comments** — 38 of 79 detectors now
   scan a blanked view. Found by the dogfood gate on the kit's own new sink catalog. This is
   the exact weakness behind rule-based SAST's 17.7 F3 on RealVuln.
 - ✅ **Reachability + VEX for dependency CVEs** (`secaudit_core/deps.py`) — import-level
@@ -247,7 +247,7 @@ The current pack cannot survive an honest external benchmark. Rebuild the floor.
   whether those symbols are called. It converts `affected` from "reachable enough to take
   seriously" into a real claim.
 - ✅ **Semgrep rule pack** — [`rules/secaudit/`](rules/secaudit/), generated from the
-  detector table with a `--check` gate. 40 of 79 detectors exported; the other 39 are
+  detector table with a `--check` gate. 41 of 79 detectors exported; the other 38 are
   withheld with published reasons, because `pattern-regex` cannot reproduce a blanked
   code view or a file-level suppression and a noisier rule under the same name would
   invalidate the precision numbers this project publishes. Equivalence is measured

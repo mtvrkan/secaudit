@@ -10,10 +10,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Read-only for the workflow as a whole. The two write scopes Pages needs belong to the one job
+# that deploys, not to every job in the file: `build` runs a generator over repository content
+# and checks out the tree, and a token that can publish a site is not something a build step
+# should be holding while it does that.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Never publish two builds at once; let an in-flight one finish rather than cancelling it,
 # since the second would only overwrite what the first is mid-way through uploading.
@@ -41,6 +43,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write            # publish the uploaded artifact
+      id-token: write         # OIDC token deploy-pages exchanges for the deployment
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

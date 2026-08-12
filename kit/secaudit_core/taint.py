@@ -28,12 +28,15 @@ What this does:
 
 Honest bounds — read these before trusting a result:
 
-  * **One cross-module hop.** A call to a function imported from another file in the analysed
-    set is resolved against that file's summary, which already folds in everything the callee
-    does inside its own module. A chain that launders through a *third* module to reach the
-    sink is not followed. Each extra hop multiplies the chance that one wrong import
-    resolution attaches a real sink to the wrong function, and a confidently wrong path costs
-    more than a missing one.
+  * **Cross-module to any depth, but only across files that were scanned.** A call to a
+    function imported from another file in the analysed set is resolved against that file's
+    summary, and those summaries are re-derived over the import graph until they stop changing
+    (`_module_fixed_point`), so a chain that launders through a third and fourth module is
+    followed too — `test_cross_module` pins that. What bounds it is scope, not depth: a chain
+    that leaves the scanned set — into an excluded directory, a third-party package, or a
+    language with no taint depth — stops at the boundary. Depth costs nothing in precision
+    here because every edge comes from an explicit import statement; it is guessing at edges,
+    not following them, that attaches a real sink to the wrong function.
   * **Named imports only.** `from .helpers import run` and `const { run } = require('./util')`
     resolve; so does Python's `import helpers` + `helpers.run(x)`, because a dotted call is
     still a name. A JavaScript namespace import (`const u = require('./util'); u.run(x)`) is
@@ -53,8 +56,14 @@ Honest bounds — read these before trusting a result:
     checking that the predicate is meaningful. This trades recall for precision on purpose:
     an unhelpful guard produces a false negative here, and the sink still surfaces as a
     MEDIUM regex lead.
-  * The JS scanner does not understand destructuring, closures capturing an outer tainted
-    variable across a function boundary, `eval`-style dynamic property access, or JSX.
+  * **Flat destructuring only.** `const { name } = req.query` — the shape most Express
+    handlers are actually written in — binds `name` to `req.query.name`, and the same holds
+    for renames (`{ name: n }`), defaults, rest elements and array patterns, in a declaration
+    or in a parameter list. A *nested* pattern (`const { a: { b } } = req.body`) is not
+    destructured: reading one level is a lexical certainty, reading two means tracking a shape
+    this scanner does not model.
+  * The JS scanner does not understand closures capturing an outer tainted variable across a
+    function boundary, `eval`-style dynamic property access, or JSX.
 
 Everything above is a documented false-negative source, never a silent one: `limitations()`
 returns this list so the report can print it.
@@ -168,8 +177,11 @@ def limitations() -> list[str]:
         "they carry untrusted data depends on callers, which are not analyzed.",
         "A validation guard (`if (bad(x)) return/throw`) is assumed to sanitize; an ineffective "
         "guard therefore hides its sink from this tier.",
-        "The JavaScript/TypeScript scanner is a brace-aware statement scanner, not a parser: "
-        "destructuring, cross-boundary closures, dynamic property access and JSX are not modeled.",
+        "The JavaScript/TypeScript scanner is a brace-aware statement scanner, not a parser. "
+        "Flat destructuring of a tainted value (`const { name } = req.query`, including "
+        "renames, defaults and rest) is followed; a NESTED pattern "
+        "(`const { a: { b } } = req.body`) is not, and neither are cross-boundary closures, "
+        "dynamic property access or JSX.",
     ]
 
 
@@ -914,6 +926,12 @@ def _js_call_args(text: str, open_paren: int) -> str:
 
 
 _JS_ASSIGN = re.compile(r"^\s*(?:const|let|var)?\s*([A-Za-z_$][\w$]*)\s*=(?!=)(.*)$")
+# `const { name, id } = req.query` / `const [first] = req.body.items`, with an optional
+# TypeScript annotation between the pattern and the `=`. Flat patterns only — the character
+# classes exclude a nested brace on purpose, so a nested pattern simply does not match here.
+_JS_DESTRUCTURE = re.compile(
+    r"^\s*(?:const|let|var)?\s*(\{[^{}]*\}|\[[^\[\]]*\])"
+    r"(?:\s*:\s*[\w$<>\[\]|. ]+?)?\s*=(?!=)(.*)$")
 _JS_IDENT = re.compile(r"[A-Za-z_$][\w$]*")
 _JS_RETURN = re.compile(r"^\s*return\b")
 # A call to a bare identifier — not a method call, which `(?<![.\w$])` excludes. Method calls
@@ -945,12 +963,57 @@ class _JsFunc:
     end: int        # line the matching closing brace is on
 
 
+def _js_binding_names(pattern: str) -> list[tuple[str, str]]:
+    """(bound name, property key) for one flat destructuring pattern.
+
+    `{ name }` binds `name` to the key `name`; `{ name: n }` binds `n` to the key `name`; a
+    rest element and every array position bind to no key at all, because which property the
+    value came from is exactly what those two forms do not say — and a key we cannot name is
+    reported as the parent expression rather than guessed at.
+
+    Nested patterns are declined, not approximated: `split_args` keeps `{ a: { b } }` in one
+    piece and the inner braces fail the identifier check, so the binding is simply not made.
+    """
+    if len(pattern) < 2:
+        return []
+    is_object = pattern.startswith("{")
+    out: list[tuple[str, str]] = []
+    for part in split_args(pattern[1:-1]):
+        part = part.split("=")[0].strip()             # default value
+        key = ""
+        if part.startswith("..."):                    # rest: no single key describes it
+            part = part[3:].strip()
+        elif is_object and ":" in part:
+            key, part = (p.strip() for p in part.split(":", 1))
+        elif is_object:
+            key = part
+        if part and _JS_IDENT.fullmatch(part):
+            out.append((part, key if _JS_IDENT.fullmatch(key or "x") else ""))
+    return out
+
+
+# A parameter that is itself a destructuring pattern, with any TypeScript annotation after it.
+_JS_PARAM_PATTERN = re.compile(r"^\s*(\{[^{}]*\}|\[[^\[\]]*\])")
+
+
 def _js_param_names(group: str) -> list[str]:
+    """Parameter names by POSITION — the list a call site is resolved against.
+
+    A parameter this scanner cannot name (a destructuring pattern) yields an empty string
+    rather than being dropped. Dropping it used to shift every later parameter one place left,
+    so `f(a, {b}, c)` resolved a call's second argument against `c`: an interprocedural finding
+    reported against the wrong argument. An empty name matches no summary entry, which is the
+    correct answer — unknown, not misattributed. The bindings inside the pattern are still
+    seeded as weak sources in the body by `_JsScope._function_params`.
+    """
     names = []
-    for part in group.split(","):
-        part = part.strip().split("=")[0].split(":")[0].strip()
-        if part and _JS_IDENT.fullmatch(part):   # destructuring is out of scope
-            names.append(part)
+    for part in split_args(group):
+        part = part.strip().split("=")[0].strip()
+        if _JS_PARAM_PATTERN.match(part):
+            names.append("")                     # position held, name unknown
+            continue
+        part = part.split(":")[0].strip()        # TypeScript annotation
+        names.append(part if _JS_IDENT.fullmatch(part) else "")
     return names
 
 
@@ -1110,14 +1173,24 @@ class _JsScope:
         r"|(?:^|[=(,]\s*)([A-Za-z_$][\w$]*)\s*=>")   # a =>
 
     def _function_params(self, raw: str) -> list[str]:
+        """Every name a function header binds in its body, destructuring patterns included.
+
+        `app.post('/x', ({ body }, res) => …)` binds `body`, and a handler written that way is
+        no less a handler than one that writes `req.body`. These are weak (parameter-kind)
+        sources like any other parameter: what a caller passes is not knowledge this scope has.
+        """
         m = self._FUNC.search(raw)
         if not m:
             return []
         group = next((g for g in m.groups() if g is not None), "")
         names = []
-        for part in group.split(","):
-            part = part.strip().split("=")[0].split(":")[0].strip()
-            # Destructuring is explicitly out of scope (see module docstring).
+        for part in split_args(group):
+            part = part.strip().split("=")[0].strip()
+            pattern = _JS_PARAM_PATTERN.match(part)
+            if pattern:
+                names += [n for n, _ in _js_binding_names(pattern.group(1))]
+                continue
+            part = part.split(":")[0].strip()
             if part and _JS_IDENT.fullmatch(part):
                 names.append(part)
         return names
@@ -1186,6 +1259,29 @@ class _JsScope:
                 self.tainted[name] = (depth, src_line or lineno, src, kind)
             else:
                 self.tainted.pop(name, None)
+            return
+
+        # 7) Destructuring propagation: `const { name } = req.query`. Handled apart from (6)
+        #    because the left side binds several names at once and each one names a different
+        #    property of the same untrusted value.
+        m = _JS_DESTRUCTURE.match(safe)
+        if m:
+            rhs = line[m.start(2):] if m.start(2) >= 0 else m.group(2)
+            taint = None if JS_SANITIZER.search(blank_strings(rhs)) else self.taint_of(rhs)
+            for name, key in _js_binding_names(m.group(1)):
+                if not taint:
+                    self.tainted.pop(name, None)
+                    continue
+                src, src_line, kind = taint
+                # Name the property in the reported source — `req.query.name` reads as the
+                # thing an attacker controls, where `req.query` reads as the bag it came in.
+                # Only for a request-rooted alias: a call on the right (`= parse(req.body)`)
+                # returns something whose shape we do not know, and a PARAMETER-rooted source
+                # has to keep the bare parameter name or the function summary can no longer
+                # match the path back to the parameter that caused it.
+                named = key and kind == "request" and "(" not in rhs
+                self.tainted[name] = (depth, src_line or lineno,
+                                      f"{src}.{key}" if named else src, kind)
 
     def _sink_step(self, sink: "Sink", callee: str, where: str) -> str:
         """The path's last hop, phrased for where the sink actually is.
@@ -1276,8 +1372,11 @@ def _js_summaries(path: str, text: str, functions: dict[str, _JsFunc],
                              {**functions, **(resolve_functions or {})}, origins)
             for param in fn.params:
                 # Seeded at depth 0 with the bare parameter name, so a path reported inside the
-                # body can be matched back to the parameter that caused it.
-                scope.tainted[param] = (0, fn.start, param, "parameter")
+                # body can be matched back to the parameter that caused it. A positional
+                # placeholder (a destructuring pattern) has no name to match back to and is
+                # skipped here; its inner bindings are seeded by the body scan instead.
+                if param:
+                    scope.tainted[param] = (0, fn.start, param, "parameter")
             scope.run((fn.start, fn.end))
 
             sink_params: dict[str, tuple[Sink, int, str]] = {}

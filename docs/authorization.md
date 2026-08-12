@@ -27,7 +27,12 @@ Either:
   formal engagements — it records owner, approval, in-scope domains, test accounts,
   excluded paths, and rate limits.
 
-`scope.yaml` is gitignored — don't commit a filled-in copy.
+`scope.yaml` is gitignored — don't commit a filled-in copy. **A committed one does not
+authorize anything**: the hook asks git whether the file is tracked and refuses to count it if
+it is. An assertion that travelled with a repository is not an assertion you made, and without
+that rule any project could unlock active scanning in your session by shipping the file. If git
+cannot answer (not installed), the file is refused rather than trusted — use `SECAUDIT_ACTIVE=1`,
+which is the one channel a repository cannot supply.
 
 ## Deterministic enforcement (PreToolUse hook)
 
@@ -42,7 +47,7 @@ The passive/active boundary is not left to model discipline alone. The plugin sh
   URL or query string (SQLi canary, path-traversal to a system file, cloud-metadata SSRF,
   XSS/SSTI marker, CRLF/null-byte) — a probe, not passive recon.
 
-It allows them only once authorization is asserted — either a `scope.yaml` with
+It allows them only once authorization is asserted — either an **untracked** `scope.yaml` with
 `i_am_authorized: true` in the working directory, or `SECAUDIT_ACTIVE=1` in the session.
 Passive recon (a plain read-only `GET`/`HEAD` of a real resource) and all local static
 analysis (SAST / dependency / secret scans) are never blocked. The probe-payload check targets
