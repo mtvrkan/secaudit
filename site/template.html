@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{page_title}}</title>
+<meta name="description" content="{{page_description}}">
+<link rel="canonical" href="{{canonical}}">
+<link rel="icon" href="{{favicon}}">
+{{hreflang}}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{page_title}}">
+<meta property="og:description" content="{{page_description}}">
+<meta property="og:url" content="{{canonical}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{og_alt}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{og_image}}">
+<style>
+:root{
+  --bg:#fbfbfa; --panel:#fff; --ink:#16150f; --muted:#5f5c53; --line:#e5e2dc;
+  --accent:#b34a1f; --accent-ink:#fff; --ok:#1f6b3a; --warn:#8a5a00; --code:#f3f1ec;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#131311; --panel:#1a1a17; --ink:#f2f0ea; --muted:#a09c92; --line:#2e2d28;
+    --accent:#e0713f; --accent-ink:#1a1a17; --ok:#63b47f; --warn:#d6a445; --code:#211f1b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131311; --panel:#1a1a17; --ink:#f2f0ea; --muted:#a09c92; --line:#2e2d28;
+  --accent:#e0713f; --accent-ink:#1a1a17; --ok:#63b47f; --warn:#d6a445; --code:#211f1b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent)}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em}
+code{background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:1rem 1.1rem;border-radius:10px;overflow-x:auto;border:1px solid var(--line)}
+pre code{background:none;padding:0}
+.wrap{max-width:56rem;margin:0 auto;padding:0 1.25rem}
+header{padding:4.5rem 0 2.5rem;border-bottom:1px solid var(--line)}
+.eyebrow{color:var(--muted);font-size:.85rem;letter-spacing:.09em;text-transform:uppercase;margin:0 0 .9rem}
+h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12;margin:0 0 1rem;letter-spacing:-.02em}
+.lede{font-size:1.2rem;color:var(--muted);margin:0 0 1.75rem;max-width:44rem}
+.cta{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+.btn{display:inline-block;padding:.6rem 1.05rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:.95rem}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{border:1px solid var(--line);color:var(--ink)}
+section{padding:3rem 0;border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+h2{font-size:1.5rem;margin:0 0 .5rem;letter-spacing:-.01em}
+h2+.sub{color:var(--muted);margin:0 0 1.5rem;max-width:46rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.85rem;margin:0 0 1.5rem;padding:0;list-style:none}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem}
+.stat b{display:block;font-size:1.7rem;line-height:1.1;letter-spacing:-.02em}
+.stat span{display:block;color:var(--muted);font-size:.82rem;margin-top:.3rem}
+table{width:100%;border-collapse:collapse;font-size:.94rem}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.yes{color:var(--ok);font-weight:600}
+.no{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:1rem;list-style:none;padding:0;margin:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.1rem}
+.card h3{margin:0 0 .4rem;font-size:1rem}
+.card p{margin:0;color:var(--muted);font-size:.92rem}
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:8px;padding:1rem 1.1rem;color:var(--muted);font-size:.94rem}
+footer{padding:2.5rem 0 4rem;color:var(--muted);font-size:.88rem}
+footer a{color:var(--muted)}
+.langs{float:right;font-size:.85rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">{{eyebrow}}<span class="langs">{{lang_switch}}</span></p>
+    <h1>{{headline}}</h1>
+    <p class="lede">{{lede}}</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="{{repo}}">{{cta_repo}}</a>
+      <a class="btn btn-ghost" href="{{repo}}/blob/main/eval/scorecard.md">{{cta_scorecard}}</a>
+      <a class="btn btn-ghost" href="{{repo}}/blob/main/ROADMAP.md">{{cta_roadmap}}</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>{{measured_title}}</h2>
+    <p class="sub">{{measured_sub}}</p>
+    <ul class="stats">
+      <li class="stat"><b>{{recall}}</b><span>{{label_recall}}</span></li>
+      <li class="stat"><b>{{precision}}</b><span>{{label_precision}}</span></li>
+      <li class="stat"><b>{{f3}}</b><span>{{label_f3}}</span></li>
+      <li class="stat"><b>{{trap_fps}}</b><span>{{label_traps}}</span></li>
+    </ul>
+    <pre><code>python3 eval/harness.py</code></pre>
+    <p class="note">{{measured_caveat}}</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>{{diff_title}}</h2>
+    <p class="sub">{{diff_sub}}</p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>{{col_capability}}</th><th>{{col_official}}</th><th>SecAudit</th></tr></thead>
+      <tbody>{{diff_rows}}</tbody>
+    </table>
+    </div>
+    <p class="note">{{diff_note}}</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>{{how_title}}</h2>
+    <p class="sub">{{how_sub}}</p>
+    <ul class="cards">{{feature_cards}}</ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>{{install_title}}</h2>
+    <p class="sub">{{install_sub}}</p>
+    <pre><code>{{install_plugin}}</code></pre>
+    <p class="sub">{{standalone_sub}}</p>
+    <pre><code>{{install_cli}}</code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>{{inside_title}}</h2>
+    <p class="sub">{{inside_sub}}</p>
+    <ul class="stats">
+      <li class="stat"><b>{{detectors}}</b><span>{{label_detectors}}</span></li>
+      <li class="stat"><b>{{golden}}</b><span>{{label_golden}}</span></li>
+      <li class="stat"><b>{{gates}}</b><span>{{label_gates}}</span></li>
+      <li class="stat"><b>{{asvs_cwes}}</b><span>{{label_asvs}}</span></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>{{footer_ethics}}</p>
+    <p>{{footer_meta}}</p>
+  </div>
+</footer>
+
+</body>
+</html>
