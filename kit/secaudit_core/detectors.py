@@ -18,7 +18,7 @@ reproducible floor, not a guarantee — the LLM tier and real scanners raise the
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .schema import Severity, Confidence
 
@@ -39,6 +39,15 @@ class Detector:
     mask: bool = False             # redact the evidence line (secret detectors never print values)
     case_sensitive: bool = False   # token-shape secrets (AKIA…, ghp_…) encode a fixed case — a
                                    # case-insensitive match would widen them into false positives
+    literal: bool = True           # does this pattern legitimately match INSIDE a string literal
+                                   # or comment? Secrets, SQL fragments and quoted header names
+                                   # do; a code-shape rule like `eval(` does not, and matching
+                                   # one inside a literal is a false positive — `"eval": Sink(…)`
+                                   # in a rule catalog is not a call to eval. Detectors marked
+                                   # False are scanned against `taint.code_view`, which blanks
+                                   # comments and literal contents while preserving offsets.
+                                   # Defaults to True so a new detector is never silently
+                                   # narrowed; opt into the stricter view deliberately.
 
     def regex(self) -> re.Pattern:
         flags = re.M if self.case_sensitive else re.I | re.M
@@ -216,6 +225,26 @@ DETECTORS: list[Detector] = [
              S.MEDIUM, C.MEDIUM, (".go",), r"exec\.Command\(",
              "Validate arguments; never pass user input to a shell."),
 
+    # ---- Rust ----
+    # Rust's memory safety is enforced by the compiler, so the classes worth a rule are the
+    # ones where the code opts *out* of it, plus the panic paths that turn a request into a
+    # denial of service. Deliberately three narrow rules rather than a broad pack: a language
+    # where most of the usual sinks cannot exist deserves rules about what is actually left.
+    Detector("SEC-RS-UNSAFE", "`unsafe` block without a safety comment", "CWE-758", "A04",
+             S.MEDIUM, C.MEDIUM, (".rs",), r"^\s*unsafe\s*\{",
+             "Document the invariants that make this block sound in a `// SAFETY:` comment "
+             "directly above it, or replace it with a safe abstraction.",
+             suppress_if=r"//\s*SAFETY:"),
+    Detector("SEC-RS-TRANSMUTE", "`mem::transmute` reinterprets bytes with no checks",
+             "CWE-704", "A04", S.HIGH, C.MEDIUM, (".rs",), r"\bmem::transmute\b|\btransmute::<",
+             "Prefer a checked conversion (`TryFrom`, `from_le_bytes`, `bytemuck`); transmute "
+             "assumes a layout the compiler does not verify."),
+    Detector("SEC-RS-CMDI", "Shell command built with a shell interpreter", "CWE-78", "A03",
+             S.MEDIUM, C.MEDIUM, (".rs",),
+             r"Command::new\(\s*\"(?:sh|bash|cmd|powershell)\"|\.arg\(\s*\"-c\"",
+             "Invoke the program directly with `Command::new(prog).arg(value)`; a `-c` string "
+             "re-introduces shell metacharacter injection that Rust otherwise avoids."),
+
     # ---- Java ----
     Detector("SEC-JAVA-DESER", "Insecure deserialization (ObjectInputStream)", "CWE-502", "A08",
              S.HIGH, C.HIGH, (".java",), r"\bObjectInputStream\b",
@@ -375,15 +404,78 @@ DETECTORS: list[Detector] = [
     # (the tj-actions/changed-files CVE-2025-30066 class) and install-script execution.
     Detector("SEC-CI-MUTABLE-ACTION", "GitHub Action pinned to a mutable branch ref",
              "CWE-1357", "A03", S.HIGH, C.HIGH, (".yml", ".yaml"),
-             r"uses:\s*[\w.\-]+/[\w.\-]+@(?:main|master|develop|HEAD)\b",
+             # Two branch shapes, because only catching the first missed the one this
+             # repository's own release workflow reached for. A bare branch name
+             # (`@main`, `@develop`), and any ref containing a slash (`@release/v1`,
+             # `@feature/x`) — a slash is overwhelmingly a branch, since tags almost never
+             # carry one. A plain version tag (`@v4`) is deliberately NOT matched: it is
+             # mutable too, but flagging it fires on nearly every workflow in existence, and
+             # a rule that fires everywhere is a rule that gets suppressed everywhere. The
+             # fix text names it as the second-best option instead.
+             r"uses:\s*[\w.\-]+/[\w.\-]+@(?:(?:main|master|develop|trunk|latest|stable|HEAD)\b"
+             r"|[\w.\-]+/[\w.\-]+)",
              "Pin third-party Actions to a full commit SHA — a branch is mutable and can be "
-             "repointed at malicious code (the tj-actions/changed-files CVE-2025-30066 class). "
-             "Dependabot can still bump the pin. A version tag is better, a SHA is safest."),
+             "repointed at malicious code (the tj-actions/changed-files CVE-2025-30066 class, "
+             "where the attacker moved the refs rather than publishing new code). Dependabot "
+             "can still bump the pin. A version tag is better than a branch, a SHA is safest."),
     Detector("SEC-SUPPLY-CURLPIPE", "Remote script piped straight into a shell", "CWE-494", "A03",
              S.HIGH, C.HIGH, (".sh", ".yml", ".yaml"),
              r"\b(?:curl|wget)\b[^\n|]*\|\s*(?:sudo\s+)?(?:sh|bash|zsh)\b",
              "Download, verify a checksum/signature, then run — never pipe curl/wget to a shell."),
 ]
+
+
+# Detectors whose pattern describes CODE SHAPE rather than literal text. These are scanned
+# against `taint.code_view` — comments and string-literal contents blanked — so a rule catalog
+# that mentions `eval(` in a string, or a comment naming a vulnerability class, no longer reads
+# as the vulnerability itself. Everything NOT listed here keeps the raw view, because it
+# legitimately matches inside a literal: a hardcoded secret, a SQL fragment, a quoted header
+# name, `createHash('md5')`, `alg === 'none'`.
+#
+# Kept as one explicit set rather than a flag on each of 76 definitions: the decision is
+# "which side of one line is this rule on", and it is reviewable in a single screen. Check 22
+# in `scripts/check_consistency.py` fails if an id here does not exist.
+CODE_SHAPE_DETECTORS = {
+    "SEC-JS-SSRF", "SEC-JS-XSS", "SEC-JS-PATHTRAV", "SEC-JS-MASSASSIGN", "SEC-JS-PROTO",
+    "SEC-JS-EVAL", "SEC-JS-SSTI", "SEC-JS-RANDOM",
+    "SEC-PY-XXE", "SEC-PY-TLS", "SEC-PY-CMDI", "SEC-PY-PICKLE", "SEC-PY-YAML",
+    "SEC-PY-OSSYSTEM", "SEC-PY-EVAL", "SEC-PY-MD5", "SEC-PY-DEBUG",
+    "SEC-GO-TLS", "SEC-GO-EXEC",
+    # SEC-RS-CMDI is deliberately NOT here. It matches `Command::new("sh")` and `.arg("-c")`
+    # — the shell name and the flag are string-literal *contents*, which `code_view` blanks,
+    # so listing it made the rule unfirable. Caught by planting a Rust fixture: a detector
+    # with no fixture is an unmeasured claim, and this one had been wrong since it shipped.
+    "SEC-RS-UNSAFE", "SEC-RS-TRANSMUTE",
+    "SEC-JAVA-DESER", "SEC-JAVA-EXEC", "SEC-JAVA-SQL",
+    "SEC-PHP-EXEC", "SEC-PHP-UNSER", "SEC-PHP-SQLI",
+    "SEC-RB-MARSHAL", "SEC-RB-EVAL",
+    "SEC-CS-DESER", "SEC-CS-SQL",
+    "SEC-COOKIE-INSECURE",
+    "SEC-ANDROID-JSIF", "SEC-ANDROID-WORLDPERM", "SEC-ANDROID-WEBVIEW-JS",
+    "SEC-AI-LANGCHAIN-DANGER", "SEC-AI-PYREPL", "SEC-AI-LLM-EXEC",
+}
+
+DETECTORS = [replace(d, literal=False) if d.id in CODE_SHAPE_DETECTORS else d
+             for d in DETECTORS]
+
+
+def group_of(detector_id: str) -> str:
+    """The area segment of an id: `SEC-SECRET-AWS` -> `secret`, `TAINT-PY-CMDI` -> `py`.
+
+    Derived from the id rather than kept as a field, so a new detector joins its group by being
+    named consistently and there is no second list to forget to update. Ids that do not fit the
+    shape fall into `other`, which is visible in `--only other` rather than silently dropped.
+    """
+    parts = detector_id.split("-")
+    return parts[1].lower() if len(parts) >= 3 else "other"
+
+
+def groups() -> dict[str, int]:
+    """{group: detector count}, for `--only` and its error message."""
+    out: dict[str, int] = {}
+    for d in DETECTORS:
+        out[group_of(d.id)] = out.get(group_of(d.id), 0) + 1
+    return dict(sorted(out.items()))
 
 
 def detectors_for(filename: str) -> list[Detector]:

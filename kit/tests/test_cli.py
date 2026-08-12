@@ -33,6 +33,26 @@ def run(argv: list[str]) -> tuple[int, str]:
     return code, buf.getvalue()
 
 
+def _precommit_hooks() -> list[tuple[str, list[str]]]:
+    """[(hook id, args)] from `.pre-commit-hooks.yaml`.
+
+    Parsed with a regex rather than PyYAML: the zero-runtime-dependency invariant covers the
+    tests too, and the file is a flat list this repository owns. A shape it cannot read shows
+    up as zero hooks, which the caller treats as a failure rather than a pass.
+    """
+    import re
+    path = os.path.join(REPO, ".pre-commit-hooks.yaml")
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    hooks = []
+    for block in re.split(r"^- id:", text, flags=re.M)[1:]:
+        name = block.splitlines()[0].strip()
+        found = re.search(r"^\s*args:\s*\[(.*)\]\s*$", block, flags=re.M)
+        args = re.findall(r'"([^"]*)"', found.group(1)) if found else []
+        hooks.append((name, args))
+    return hooks
+
+
 def main() -> int:
     fails: list[str] = []
 
@@ -89,6 +109,17 @@ def main() -> int:
     code, out = run([VULN, "--no-deps", "--no-scanners", "--format", "md"])
     if AWS_EXAMPLE_KEY in out:
         fails.append("[mask] a masked secret value leaked into the rendered report")
+
+    # 6. Every flag combination shipped in `.pre-commit-hooks.yaml` actually parses.
+    #    A hook config is code that only runs on someone else's machine, at the moment they
+    #    are trying to commit — and the failure mode is silent-looking: `--only secrets` (the
+    #    plural) is not a group, so the hook exits 2 and a developer sees a broken pre-commit
+    #    rather than a security result. That exact typo shipped and nothing caught it.
+    for name, args in _precommit_hooks():
+        code, out = run([SECURE, *args])
+        if code == 2:
+            fails.append(f"[pre-commit] hook `{name}` has arguments the CLI rejects: "
+                         f"{' '.join(args)} -> exit 2. {out.strip().splitlines()[-1] if out.strip() else ''}")
 
     if fails:
         print("CLI TESTS FAILED:")
