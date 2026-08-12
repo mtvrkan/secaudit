@@ -1,0 +1,15 @@
+# INTENTIONALLY VULNERABLE — SecAudit test fixture. Not a real workflow. Do not run.
+name: build
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # V53 — Action pinned to a mutable ref (CWE-1357): the branch can be repointed at
+      # different code, which is the tj-actions/changed-files CVE-2025-30066 class.
+      - uses: tj-actions/changed-files@main
+
+      # V54 — Remote script piped into a shell (CWE-494): whatever the host serves at fetch
+      # time is executed, with no checksum or signature in between.
+      - name: install
+        run: curl -sSL https://example.com/install.sh | sh

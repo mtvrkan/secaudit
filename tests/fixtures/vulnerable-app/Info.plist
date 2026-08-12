@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- INTENTIONALLY VULNERABLE — SecAudit test fixture. Not a real app. -->
+<plist version="1.0">
+<dict>
+  <!-- V59 — App Transport Security disabled (CWE-319): cleartext HTTP is permitted to every
+       host, so traffic can be read and modified on any network the device joins. -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+  </dict>
+</dict>
+</plist>

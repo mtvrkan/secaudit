@@ -8,6 +8,7 @@ const { execFile } = require('child_process');
 const crypto = require('crypto');
 const net = require('net');
 const db = require('./db');
+const { runReport } = require('./util');
 const app = express();
 app.use(express.json());
 
@@ -70,6 +71,33 @@ function isPrivate(host) {
   if (net.isIP(host) === 0) return false; // hostname; the allowlist already constrains it
   return /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) || host === '::1';
 }
+
+// S22 — Command injection across a function boundary fixed (CWE-78): the helper takes an
+// argument array and never builds a shell string, and the label is constrained to a known
+// character set before it is passed on. The hard part for a scanner is that the *shape* is
+// identical to V22 — a route calling a same-file helper with a request value.
+const LABEL_RE = /^[a-z0-9_-]{1,32}$/i;
+function archiveLogs(label) {
+  execFile('tar', ['-czf', `/tmp/${label}.tgz`, '/var/log/app'], () => {});
+}
+app.get('/archive', (req, res) => {
+  const label = String(req.query.label || '');
+  if (!LABEL_RE.test(label)) return res.status(400).send('invalid label');
+  archiveLogs(label);
+  res.json({ ok: true });
+});
+
+// S23 — Command injection across a module boundary fixed (CWE-78): the imported helper
+// takes an argument array and never builds a shell string. Structurally identical to V23 —
+// a route calling a helper it imported with a request value — which is what makes it the
+// hard trap: the import edge alone is not the bug.
+const REPORT_RE = /^[a-z0-9_-]{1,32}$/i;
+app.get('/report', (req, res) => {
+  const label = String(req.query.label || '');
+  if (!REPORT_RE.test(label)) return res.status(400).send('invalid label');
+  runReport(label);
+  res.json({ ok: true });
+});
 
 function requireAuth(req, res, next) {
   if (!req.user) return res.status(401).send('auth required');

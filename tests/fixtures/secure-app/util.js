@@ -1,5 +1,7 @@
 // SECURE COUNTERPART — negative-control fixture. Safe implementations of the injection /
-// deserialization classes planted (vulnerably) in vulnerable-app/util.js (S14–S16 ↔ V14–V16).
+// deserialization classes planted (vulnerably) in vulnerable-app/util.js (S14–S16 ↔ V14–V16),
+// plus the safe cross-module helper for S23.
+const { execFile } = require('child_process');
 
 // S14 — Prototype pollution fixed (CWE-1321): dangerous keys are skipped and each nested
 // target is a null-prototype object, so `__proto__`/`constructor` can't reach Object.prototype.
@@ -34,4 +36,10 @@ function escapeHtml(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-module.exports = { merge, deserialize, render };
+// S23 helper — argument array, no shell, so no amount of untrusted input in `label`
+// produces command injection. The call site in server.js validates as well (defence in depth).
+function runReport(label) {
+  execFile('generate-report', ['--for', label]);
+}
+
+module.exports = { merge, deserialize, render, runReport };

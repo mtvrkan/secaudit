@@ -1,0 +1,7 @@
+{
+  "_comment": "INTENTIONALLY VULNERABLE — SecAudit test fixture. All values are documentation examples, not real credentials.",
+  "note_v60": " V60 - Hardcoded Stripe secret key (CWE-798): a live payment key in source is a payment-fraud incident the moment the repo is cloned.",
+  "stripe_secret_key": "sk_live_00000000000000000000EXAMPLE",
+  "note_v61": " V61 - Hardcoded Google API key (CWE-798): an unrestricted key billed to the project, usable by anyone who reads it.",
+  "google_api_key": "AIzaSyA00000000000000000000000000000EXA"
+}

@@ -139,8 +139,17 @@ def selftest() -> int:
     """Verify the grader's own gates — that it credits a complete report and, just as
     importantly, does NOT credit prose that merely brushes past finding keywords."""
     findings = load_golden()
-    if len(findings) != 20:
-        print(f"[selftest] FAIL: parsed {len(findings)} golden findings, expected 20")
+    # Assert the parser found *something* and that ids are contiguous from V1, rather than a
+    # literal count: hardcoding one means planting a new flaw fails this self-test for no
+    # reason, and — worse — silently stops it from covering the new flaw if someone "fixes"
+    # the number instead of the assumption.
+    if not findings:
+        print("[selftest] FAIL: parsed no golden findings — the table format changed")
+        return 1
+    expected_ids = [f"V{i}" for i in range(1, len(findings) + 1)]
+    if [f["id"] for f in findings] != expected_ids:
+        print(f"[selftest] FAIL: golden ids are not contiguous V1..V{len(findings)}: "
+              f"{[f['id'] for f in findings]}")
         return 1
     n = len(findings)
     ok = True

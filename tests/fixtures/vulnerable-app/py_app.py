@@ -7,6 +7,7 @@ import pickle
 import subprocess
 
 import requests
+from flask import request
 from lxml import etree
 
 
@@ -33,3 +34,15 @@ def run_ping(host):
 # runs arbitrary code via `__reduce__`. The Python-idiom sibling of the JS `eval` sink (V15).
 def load_session(cookie):
     return pickle.loads(base64.b64decode(cookie))  # UNSAFE: never unpickle untrusted data
+
+
+# V21 — SQL injection across a function boundary (CWE-89). The route handler reads untrusted
+# input and hands it to a helper; the concatenation lives in the helper, not the handler.
+# This is the shape almost all real code takes, and the one a single-function analysis cannot
+# see: it observes a request source that goes nowhere, and a sink fed by a parameter.
+def list_users(cursor):
+    return find_by_name(cursor, request.args["name"])   # UNSAFE: untrusted input, unbound
+
+
+def find_by_name(cursor, name):
+    return cursor.execute("SELECT * FROM users WHERE name = '" + name + "'")  # UNSAFE

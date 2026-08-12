@@ -6,6 +6,7 @@ import re
 import subprocess
 
 import requests
+from flask import request
 from lxml import etree
 
 
@@ -36,3 +37,15 @@ def run_ping(host):
 # S20 — Safe deserialization (CWE-502 fixed): JSON, never pickle — only data comes out.
 def load_session(cookie):
     return json.loads(cookie)
+
+
+# S21 — SQL injection across a function boundary fixed (CWE-89): the untrusted value still
+# crosses from the handler into the helper, so a reachability analysis must still follow it —
+# it simply arrives as a BOUND PARAMETER rather than as part of the query string. This is the
+# trap for an analysis that reports any tainted value reaching `execute()`.
+def list_users(cursor):
+    return find_by_name(cursor, request.args["name"])
+
+
+def find_by_name(cursor, name):
+    return cursor.execute("SELECT * FROM users WHERE name = ?", (name,))

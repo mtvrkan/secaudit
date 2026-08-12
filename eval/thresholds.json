@@ -1,0 +1,23 @@
+{
+  "$comment": "Regression floors for `python3 eval/harness.py --gate`, compared at three decimals — the precision they are stated at and the scorecard is rendered at. Set to the values actually measured on 2026-08-12, not to round numbers below them: Tier 0 is fully deterministic — same code, same corpus, same result — so there is no run-to-run variance for a margin to absorb, and a floor below the measured value is just permission to regress silently. Raise these when a real improvement lands; lowering one needs a written reason in the PR, because the whole point of a gate you can edit is that editing it is visible.",
+
+  "min_recall": 0.984,
+  "$comment_min_recall": "60 of 61 labelled vulnerabilities across 15 languages. The single miss is V3 (IDOR / broken access control), which has no reliable static signature and is documented as belonging to the LLM tier — see kit/tests/test_engine.py. If this floor ever needs lowering, the honest move is to state which class stopped being detected. Note that a rising overall figure can still hide a class going dark, which is why --gate also fails on any previously-detected class, CWE or language dropping to zero.",
+
+  "min_f3": 0.985,
+  "$comment_min_f3": "F3 weights recall 9x over precision, which is RealVuln's primary metric and the right shape for a security scanner: a missed vulnerability costs more than a triaged false alarm. Measured 0.985.",
+
+  "max_trap_false_positives": 0,
+  "$comment_max_trap_false_positives": "A false positive here is a hit on a SAFE implementation of the same feature as its vulnerable twin — the hardest trap in the corpus and the one that decides whether people keep reading our reports. Zero is not aspirational; it is the measured value, and it must stay measured.",
+
+  "measured": {
+    "date": "2026-08-12",
+    "recall": 0.9836,
+    "precision": 1.0,
+    "f1": 0.9917,
+    "f3": 0.9852,
+    "trap_false_positives": 0,
+    "unlabelled_results": 7,
+    "$comment": "The run these floors were derived from. eval/scorecard.md is the full breakdown and CI fails if it drifts from what the engine currently measures."
+  }
+}

@@ -1,0 +1,28 @@
+# INTENTIONALLY VULNERABLE — SecAudit test fixture. Not a real manifest. Do not apply.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      # V45 — Host namespaces shared (CWE-668): the pod sees the node's network and processes,
+      # so container isolation is largely gone.
+      hostNetwork: true
+      containers:
+        - name: api
+          image: example/api:1.4.2
+          securityContext:
+            # V46 — Privileged container (CWE-250): effectively root on the node.
+            privileged: true
+            # V47 — Privilege escalation allowed (CWE-250): a child process can gain more
+            # capabilities than its parent.
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: host
+              mountPath: /host
+      volumes:
+        # V48 — hostPath volume (CWE-552): the node filesystem is mounted into the pod.
+        - name: host
+          hostPath:
+            path: /

@@ -4,6 +4,7 @@ const express = require('express');
 const { exec } = require('child_process');
 const crypto = require('crypto');
 const db = require('./db');
+const { runReport } = require('./util');
 const app = express();
 app.use(express.json());
 
@@ -42,6 +43,28 @@ app.use((req, res, next) => {
 // V7 — SSRF (CWE-918): fetches a user-supplied URL with no allowlist.
 app.get('/fetch', (req, res) => {
   require('http').get(req.query.url, (r) => r.pipe(res));
+});
+
+// V22 — OS command injection across a function boundary (CWE-78): the route reads the request
+// and hands the value to a helper defined in the same file, so the source and the sink are one
+// hop apart. Analysed one function at a time this is two half-findings — a source that goes
+// nowhere, and a sink fed by a parameter that only *might* carry untrusted data.
+function archiveLogs(label) {
+  exec('tar -czf /tmp/' + label + '.tgz /var/log/app', () => {});   // UNSAFE: shell string
+}
+app.get('/archive', (req, res) => {
+  archiveLogs(req.query.label);
+  res.json({ ok: true });
+});
+
+// V23 — OS command injection across a MODULE boundary (CWE-78): the route reads the
+// request and hands the value to a helper imported from `util.js`, where the shell string is
+// built. Neither file is wrong when read alone — `server.js` just calls a function and
+// `util.js` just formats a parameter — so this is the shape a per-file analysis structurally
+// cannot see, and the shape almost all real code takes.
+app.get('/report', (req, res) => {
+  runReport(req.query.label);
+  res.json({ ok: true });
 });
 
 module.exports = { app, hashPassword, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY };
