@@ -388,6 +388,13 @@ All notable changes to SecAudit are documented here. This project follows
 - `.gitignore` — ignore `.pytest_cache/`, `*.egg-info/`, `.venv/` and `site/`. [2026-08-12]
 
 ### Fixed
+- **A URL handed to the CLI was scanned as a file path.** No file matched, so the run finished
+  with an empty report — indistinguishable from a clean audit unless someone noticed the file
+  count, which is the worst answer a security tool can give. It is now exit `2` with an
+  explanation and a pointer to the plugin, which is where live-target auditing lives because it
+  needs an authorization gate. A bare hostname is deliberately still treated as a path: refusing
+  to scan a real directory called `example.com` would be its own quiet failure, and the test
+  covers both directions. [2026-08-12]
 - **The landing page declared a large social card and supplied no image.**
   `twitter:card: summary_large_image` with no `og:image` asks a scraper for a full-width preview
   and gives it nothing to put there — which renders as a blank card, not as no card. Both

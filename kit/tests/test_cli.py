@@ -9,7 +9,7 @@ import json
 import os
 import sys
 import tempfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO = os.path.dirname(KIT)
@@ -26,11 +26,15 @@ AWS_EXAMPLE_KEY = "AKIA" + "IOSFODNN7EXAMPLE"
 
 
 def run(argv: list[str]) -> tuple[int, str]:
-    """Invoke the CLI in-process; return (exit_code, captured_stdout)."""
-    buf = io.StringIO()
-    with redirect_stdout(buf):
+    """Invoke the CLI in-process; return (exit_code, stdout + stderr).
+
+    Both streams, because refusals are written to stderr — a test that watched only stdout
+    would see an empty string and could not tell a clear refusal from a silent one.
+    """
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
         code = cli.main(argv)
-    return code, buf.getvalue()
+    return code, out.getvalue() + err.getvalue()
 
 
 def _precommit_hooks() -> list[tuple[str, list[str]]]:
@@ -110,7 +114,34 @@ def main() -> int:
     if AWS_EXAMPLE_KEY in out:
         fails.append("[mask] a masked secret value leaked into the rendered report")
 
-    # 6. Every flag combination shipped in `.pre-commit-hooks.yaml` actually parses.
+    # 8) A URL target is refused, loudly.
+    #    This package reads source on disk. Handed a URL it used to treat it as a path, match
+    #    no files, and finish with an empty report — indistinguishable from a clean audit
+    #    unless someone noticed the file count. That is the worst answer a security tool can
+    #    give, so it is now exit 2 with an explanation.
+    for url in ("https://example.com", "http://10.0.0.1:8080/app", "HTTPS://EXAMPLE.COM"):
+        code, out = run([url, "--no-deps"])
+        if code != 2:
+            fails.append(f"[url] `{url}` should exit 2, got {code}")
+        if "audits source code on disk" not in out:
+            fails.append(f"[url] `{url}` did not explain why it refused: {out.strip()[:120]!r}")
+
+    #    ...but a real directory whose name looks host-like must still be scanned. Refusing to
+    #    scan a directory called `example.com` would be its own quiet failure.
+    import tempfile as _tf
+    holder = _tf.mkdtemp(prefix="secaudit-hostdir-")
+    hostdir = os.path.join(holder, "example.com")
+    os.makedirs(hostdir)
+    with open(os.path.join(hostdir, "a.js"), "w", encoding="utf-8") as f:
+        f.write("eval(userInput);\n")
+    code, out = run([hostdir, "--no-deps", "--no-scanners", "--format", "json"])
+    try:
+        if not any(f["detector_id"] == "SEC-JS-EVAL" for f in json.loads(out)["findings"]):
+            fails.append("[url] a directory named like a host must still be scanned")
+    except (json.JSONDecodeError, KeyError):
+        fails.append("[url] scanning a host-named directory did not produce a report")
+
+    # 9) Every flag combination shipped in `.pre-commit-hooks.yaml` actually parses.
     #    A hook config is code that only runs on someone else's machine, at the moment they
     #    are trying to commit — and the failure mode is silent-looking: `--only secrets` (the
     #    plural) is not a group, so the hook exits 2 and a developer sees a broken pre-commit
@@ -125,8 +156,9 @@ def main() -> int:
         print("CLI TESTS FAILED:")
         print("\n".join("  - " + f for f in fails))
         return 1
-    print("CLI TESTS PASSED — --min gate (high/critical/none), json+sarif formats, "
-          "-o file output, and secret masking all correct at the CLI boundary.")
+    print("CLI TESTS PASSED — --min gate (high/critical/none), json+sarif formats, -o file "
+          "output, secret masking, a URL target refused with a reason (and a host-named "
+          "directory still scanned), and every shipped pre-commit hook's flags accepted.")
     return 0
 
 

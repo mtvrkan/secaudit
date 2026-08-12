@@ -104,6 +104,23 @@ def main(argv: list[str] | None = None) -> int:
                          "to disagree")
     args = ap.parse_args(argv)
 
+    if _looks_like_a_url(args.target):
+        print(
+            f"`{args.target}` is a URL, and this command audits source code on disk.\n"
+            f"\n"
+            f"It did not scan anything. That is worth saying plainly, because the failure "
+            f"this replaces was worse: the target was treated as a path, no file matched, "
+            f"and the run finished with an empty report that reads exactly like a clean "
+            f"bill of health.\n"
+            f"\n"
+            f"Live-target auditing is the Claude Code plugin, not this package — it needs an "
+            f"authorization gate, which is a conversation with a human and not a flag:\n"
+            f"    /secaudit {args.target}\n"
+            f"To audit the code behind that site, point this at the checkout:\n"
+            f"    secaudit ./path/to/repo",
+            file=sys.stderr)
+        return 2
+
     only = None
     if args.only:
         available = detectors.groups()
@@ -173,6 +190,22 @@ def _suggest_patches(args, result, only) -> None:
         print(f"  refused {outcome.finding.detector_id} "
               f"({outcome.finding.file}:{outcome.finding.line}): "
               f"{'; '.join(outcome.reasons)[:200]}", file=sys.stderr)
+
+
+def _looks_like_a_url(target: str) -> bool:
+    """Whether the target is a network address rather than a path on disk.
+
+    Checked before anything runs. A URL handed to a source scanner matches no file, and the
+    scanner then reports zero findings — which is indistinguishable from a clean audit unless
+    someone notices the file count. Refusing loudly costs one run; the alternative costs
+    somebody's belief that their site was checked.
+
+    A bare hostname (`example.com`) is deliberately not caught: it is also a plausible
+    directory name, and refusing to scan a real directory called `example.com` would be its
+    own quiet failure.
+    """
+    lowered = target.lower()
+    return lowered.startswith(("http://", "https://", "ftp://", "ws://", "wss://"))
 
 
 def _write_summary(path: str | None, markdown: str, fmt: str) -> None:
