@@ -40,19 +40,34 @@ def main() -> int:
     idor = [f for f in res.findings if f.detector_id == "LLM-LOGIC" and "IDOR" in f.title]
     if len(idor) != 1:
         fails.append(f"expected exactly 1 LLM-added IDOR finding, got {len(idor)}")
-    elif not (idor[0].file == "server.js" and idor[0].line == 23 and idor[0].source == "llm"):
+    elif not (idor[0].file == "server.js" and idor[0].line == 24 and idor[0].source == "llm"):
         fails.append(f"IDOR finding malformed: {idor[0].to_dict()}")
     if len(res.findings) != n_tier0 + 1:
         fails.append(f"enrichment should add exactly the 1 logic finding ({n_tier0} -> {len(res.findings)})")
 
-    # triage verdicts were applied to existing Tier-0 findings
-    by = {(f.detector_id, f.line): f for f in res.findings}
-    sqli = by.get(("SEC-JS-SQLI", 12))
-    if not sqli or sqli.verdict != Verdict.CONFIRMED or not sqli.triage_note:
-        fails.append("SQLi finding was not confirmed + annotated by the triage step")
-    ssrf = by.get(("SEC-JS-SSRF", 44))
-    if not ssrf or ssrf.verdict != Verdict.PLAUSIBLE:
-        fails.append("SSRF lead was not marked plausible by triage")
+    # Triage verdicts were applied to existing Tier-0 findings. The recorded response
+    # names specific lines, so editing a fixture above one of them breaks this — correctly,
+    # since a recording describes the snapshot it was taken from. The diagnostic has to say
+    # so, though: "SQLi was not confirmed" sends the next person hunting through the merge
+    # logic for a bug that is really a moved line.
+    def triaged(detector: str, expected_line: int, verdict: Verdict, label: str) -> None:
+        by_id = [f for f in res.findings if f.detector_id == detector]
+        hit = next((f for f in by_id if f.line == expected_line), None)
+        if hit is None:
+            found = sorted(f.line for f in by_id)
+            fails.append(
+                f"{label}: nothing at {detector}:{expected_line}. The detector fires at "
+                f"{found or 'no line at all'} — if a fixture shifted, update the recorded "
+                f"line in kit/tests/fixtures/llm-response.json to match")
+            return
+        if hit.verdict != verdict:
+            fails.append(f"{label}: verdict is {hit.verdict.value}, expected {verdict.value} "
+                         f"— the triage merge did not apply the recorded response")
+        elif verdict == Verdict.CONFIRMED and not hit.triage_note:
+            fails.append(f"{label}: confirmed but carries no triage note")
+
+    triaged("SEC-JS-SQLI", 13, Verdict.CONFIRMED, "SQLi triage")
+    triaged("SEC-JS-SSRF", 45, Verdict.PLAUSIBLE, "SSRF triage")
 
     # the final report renders and includes the triage note + the added IDOR finding
     md = report.to_markdown(res)

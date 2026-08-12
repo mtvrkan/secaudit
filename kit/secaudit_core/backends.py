@@ -93,6 +93,11 @@ class Backend:
 class NoneBackend(Backend):
     name = "none"
 
+    def complete(self, prompt: str) -> str:
+        """No model configured. Declines rather than returning an empty diff, which would read
+        as "the model had nothing to suggest"."""
+        return "[no backend configured: patch suggestion needs --backend]"
+
     def enrich(self, result: ScanResult) -> ScanResult:
         result.backend = "none"
         result.notes.append("No LLM backend: findings are Tier-0, unverified. "
@@ -121,6 +126,21 @@ class _HTTPBackend(Backend):
 
     def _call(self, prompt: str) -> str:
         raise NotImplementedError
+
+    def complete(self, prompt: str) -> str:
+        """One prompt, one raw reply — no JSON contract, no merging into a ScanResult.
+
+        Patch authoring and patch review need a plain completion, and they need failures to be
+        visible rather than absorbed: `enrich` deliberately swallows backend errors so a scan
+        still produces a Tier-0 report, but a patch step that silently returns "" on a network
+        error would report `no_patch` and look like the model declined. Returning the error
+        text makes it show up in the rejection reason instead.
+        """
+        try:
+            return self._call(prompt)
+        except Exception as e:                       # noqa: BLE001 - reported, not swallowed
+            return f"[backend error: {e.__class__.__name__}: {e}]"
+
 
 
 class AnthropicBackend(_HTTPBackend):
