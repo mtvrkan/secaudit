@@ -282,23 +282,29 @@ Make the claims falsifiable, then publish them.
 - ✅ **Semgrep JSON output** — the interchange format external benchmarks and SAST tooling
   ingest.
 - ✅ **RealVuln runner** (`eval/realvuln/`) — reproduction steps and an honest reading guide.
-- ✅ **RealVuln, run and published: F3 30.9** on 62 of 66 repositories (four are gone from
+- ✅ **RealVuln, run and published: F3 31.5** on 62 of 66 repositories (four are gone from
   GitHub), Tier 0, scored by the benchmark's own scorer. **Above** rule-based SAST's published
-  17.7 on both metrics — precision (0.540 vs 0.205) and recall (0.295 vs 0.175) — and far below a
+  17.7 on both metrics — precision (0.542 vs 0.205) and recall (0.301 vs 0.175) — and far below a
   general-purpose LLM (51.7) and the purpose-built system (73.0). Full result in
   [`eval/realvuln/README.md`](eval/realvuln/README.md); the scorer's raw output is committed as
   `result.json` and consistency check 27 fails the build if any stated figure stops matching it.
 - ⚠️ **The number is no longer blind, and that is disclosed everywhere it appears.** 12.5 and
-  13.3 were measured on a corpus the engine had never seen. 24.6, then 26.0, then 30.9 were measured
-  after its false negatives were read and the missing rules implemented — twice. Every rule
-  added is one any SAST ships, so nothing is fitted to a fixture, but the selection was
-  corpus-informed in both rounds and the advantage compounds. The honest successor is a
-  benchmark this repository has not read.
-- ✅ **Five runs, one corpus, one variable.** 12.5 → 13.3 → 24.6 → 26.0 → 30.9, each re-scored on the
-  same clone; the previous engine is re-run on it every round and has reproduced its committed
-  figures digit for digit each time, so every delta is the engine and not corpus drift. The
-  ground-truth digest is recomputed per round and has not moved (`sha256:af5901bf…`).
-  `eval/realvuln/run.py --scanner` and `eval/realvuln/collect_result.py` exist for that.
+  13.3 were measured on a corpus the engine had never seen. 24.6, then 26.0, then 30.9 were
+  measured after its false negatives were read and the missing rules implemented — three times.
+  Every rule added is one any SAST ships, so nothing is fitted to a fixture, but the selection
+  was corpus-informed in each round and the advantage compounds. The 30.9 → 31.5 round is the
+  exception worth naming: it added no rule and read no label, it removed a bug in an existing
+  one, so that delta is the only one a blind run would have produced too. The honest successor
+  is still a benchmark this repository has not read.
+- ✅ **Six runs, one corpus, one variable.** 12.5 → 13.3 → 24.6 → 26.0 → 30.9 → 31.5, each
+  re-scored on the same clone; the previous engine is re-run on it every round and has
+  reproduced its committed figures digit for digit each time, so every delta is the engine and
+  not corpus drift. The ground-truth digest is recomputed per round and has not moved
+  (`sha256:af5901bf…`). `eval/realvuln/run.py --scanner` and
+  `eval/realvuln/collect_result.py` exist for that.
+- ✅ **Precision has risen with recall four rounds running** (0.504 → 0.511 → 0.540 → 0.542).
+  That is the repository's own acceptance test for a detection change, and the round where it
+  stops holding is the round to stop and narrow rather than publish.
 
 **Remaining:**
 

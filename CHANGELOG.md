@@ -5,7 +5,38 @@ All notable changes to SecAudit are documented here. This project follows
 
 ## [Unreleased]
 
+### Fixed
+- **The rate-limit rule was silent on the code it exists to report, in three ways.** A limiter
+  mentioned anywhere in a file silenced every route in it, so one `@limiter.limit` on `/login`
+  protected an unlimited `/admin-login` beside it; `attempt` was a limiter marker on its own, so
+  a handler recording a failed password read as protected — writing the break-in down is what an
+  unprotected endpoint does instead of bounding it; and an unrelated route logging the word was
+  enough to switch the file off. Module-level now means module-level, and an attempt count is
+  evidence of a limit only where something is compared against it. **F3 30.9 → 31.5 on RealVuln,
+  +10 true positives for +6 false positives, precision 0.5405 → 0.5419.** Found by asking why the
+  rule's suppression branches had no test coverage, not by reading a label. [2026-08-13]
+- **KEV/EPSS feeds could crash a scan instead of degrading it.** The handler caught `OSError`,
+  and `http.client`'s exceptions are not `OSError`s — `IncompleteRead` from a connection dropped
+  mid-body escaped, which is the most likely real failure of a multi-megabyte feed. That broke
+  the module's own rule that an unreachable feed is a stated unknown. Every transport failure now
+  lands as an error string. Found by covering the network seam with a stubbed transport.
+  [2026-08-13]
+
+### Changed
+- **Check 27 now gates the prose, the run-history table, the per-family recall table and the
+  per-repository leaderboard**, not just headings and headline rows. Four sentences kept the
+  previous round's F3 through a green build, the per-family table read `other 219 / 831` after
+  the scorer said 229, and the leaderboard was two rounds stale — every one of them invisible
+  because nothing tied it to `result.json`. All 12 new sub-checks were proven non-vacuous by
+  mutation. [2026-08-13]
+- The EPSS privacy claim — "nothing about the scanned project leaves the machine" — is asserted
+  against the requests actually made rather than by searching `fetch_epss` for a substring. The
+  old check passed on any refactor that kept the words and dropped the behaviour. [2026-08-13]
+
 ### Added
+- Tests for `to_semgrep_json`, the renderer RealVuln's scorer reads and the only one with no
+  test: a silent change there moves the published F3 and looks like a detection regression.
+  [2026-08-13]
 - **F3 30.9 on RealVuln**, up from 26.0, with **precision rising alongside recall for the third
   consecutive round** (0.511 → 0.540; recall 0.246 → 0.295). Five runs now share one clone:
   12.5 → 13.3 → 24.6 → 26.0 → 30.9. [2026-08-13]

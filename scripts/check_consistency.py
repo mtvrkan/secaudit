@@ -547,7 +547,9 @@ def check_27_realvuln_claims_match_the_scorer(f: dict) -> list[str]:
         return ["check 27: eval/realvuln/result.json is missing — it is the committed output of "
                 "the benchmark's own scorer and the source for every stated RealVuln figure"]
     with open(path, encoding="utf-8") as fh:
-        overall = json.load(fh)["overall"]
+        result = json.load(fh)
+    overall = result["overall"]
+    history = result.get("previous_runs", [])
 
     # Anchored on phrases that name OUR result, not on any number that looks like a score. The
     # same pages quote RealVuln's published baselines (Semgrep 17.7) and this repo's own fixture
@@ -575,6 +577,37 @@ def check_27_realvuln_claims_match_the_scorer(f: dict) -> list[str]:
          r"\*\*Result: F3\s*([\d.]+)", f3, 1),
         (os.path.join("eval", "realvuln", "README.md"), "the headline metric table",
          r"RealVuln's primary metric\)\s*\|\s*\*\*([\d.]+)\*\*", f3, 1),
+
+        # PROSE anchors. The headings and table rows above were gated from the start; the
+        # sentences were not, and on the 26.0 -> 30.9 round four of them kept the previous
+        # round's figure while every gate stayed green — the exact drift this check exists to
+        # stop, in the one place it was not looking. A sentence that asserts the CURRENT result
+        # is a claim, not narration, so each one is anchored on the phrase that makes it
+        # present-tense. Sentences that quote an EARLIER run as history ("the first two runs
+        # scored 12.5 and 13.3") are deliberately not anchored here: they are gated instead by
+        # the run-history table below, which ties every past figure to `previous_runs`.
+        ("README.md", "the newest entry of the not-blind list",
+         r"([\d.]+)\s+are\s+not:\s+the\s+rules\s+added", f3, 1),
+        ("README.md", "the present-tense claim about a corpus it has read",
+         r"is\s+what\s+this\s+engine\s+did\s+on\s+a\s+corpus\s+it\s+had\s+not\s+read;"
+         r"\s*([\d.]+)\s+is\s+what\s+it\s+does", f3, 1),
+        ("README.md", "the two-numbers summary",
+         r"corpus\s+it\s+was\s+built\s+against,\s*([\d.]+)\s+is\s+what\s+it\s+does\s+on"
+         r"\s+62\s+real\s+repositories",
+         f3, 1),
+        (os.path.join("eval", "realvuln", "README.md"), "the not-blind verdict",
+         r"\*\*Neither[^*]*?\bnor\s*([\d.]+) is\.\*\*", f3, 1),
+        (os.path.join("eval", "realvuln", "README.md"), "the how-to-read-it sentence",
+         r"So\s+read\s+([\d.]+)\s+as\s+\"what\s+the\s+engine\s+does\s+on\s+a\s+corpus"
+         r"\s+it\s+has\s+been\s+tuned", f3, 1),
+        # Anchored with `\s+` between every word rather than a literal space: these sentences get
+        # reflowed whenever a figure changes width, and an anchor that a reflow can break is an
+        # anchor that goes missing in exactly the edit it exists to police.
+        (os.path.join("eval", "realvuln", "README.md"), "the size-of-the-advantage sentence",
+         r"gap\s+between\s+12\.5\s+and\s+([\d.]+)\s+is\s+the\s+size\s+of\s+the\s+advantage",
+         f3, 1),
+        (os.path.join("eval", "realvuln", "README.md"), "the Tier-1 comparison caveat",
+         r"not\s+with\s+the\s+([\d.]+)\s+above", f3, 1),
     ]
 
     fails = []
@@ -586,6 +619,171 @@ def check_27_realvuln_claims_match_the_scorer(f: dict) -> list[str]:
         elif round(float(m.group(1)), places) != round(actual, places):
             fails.append(f"check 27: {name} states {m.group(1)} in {what}, the committed scorer "
                          f"output says {round(actual, places)}")
+
+    fails += _realvuln_history_table(overall, history)
+    fails += _realvuln_family_table(result, history)
+    fails += _realvuln_repo_table(result)
+    fails += _realvuln_run_count(history)
+    return fails
+
+
+def _realvuln_repo_table(result: dict) -> list[str]:
+    """The best-five-repositories table, and the count of repositories that scored nothing.
+
+    A leaderboard nobody regenerates only ever drifts one way. This one was two rounds stale
+    when it was found — showing a top repo at 45.5 the engine had since moved to 58.8, and
+    claiming four zero-scoring repositories when the committed output said two. Both errors
+    happened to understate, which is luck, not a property of typing numbers by hand.
+    """
+    rel = os.path.join("eval", "realvuln", "README.md")
+    text = read(os.path.join(REPO, rel))
+    by_repo = result.get("by_repo", {})
+    if not by_repo:
+        return [f"check 27: result.json has no by_repo block for {rel}'s per-repository table"]
+
+    ranked = sorted(by_repo.items(), key=lambda kv: -(kv[1].get("f3") or 0))[:5]
+    want = [f"| `{name}` | {v['f3']} | {v['precision']:.3f} | {v['recall']:.3f} | "
+            f"{v['tp']} | {v['fp']} | {v['fn']} |" for name, v in ranked]
+
+    section = text.split("## Per repository", 1)
+    if len(section) < 2:
+        return [f"check 27: {rel} lost its per-repository section"]
+    stated = [line.strip() for line in section[1].splitlines()
+              if line.startswith("| `") and line.count("|") == 8]
+
+    fails = []
+    if stated[:5] != want:
+        for i, row in enumerate(want):
+            got = stated[i] if i < len(stated) else "(missing)"
+            if got != row:
+                fails.append(f"check 27: {rel} per-repository row {i + 1} reads {got!r}, "
+                             f"result.json gives {row!r}")
+
+    zeros = sum(1 for v in by_repo.values() if not v.get("f3"))
+    m = re.search(r"\*\*(\d+) of (\d+) repositories scored 0\.0\*\*", text)
+    if not m:
+        fails.append(f"check 27: {rel} lost its zero-scoring count — the number of repositories "
+                     f"this engine found nothing in is the least flattering figure on the page")
+    elif (int(m.group(1)), int(m.group(2))) != (zeros, len(by_repo)):
+        fails.append(f"check 27: {rel} says {m.group(1)} of {m.group(2)} repositories scored "
+                     f"0.0, result.json says {zeros} of {len(by_repo)}")
+    return fails
+
+
+def _realvuln_family_table(result: dict, history: list[dict]) -> list[str]:
+    """The per-family recall table must reproduce `by_family`, cell by cell.
+
+    It was typed, and it went stale the first time a family moved: the table read `other
+    219 / 831` while the scorer said 229, and every gate was green. That is the same defect the
+    prose anchors above exist for, in the one table a reader consults to decide whether this
+    engine finds the class of bug they care about — the most consequential place in the
+    repository for a number to be quietly wrong.
+    """
+    rel = os.path.join("eval", "realvuln", "README.md")
+    text = read(os.path.join(REPO, rel))
+    current = result["by_family"]
+    previous = history[0]["by_family"] if history else {}
+    first = history[-1]["by_family"] if history else {}
+
+    fails = []
+    seen = set()
+    for row in re.finditer(r"^\|\s*`(\w+)`\s*\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|\s*$",
+                           text, re.M):
+        family, found, recall, prev_cell, first_cell = (g.strip() for g in row.groups())
+        if family not in current:
+            fails.append(f"check 27: {rel} lists family `{family}`, which result.json does "
+                         f"not score")
+            continue
+        seen.add(family)
+        tp, total = current[family]["tp"], current[family]["total"]
+        expectations = [
+            (found, f"{tp} / {total}", "found / labelled"),
+            (recall, f"{tp / total * 100:.1f}%", "recall"),
+            (first_cell, f"{first.get(family, {}).get('tp', 0)} / {total}", "first run"),
+        ]
+        prev_tp = previous.get(family, {}).get("tp", 0)
+        want_prev = f"{prev_tp} / {total}" + (f" **+{tp - prev_tp}**" if tp != prev_tp else "")
+        expectations.append((prev_cell, want_prev, "previous run"))
+        for stated, want, what in expectations:
+            if stated != want:
+                fails.append(f"check 27: {rel} states {stated!r} as `{family}`'s {what}, "
+                             f"result.json gives {want!r}")
+
+    # A family big enough to matter must not be quietly dropped from the table — deleting a row
+    # is how a bad number stops being wrong without becoming right.
+    missing = sorted(f for f, v in current.items() if v["total"] >= 10 and f not in seen)
+    if missing:
+        fails.append(f"check 27: {rel}'s recall table omits {', '.join(missing)} — every family "
+                     f"with 10 or more labelled findings belongs in it")
+    return fails
+
+
+# Number words for the run count. The count is small by construction — one line per benchmark
+# run ever published — so a table beats a dependency.
+_COUNT_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven",
+                8: "eight", 9: "nine", 10: "ten"}
+
+
+def _realvuln_history_table(overall: dict, history: list[dict]) -> list[str]:
+    """The five-column run-history table must reproduce `previous_runs`, cell by cell.
+
+    Every past figure this repository quotes lives in that table, so gating the table gates the
+    history: a retelling that improves an earlier run to flatter a delta has to edit a cell that
+    is compared against the scorer's own committed output. It also makes the columns countable,
+    which is what `_realvuln_run_count` needs to catch "all four runs" after a fifth.
+    """
+    rel = os.path.join("eval", "realvuln", "README.md")
+    text = read(os.path.join(REPO, rel))
+    rows = [("F3", "f3_score", 1), ("F2", "f2_score", 1),
+            ("Precision", "precision", 3), ("Recall", "recall", 3)]
+    expected_cols = 1 + len(history)
+    fails = []
+    for label, key, places in rows:
+        m = re.search(rf"^\|\s*{label}\b[^|]*\|(.+?)\|\s*$", text, re.M)
+        if not m:
+            fails.append(f"check 27: {rel} lost the run-history table's {label} row — the past "
+                         f"figures it carried are no longer tied to previous_runs")
+            continue
+        cells = [c.strip().strip("*").strip() for c in m.group(1).split("|")]
+        if len(cells) != expected_cols:
+            fails.append(f"check 27: {rel} run-history {label} row has {len(cells)} columns, "
+                         f"result.json describes {expected_cols} runs (current + "
+                         f"{len(history)} previous)")
+            continue
+        for i, (cell, run) in enumerate(zip(cells, [{"overall": overall}, *history])):
+            actual = run["overall"][key]
+            try:
+                stated = float(cell)
+            except ValueError:
+                fails.append(f"check 27: {rel} run-history {label} column {i + 1} reads "
+                             f"{cell!r}, which is not a number")
+                continue
+            if round(stated, places) != round(actual, places):
+                fails.append(f"check 27: {rel} run-history {label} column {i + 1} states "
+                             f"{cell}, result.json says {round(actual, places)}")
+    return fails
+
+
+def _realvuln_run_count(history: list[dict]) -> list[str]:
+    """Prose that counts the runs must count the runs result.json holds.
+
+    "all four runs" survived a fifth run because nothing tied the word to the data. It is the
+    same failure as a stale figure and it is invisible in exactly the same way.
+    """
+    total = 1 + len(history)
+    word = _COUNT_WORDS.get(total)
+    if word is None:                       # more runs than words — say so rather than pass
+        return [f"check 27: {total} RealVuln runs is past the number-word table in "
+                f"scripts/check_consistency.py; extend _COUNT_WORDS"]
+    fails = []
+    for rel, what in (("README.md", "the full-result pointer"),):
+        m = re.search(r"all (\w+) runs", read(os.path.join(REPO, rel)))
+        if not m:
+            fails.append(f"check 27: {rel} lost {what}'s run count — 'all N runs' is no longer "
+                         f"checked against the runs result.json holds")
+        elif m.group(1).lower() != word:
+            fails.append(f"check 27: {rel} says 'all {m.group(1)} runs' in {what}, "
+                         f"result.json holds {total} ({word})")
     return fails
 
 

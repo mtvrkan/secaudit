@@ -189,7 +189,7 @@ live in [`eval/thresholds.json`](eval/thresholds.json), and CI fails if the comm
 **This is a regression floor, not a forecast.** These fixtures were written alongside the
 detectors, so the number says "this still works", not "this will work on your code".
 
-### The external number: F3 30.9
+### The external number: F3 31.5
 
 Measured on the [RealVuln benchmark](https://github.com/kolega-ai/Real-Vuln-Benchmark) — 66 real
 vulnerable repositories labelled by people who have never seen this code, scored by their scorer,
@@ -200,24 +200,30 @@ not ours.
 | Purpose-built (Kolega.Dev) | 73.0 | 0.388 | 0.809 |
 | General-purpose LLM (Claude Sonnet 4.6) | 51.7 | 0.785 | 0.498 |
 | Rule-based SAST (Semgrep) | 17.7 | 0.205 | 0.175 |
-| **SecAudit Tier 0** | **30.9** | **0.540** | **0.295** |
+| **SecAudit Tier 0** | **31.5** | **0.542** | **0.301** |
 
 **Read the caveat before the number.** The first two runs scored 12.5 and 13.3 and were blind —
-the engine had never seen this corpus. 24.6 and 26.0 are not: the rules added since were chosen
-by reading this benchmark's own false negatives, twice. Every one of them is a rule any SAST
+the engine had never seen this corpus. 24.6, 26.0, 30.9 and 31.5 are not: the rules added since
+were chosen by reading this benchmark's own false negatives. Every one of them is a rule any SAST
 ships (weak PRNG for tokens, cookie flags, CSRF exemptions, a committed fallback signing key,
 debug-on-by-default, open redirect, NoSQL injection, credentials in logs, catastrophic
 backtracking), so none is a pattern fitted to a fixture — but the *selection* was informed by
 the corpus, which is the same disclosure `eval/scorecard.md` has always carried about the
-fixture set. 12.5 is what this engine did on a corpus it had not read; 26.0 is what it does on
+fixture set. 12.5 is what this engine did on a corpus it had not read; 31.5 is what it does on
 one it has read repeatedly, and the gap between those two numbers is the size of the advantage.
 
-What moved in the latest round: **missing rate limiting 0 → 85 true positives at 0.842
-precision**, the largest single-rule gain in the project — a credential-testing endpoint that
-bounds nothing is a property of a handler, not of a line. Unrestricted upload 0 → 8. Before that,
-`denial_of_service` 0 → 16 of 44 from a ReDoS analysis with **zero** false positives.
-**Precision rose with recall for the third consecutive round** (0.504 → 0.511 → 0.540), which is
-the reason to read these as rules rather than as curve-fitting.
+What moved in the latest round: nothing was added. A rule was **narrowed**, and it was found by
+covering the branches that suppress a finding rather than the ones that raise one. The
+rate-limit rule treated any mention of a limiter *anywhere in a file* as protection, so one
+`@limiter.limit` on `/login` silenced an unlimited `/admin-login` beside it, and a handler that
+carefully logged every failed password silenced itself — recording an attempt read as bounding
+one. Module-level now means module-level, and an attempt count counts as a limit only where
+something is actually compared against it: **+10 true positives for +6 false positives**,
+F3 30.9 → 31.5. Before that, missing rate limiting 0 → 85 at 0.842 precision, unrestricted
+upload 0 → 8, and `denial_of_service` 0 → 16 of 44 from a ReDoS analysis with **zero** false
+positives. **Precision rose with recall for the fourth consecutive round**
+(0.504 → 0.511 → 0.540 → 0.542), which is the reason to read these as rules rather than as
+curve-fitting.
 
 What still does not move: `broken_access_control` (1/76), `missing_auth` (4/74) and
 `path_traversal` (3/39). Reading the misses in the two largest remaining pools —
@@ -232,10 +238,10 @@ of this kit and it is unmeasured, which is a gap and is named here as one. The h
 measure it ships in [`eval/realvuln/`](eval/realvuln) and runs in one command; it has not been
 run, because no key was available and a number nobody can re-query is worse than an admitted gap.
 
-Full result — per-family, per-repo, all four runs, what could not be cloned and why —
+Full result — per-family, per-repo, all six runs, what could not be cloned and why —
 [`eval/realvuln/`](eval/realvuln). The raw scorer output is committed and CI fails if these
 figures stop matching it. Two numbers, both true: 0.986 is what the engine still does on the
-corpus it was built against, 24.6 is what it does on 62 real repositories.
+corpus it was built against, 31.5 is what it does on 62 real repositories.
 
 ## What you get
 

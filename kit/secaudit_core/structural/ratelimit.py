@@ -42,8 +42,38 @@ _AUTH_ACTION_MARKERS = (
 _LIMITER_MARKERS = (
     "limiter", "ratelimit", "rate_limit", "throttle", "throttling", "slowapi",
     "flask_limiter", "flask-limiter", "django_ratelimit", "ratelimiter", "leakybucket",
-    "tokenbucket", "brakeman", "cooldown", "backoff", "attempt", "lockout", "captcha",
+    "tokenbucket", "brakeman", "cooldown", "backoff", "captcha",
 )
+
+# Names for the *count* of attempts, and for a lockout keyed on it. These are deliberately NOT
+# in `_LIMITER_MARKERS`, because the name alone does not say which side of the problem the code
+# is on: `attempts_for(ip) > 5` is a bound and `db.record_attempt(email)` is a handler writing
+# down the break-in it is failing to stop. `attempt` used to be a plain marker and matched both,
+# so a login that carefully logged every failed password silenced itself. What separates them is
+# not the name but what is done with the value — see `_bounds_attempts`.
+_ATTEMPT_MARKERS = ("attempt", "lockout", "lock_out", "locked_out", "lock-out", "locked-out",
+                    "cooldown_until", "blocked_until", "banned_until")
+
+
+def _bounds_attempts(node: ast.AST) -> bool:
+    """Whether an attempt count is being *compared against something* rather than merely kept.
+
+    A limiter is a decision, so it shows up as a condition: `if attempts_for(ip) > 5`,
+    `if too_many_attempts(email)`, `if user.lockout_until > now()`. Counting attempts without
+    ever testing the count is bookkeeping, and bookkeeping is what the endpoints this rule
+    reports tend to have instead of a limit.
+    """
+    for child in ast.walk(node):
+        if isinstance(child, (ast.If, ast.IfExp, ast.While, ast.Assert)):
+            tests: list[ast.AST] = [child.test]
+        elif isinstance(child, ast.Compare):
+            tests = [child]
+        else:
+            continue
+        for test in tests:
+            if any(any(m in name for m in _ATTEMPT_MARKERS) for name in _names_in(test)):
+                return True
+    return False
 
 # What makes a handler a credential-testing one rather than merely a route whose name matches.
 _CREDENTIAL_MARKERS = (
@@ -76,23 +106,55 @@ def _module_has_limiter(tree: ast.AST) -> bool:
     Checked before any handler is judged, because this is the shape that protects a handler
     which never mentions a limiter itself — `app.add_middleware(RateLimitMiddleware)` a hundred
     lines above the route. Missing it would report an application that is correctly protected.
+
+    Only **module-level** statements count, and that word is doing real work. This walked the
+    entire tree once, so any call anywhere that mentioned a limiter marker silenced every route
+    in the file. Three shapes fell out of that, all of them false negatives on the exact code
+    this rule exists to find:
+
+      * a handler calling `db.record_attempt(email)` — `attempt` is a limiter marker, and
+        recording failed attempts is what an unprotected login does *instead* of limiting them;
+      * an unrelated route logging the string `"... attempt"`, because a call's whole subtree
+        was searched, string constants included;
+      * one route carrying `@limiter.limit("5/minute")` silencing an unlimited `admin-login`
+        beside it — a per-route decorator on ONE route is not a module-level registration, and
+        "some endpoints are limited, one was forgotten" is the realistic form of this bug.
+
+    A limiter genuinely installed for the whole module is an import, a module-level assignment
+    or call, or a decorator/middleware registration — never a call buried inside one handler.
+    A handler that limits itself is still recognised, by `_limiter_evidence`, per handler.
     """
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             names = [a.name for a in node.names] + [getattr(node, "module", "") or ""]
             if any(any(m in (n or "").lower() for m in _LIMITER_MARKERS) for n in names):
                 return True
-        if isinstance(node, ast.Call) and _mentions_limiter(node):
-            return True
+    # Statements written at module level, plus the bodies of any `if`/`try`/`with` wrapper they
+    # are nested in — app setup is routinely guarded by `if not TESTING:` or a settings check,
+    # and that is still module-level registration. Function and class bodies are not descended
+    # into: that is the boundary the tree walk used to cross.
+    pending = list(getattr(tree, "body", []))
+    while pending:
+        stmt = pending.pop()
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        for wrapper in ("body", "orelse", "finalbody"):
+            pending += getattr(stmt, wrapper, []) or []
+        for handler in getattr(stmt, "handlers", []) or []:
+            pending += handler.body
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Call) and _mentions_limiter(node):
+                return True
     return False
 
 
 def _limiter_evidence(func: AnyFunc, decorators: list[str],
                       functions: dict[str, AnyFunc], seen: frozenset[str] = frozenset()) -> bool:
     """Whether anything in or reachable from this handler limits attempts."""
-    if any(any(m in d.lower() for m in _LIMITER_MARKERS) for d in decorators):
+    if any(any(m in d.lower() for m in (*_LIMITER_MARKERS, *_ATTEMPT_MARKERS))
+           for d in decorators):
         return True
-    if _mentions_limiter(func):
+    if _mentions_limiter(func) or _bounds_attempts(func):
         return True
     for node in ast.walk(func):
         name = ""

@@ -1,46 +1,64 @@
 # RealVuln — the external number
 
-**Result: F3 30.9 on 62 of 66 repositories, Tier 0.**
+**Result: F3 31.5 on 62 of 66 repositories, Tier 0.**
 Run 2026-08-13. Scored by the benchmark's own scorer; the raw output is committed as
 [`result.json`](result.json) and every figure below is read from it.
 
-| | Now | Authorization + ReDoS | Config + crypto hygiene | First diagnosis | First run |
-|---|---|---|---|---|---|
-| F3 (recall weighted 9x — RealVuln's primary metric) | **30.9** | 26.0 | 24.6 | 13.3 | 12.5 |
-| F2 | 32.5 | 27.5 | 26.1 | 14.4 | 13.5 |
-| Precision | 0.540 | 0.511 | 0.504 | 0.393 | 0.407 |
-| Recall | 0.295 | 0.246 | 0.233 | 0.124 | 0.116 |
-| TP / FP / FN | 520 / 442 / 1242 | 434 / 416 / 1328 | 410 / 404 / 1352 | 219 / 339 / 1543 | 204 / 297 / 1558 |
+| | Now | Structural | Authorization + ReDoS | Config + crypto hygiene | First diagnosis | First run |
+|---|---|---|---|---|---|---|
+| F3 (recall weighted 9x — RealVuln's primary metric) | **31.5** | 30.9 | 26.0 | 24.6 | 13.3 | 12.5 |
+| F2 | 33.0 | 32.5 | 27.5 | 26.1 | 14.4 | 13.5 |
+| Precision | 0.542 | 0.540 | 0.511 | 0.504 | 0.393 | 0.407 |
+| Recall | 0.301 | 0.295 | 0.246 | 0.233 | 0.124 | 0.116 |
+| TP / FP / FN | 530 / 448 / 1232 | 520 / 442 / 1242 | 434 / 416 / 1328 | 410 / 404 / 1352 | 219 / 339 / 1543 | 204 / 297 / 1558 |
 
 Every column is the same corpus, the same scorer and the same clone. The corpus was re-cloned
 for this round and its ground-truth digest recomputed: `sha256:af5901bf…`, identical to the one
 the earlier columns were measured against, so nothing moved underneath the comparison. The
-previous engine was re-scored on this checkout first and reproduced 24.6 / 0.5037 / 0.2327
-digit for digit, which is what makes the movement attributable to the engine and not to the
-corpus.
+previous engine was re-scored on this checkout first and reproduced 30.9 / 0.5405 / 0.2951
+digit for digit — 520 TP / 442 FP / 1242 FN, every figure identical to the committed result —
+which is what makes the movement attributable to the engine and not to the corpus.
+
+**This round added no rule.** It narrowed one, and the defect it removed was found by asking why
+the rate-limit rule's *suppression* branches had no test coverage rather than by reading more
+labels. `_module_has_limiter` walked the whole file, so any mention of a limiter anywhere
+silenced every route in it — a single `@limiter.limit` on `/login` silenced an unlimited
+`/admin-login` beside it, and `attempt` being a limiter marker meant a handler that recorded
+failed passwords silenced itself, which is the wrong half of the problem: writing the break-in
+down is what an unprotected endpoint does *instead* of bounding it. Module-level now means
+module-level, and an attempt count is evidence of a limit only where something is compared
+against it. +10 TP for +6 FP, entirely inside the `other` family where this benchmark files
+CWE-307. Precision rose, which is the only reason it was kept.
 
 ## The number stopped being blind, and that matters more than its size
 
 **12.5 and 13.3 were blind measurements.** The engine had never seen this corpus; the score
 said what it did on unseen code.
 
-**Neither 24.6 nor 26.0 is.** The rules added between 13.3 and 24.6 were chosen by reading
-this benchmark's own false negatives — *which* standard rules were missing was learned from its
-labels. The two analyses added between 24.6 and 26.0 were chosen the same way, and this round
-went further: the labelled code itself was read to work out what shape the misses had. Every
-rule added is one any SAST ships (weak PRNG for tokens, cookie flags, CSRF exemptions, a
-committed fallback signing key, debug-on-by-default, open redirect, NoSQL injection,
-credentials in logs, catastrophic backtracking, unauthenticated state-changing endpoints), so
-none of them is a pattern reverse-engineered from a particular fixture — but the *selection*
-was informed by the corpus, twice now. That is the same category of advantage
+**Neither 24.6, 26.0, 30.9 nor 31.5 is.** The rules added between 13.3 and 24.6 were chosen by
+reading this benchmark's own false negatives — *which* standard rules were missing was learned
+from its labels. The two analyses added between 24.6 and 26.0 were chosen the same way, and the
+round after went further: the labelled code itself was read to work out what shape the misses
+had. Every rule added is one any SAST ships (weak PRNG for tokens, cookie flags, CSRF
+exemptions, a committed fallback signing key, debug-on-by-default, open redirect, NoSQL
+injection, credentials in logs, catastrophic backtracking, unauthenticated state-changing
+endpoints), so none of them is a pattern reverse-engineered from a particular fixture — but the
+*selection* was informed by the corpus, three times now. That is the same category of advantage
 `eval/scorecard.md` has always disclosed about the fixture corpus, and it applies here with
 more force each round.
 
-So read 26.0 as "what the engine does on a corpus it has been tuned against across two rounds",
-and read 12.5 as "what it did on a corpus it had not". The honest successor to a blind number
-is a run against a benchmark this repository has not read; until there is one, the blind figure
-in the right-hand column is the more conservative claim about your code. **The gap between 12.5
-and 30.9 is the size of the advantage this disclosure is about, and it has widened every round.**
+The 30.9 → 31.5 round is the one exception and it is worth stating precisely, because it is the
+only movement here that a blind run would also have produced: it added no rule and read no
+label. It removed a bug in an existing rule, found by noticing that the branches which suppress
+a finding had no test coverage. That does not make the cumulative number blind again — every
+rule underneath it was still selected against this corpus.
+
+So read 31.5 as "what the engine does on a corpus it has been tuned against across three
+rounds", and read 12.5 as "what it did on a corpus it had not". The honest successor to a blind
+number is a run against a benchmark this repository has not read; until there is one, the blind
+figure in the right-hand column is the more conservative claim about your code. **The gap
+between 12.5 and 31.5 is the size of the advantage this disclosure is about, and it has widened
+every round.**
 
 Against the published baselines:
 
@@ -49,7 +67,7 @@ Against the published baselines:
 | Security-specialized | Kolega.Dev | 73.0 | 0.388 | 0.809 |
 | General-purpose LLM | Claude Sonnet 4.6 | 51.7 | 0.785 | 0.498 |
 | Rule-based SAST | Semgrep | 17.7 | 0.205 | 0.175 |
-| **Rule-based SAST + taint + structural** | **SecAudit Tier 0** | **30.9** | **0.540** | **0.295** |
+| **Rule-based SAST + taint + structural** | **SecAudit Tier 0** | **31.5** | **0.542** | **0.301** |
 
 **The deterministic tier scores above rule-based SAST's published 17.7, on both metrics** —
 1.7x the recall and 2.6x the precision — having been below it on the two earliest runs. Read
@@ -72,7 +90,7 @@ findings omitted; the full set is in `result.json`):
 
 | Family | Found / labelled | Recall | Previous run | First run |
 |---|---|---|---|---|
-| `other` | 219 / 831 | 26.4% | 133 / 831 **+86** | 35 / 831 |
+| `other` | 229 / 831 | 27.6% | 219 / 831 **+10** | 35 / 831 |
 | `sensitive_data_exposure` | 31 / 141 | 22.0% | 31 / 141 | 0 / 141 |
 | `security_misconfiguration` | 39 / 108 | 36.1% | 39 / 108 | 17 / 108 |
 | `xss` | 11 / 98 | 11.2% | 11 / 98 | 1 / 98 |
@@ -89,11 +107,35 @@ findings omitted; the full set is in `result.json`):
 | `insecure_deserialization` | 27 / 34 | 79.4% | 27 / 34 | 27 / 34 |
 | `code_injection` | 28 / 30 | 93.3% | 28 / 30 | 28 / 30 |
 
-The shape has changed again, and this time almost all of it landed in one bucket: `other`,
-which the previous round called "the ceiling on the whole score", went from 133 to **219 of
-831**. That bucket is where the scorer files rate limiting, unrestricted upload and mass
-assignment — three classes that had produced **zero** true positives between them across every
-previous run.
+Every movement in the last two rounds has landed in one bucket: `other`, which the round before
+last called "the ceiling on the whole score", went 35 → 133 → 219 → **229 of 831**. That bucket
+is where the scorer files rate limiting, unrestricted upload and mass assignment — three classes
+that had produced **zero** true positives between them across every earlier run. The latest
++10 is the narrowing described at the top of this page, not a new rule.
+
+### Round five — no new rule, one rule made honest
+
+The previous four rounds all worked the same way: read the labelled misses, find the shape they
+share, build the smallest thing that decides it. This one did not read a label. It came from
+asking a question about the *tests* instead — why did the rate-limit rule's suppression branches
+have no coverage? — and the answer was that they were wrong, in three ways that all pointed the
+same direction: the rule was silent on code it existed to report.
+
+- **A limiter anywhere silenced everywhere.** `_module_has_limiter` walked the whole tree, so
+  one `@limiter.limit("5/minute")` on `/login` protected an unlimited `/admin-login` in the same
+  file. "Most endpoints are limited and one was forgotten" is the realistic shape of this bug and
+  the rule could not see it. Module-level now means module-level: imports, and statements written
+  at module scope including the `if not settings.TESTING:` that real app setup is guarded by —
+  not function bodies.
+- **`attempt` was matching the wrong half of the problem.** It was a limiter marker on its own,
+  so `db.record_attempt(email)` in a failure branch read as protection. Writing the break-in down
+  is what an unprotected endpoint does *instead* of bounding it. An attempt count is now evidence
+  of a limit only where something is compared against it — `attempts_for(ip) > 5` and
+  `if too_many_attempts(email)` still silence the rule, `log.warning("failed login attempt")`
+  no longer does.
+- **+10 TP for +6 FP, precision 0.5405 → 0.5419.** Small, contained entirely in `other`, and
+  accepted only because precision rose. The same edit with precision falling would have been
+  reverted under the rule the round before last established.
 
 ### Round four — three more structural rules, and one of them is the largest single gain yet
 
@@ -159,14 +201,19 @@ Best five of 62 scored:
 
 | Repo | F3 | Precision | Recall | TP | FP | FN |
 |---|---|---|---|---|---|---|
-| `intentionally-vulnerable-python-app` | 45.5 | 1.000 | 0.429 | 3 | 0 | 4 |
-| `vc-codex-high-seeded-v2-property-management-fastapi` | 24.6 | 0.600 | 0.231 | 6 | 4 | 20 |
-| `dvblab` | 24.3 | 0.625 | 0.227 | 5 | 3 | 17 |
-| `damn-vulnerable-flask-app` | 21.7 | 1.000 | 0.200 | 3 | 0 | 12 |
-| `vc-kimi-code-seeded-v2-logistics-dispatch-fastapi` | 20.8 | 0.667 | 0.194 | 6 | 3 | 25 |
+| `intentionally-vulnerable-python-app` | 58.8 | 0.800 | 0.571 | 4 | 1 | 3 |
+| `vc-codex-high-seeded-v2-marketplace-commerce-fastapi` | 53.5 | 0.722 | 0.520 | 13 | 5 | 12 |
+| `vc-codex-high-seeded-v2-property-management-fastapi` | 51.6 | 0.722 | 0.500 | 13 | 5 | 13 |
+| `vc-codex-high-seeded-v2-fintech-lending-fastapi` | 50.5 | 0.875 | 0.483 | 14 | 2 | 15 |
+| `damn-vulnerable-flask-app` | 48.6 | 0.778 | 0.467 | 7 | 2 | 8 |
 
-**4 of 62 repositories scored 0.0** — nothing labelled was found in any of
+**2 of 62 repositories scored 0.0** — nothing labelled was found in either of
 them. The full per-repo table is in [`result.json`](result.json).
+
+This table had never been tied to `result.json` and was two rounds stale when that was noticed —
+it still showed a top repo at 45.5 after the engine had moved it to 58.8. Check 27 now
+reproduces every cell from the committed scorer output, including which repositories are in the
+top five and how many scored zero, so the ranking cannot flatter itself by going unmaintained.
 
 ## What was not scored, and why it matters
 
@@ -240,7 +287,7 @@ labelled as a single observation — the honest shape for a number that cannot b
 
 Two things to expect when someone does run it. It costs real money across 62 repositories. And
 the comparison it invites is with the published general-purpose-LLM baseline (F3 51.7), which is
-the row this tier exists to compete with — not with the 26.0 above.
+the row this tier exists to compete with — not with the 31.5 above.
 
 ## Reading the result honestly
 

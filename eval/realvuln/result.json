@@ -17,28 +17,28 @@
  ],
  "repos_missing_reason": "Upstream repositories are gone - `git clone` returns 'Repository not found' for all four. Not a choice made here, and not a random sample: all four are deliberately vulnerable teaching apps, the densest and most pattern-obvious repos in the corpus, so their absence works against this score rather than for it.",
  "overall": {
-  "tp": 520,
-  "fp": 442,
-  "fn": 1242,
+  "tp": 530,
+  "fp": 448,
+  "fn": 1232,
   "tn": 249,
-  "precision": 0.5405,
-  "recall": 0.2951,
-  "f2_score": 32.5,
-  "f3_score": 30.9
+  "precision": 0.5419,
+  "recall": 0.3008,
+  "f2_score": 33.0,
+  "f3_score": 31.5
  },
  "strict_micro": {
-  "tp": 520,
-  "fp": 442,
-  "fn": 1383,
+  "tp": 530,
+  "fp": 448,
+  "fn": 1373,
   "tn": 272,
-  "precision": 0.5405,
-  "recall": 0.2733,
-  "f2_score": 30.3,
-  "f3_score": 28.7
+  "precision": 0.5419,
+  "recall": 0.2785,
+  "f2_score": 30.8,
+  "f3_score": 29.3
  },
  "by_family": {
   "other": {
-   "tp": 219,
+   "tp": 229,
    "total": 831
   },
   "sensitive_data_exposure": {
@@ -191,6 +191,22 @@
    "fp": 4,
    "fn": 17
   },
+  "dvblab": {
+   "f3": 42.7,
+   "precision": 0.6923,
+   "recall": 0.4091,
+   "tp": 9,
+   "fp": 4,
+   "fn": 13
+  },
+  "vc-claude-code-seeded-v2-healthcare-clinic-django": {
+   "f3": 42.6,
+   "precision": 0.5714,
+   "recall": 0.4138,
+   "tp": 12,
+   "fp": 9,
+   "fn": 17
+  },
   "vc-codex-high-seeded-v2-support-desk-fastapi": {
    "f3": 41.2,
    "precision": 0.7333,
@@ -231,14 +247,6 @@
    "fp": 4,
    "fn": 50
   },
-  "dvblab": {
-   "f3": 38.3,
-   "precision": 0.7273,
-   "recall": 0.3636,
-   "tp": 8,
-   "fp": 3,
-   "fn": 14
-  },
   "vc-kimi-code-seeded-v2-support-desk-fastapi": {
    "f3": 37.9,
    "precision": 0.8333,
@@ -263,14 +271,6 @@
    "fp": 3,
    "fn": 19
   },
-  "vc-claude-code-seeded-v2-healthcare-clinic-django": {
-   "f3": 36.1,
-   "precision": 0.625,
-   "recall": 0.3448,
-   "tp": 10,
-   "fp": 6,
-   "fn": 19
-  },
   "vc-codex-seeded-v2-support-desk-fastapi": {
    "f3": 35.5,
    "precision": 0.8333,
@@ -285,6 +285,14 @@
    "recall": 0.3333,
    "tp": 11,
    "fp": 2,
+   "fn": 22
+  },
+  "vc-claude-code-seeded-v2-property-management-fastapi": {
+   "f3": 35.4,
+   "precision": 0.7857,
+   "recall": 0.3333,
+   "tp": 11,
+   "fp": 3,
    "fn": 22
   },
   "insecure-web": {
@@ -318,6 +326,14 @@
    "tp": 10,
    "fp": 3,
    "fn": 21
+  },
+  "vc-claude-code-seeded-v2-support-desk-fastapi": {
+   "f3": 34.0,
+   "precision": 0.6111,
+   "recall": 0.3235,
+   "tp": 11,
+   "fp": 7,
+   "fn": 23
   },
   "vc-codex-high-seeded-v2-legal-case-django": {
    "f3": 33.9,
@@ -463,14 +479,6 @@
    "fp": 3,
    "fn": 31
   },
-  "vc-claude-code-seeded-v2-property-management-fastapi": {
-   "f3": 26.1,
-   "precision": 0.8,
-   "recall": 0.2424,
-   "tp": 8,
-   "fp": 2,
-   "fn": 25
-  },
   "lets-be-bad-guys": {
    "f3": 24.8,
    "precision": 0.2308,
@@ -502,14 +510,6 @@
    "tp": 12,
    "fp": 44,
    "fn": 40
-  },
-  "vc-claude-code-seeded-v2-support-desk-fastapi": {
-   "f3": 21.9,
-   "precision": 0.5385,
-   "recall": 0.2059,
-   "tp": 7,
-   "fp": 6,
-   "fn": 27
   },
   "vampi": {
    "f3": 21.4,
@@ -610,6 +610,94 @@
  },
  "measurement_is_no_longer_blind": "READ THIS BEFORE QUOTING THE NUMBER. The 12.5 and 13.3 runs were blind: the engine had never seen this corpus, so the score measured what it did on unseen code. This one is not. The rules added between 13.3 and 24.6 were chosen by reading THIS benchmark's false negatives - which standard rules were missing was learned from its labels. Every rule added is a textbook one that any SAST ships (weak PRNG for tokens, cookie flags, CSRF exemptions, a committed fallback signing key, debug-on-by-default, open redirect, NoSQL injection, credentials in logs), so nothing here is a pattern reverse-engineered from a specific fixture - but the SELECTION was informed by the corpus, and that is the same category of advantage the fixture corpus has always been disclosed as having. 24.6 is what the engine does on a corpus it has now been tuned against. The honest successor to the blind number is a run against a benchmark this repository has not read.",
  "previous_runs": [
+  {
+   "run_date": "2026-08-13",
+   "label": "structural analyses: rate limiting, uploads, mass assignment",
+   "overall": {
+    "tp": 520,
+    "fp": 442,
+    "fn": 1242,
+    "tn": 249,
+    "precision": 0.5405,
+    "recall": 0.2951,
+    "f2_score": 32.5,
+    "f3_score": 30.9
+   },
+   "by_family": {
+    "other": {
+     "tp": 219,
+     "total": 831
+    },
+    "sensitive_data_exposure": {
+     "tp": 31,
+     "total": 141
+    },
+    "security_misconfiguration": {
+     "tp": 39,
+     "total": 108
+    },
+    "xss": {
+     "tp": 11,
+     "total": 98
+    },
+    "broken_access_control": {
+     "tp": 1,
+     "total": 76
+    },
+    "missing_auth": {
+     "tp": 4,
+     "total": 74
+    },
+    "sql_injection": {
+     "tp": 11,
+     "total": 71
+    },
+    "hardcoded_credentials": {
+     "tp": 6,
+     "total": 52
+    },
+    "command_injection": {
+     "tp": 39,
+     "total": 46
+    },
+    "denial_of_service": {
+     "tp": 16,
+     "total": 44
+    },
+    "open_redirect": {
+     "tp": 37,
+     "total": 40
+    },
+    "path_traversal": {
+     "tp": 3,
+     "total": 39
+    },
+    "ssrf": {
+     "tp": 16,
+     "total": 37
+    },
+    "xxe": {
+     "tp": 32,
+     "total": 36
+    },
+    "insecure_deserialization": {
+     "tp": 27,
+     "total": 34
+    },
+    "code_injection": {
+     "tp": 28,
+     "total": 30
+    },
+    "xpath_injection": {
+     "tp": 0,
+     "total": 4
+    },
+    "http_header_injection": {
+     "tp": 0,
+     "total": 1
+    }
+   }
+  },
   {
    "run_date": "2026-08-13",
    "label": "the first structural round — authorization and ReDoS",
@@ -963,5 +1051,5 @@
    }
   }
  ],
- "run_label": "structural analyses: rate limiting, uploads, mass assignment"
+ "run_label": "narrowing the rate-limit rule: module-level means module-level, and recording an attempt is not bounding one"
 }
