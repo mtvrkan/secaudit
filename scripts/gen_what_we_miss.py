@@ -28,7 +28,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "kit"))
 sys.path.insert(0, os.path.join(REPO, "scripts"))
 
-from secaudit_core import authz, compliance, redos, taint     # noqa: E402
+from secaudit_core import compliance, redos, structural, taint  # noqa: E402
 from secaudit_core.detectors import DETECTORS                # noqa: E402
 
 import gen_language_matrix as matrix                         # noqa: E402
@@ -70,6 +70,20 @@ CLASSES: list[tuple[str, tuple[str, ...], str]] = [
      "is not analysed, a regex the criteria pass is not certified safe, and resource-exhaustion "
      "denial of service that is not a regex — unbounded reads, unbounded allocation — is not "
      "covered at all."),
+    ("Brute force / credential stuffing (no rate limit)", ("CWE-307", "CWE-770"),
+     "Partially covered: a credential-testing endpoint (login, registration, password reset, "
+     "token or OTP issuance) that reaches a credential check with no limiter in its decorators, "
+     "dependencies, module-local helpers or app registration is reported. A missing limit on any "
+     "other endpoint is a capacity decision this does not make, and a limiter enforced at a "
+     "gateway, WAF or reverse proxy is invisible here and reads as missing."),
+    ("Unrestricted file upload", ("CWE-434",),
+     "Partially covered: an upload that is read and then written with no check between the two "
+     "is reported. Whether a check is *adequate* is not decided — an allowlist containing a "
+     "dangerous type reads as validated."),
+    ("Mass assignment", ("CWE-915",),
+     "Partially covered: a request-supplied mapping spread into a persisted object with no field "
+     "allowlist is reported. A schema, serializer or typed body counts as the allowlist, so a "
+     "handler whose schema declares a field it should not accept is not reported."),
     ("Deserialization gadget chains", ("CWE-502",),
      "Partially covered: the unsafe call is detected, whether an exploitable gadget exists in "
      "the dependency graph is not."),
@@ -114,15 +128,42 @@ def structural_cwes() -> set[str]:
         "    return str(request.form['expression'])\n"
     )
     catastrophic = 'import re\nP = r"((a)+)+"\nre.search(P, x)\n'
+    # A credential-testing endpoint with nothing bounding attempts: CWE-307.
+    unlimited = (
+        "@app.post('/api/auth/login')\n"
+        "def login(payload):\n"
+        "    return verify_password(payload.password, load(payload.email))\n"
+    )
+    # An upload read and written with no check between the two: CWE-434.
+    unchecked_upload = (
+        "from flask import request\n"
+        "@app.route('/upload', methods=['POST'])\n"
+        "def up():\n"
+        "    f = request.files['file']\n"
+        "    f.save('/srv/' + f.filename)\n"
+    )
+    # A request body spread into a persisted object: CWE-915.
+    spread = (
+        "from flask import request\n"
+        "@app.route('/p', methods=['POST'])\n"
+        "def p():\n"
+        "    data = request.get_json()\n"
+        "    User.objects.filter(pk=1).update(**data)\n"
+    )
 
     found: set[str] = set()
-    for code in (idor, noauth):
-        found |= {f.cwe for f in authz.analyze_file("probe.py", code)}
+    for code in (idor, noauth, unlimited, unchecked_upload, spread):
+        found |= {f.cwe for f in structural.analyze_file("probe.py", code)}
     found |= {f.cwe for f in redos.analyze_file("probe.py", catastrophic)}
-    if not found:
-        raise SystemExit("gen_what_we_miss: the structural probes produced no findings — "
-                         "either a rule changed shape or this page is about to under-report "
-                         "the coverage it is supposed to be honest about")
+
+    # Each rule must be represented. A silent drop here is the specific failure this page
+    # exists to prevent: a class would move back into "no deterministic coverage" and the page
+    # would under-report the engine while looking freshly generated.
+    missing = {"CWE-284", "CWE-306", "CWE-307", "CWE-434", "CWE-915", "CWE-1333"} - found
+    if missing:
+        raise SystemExit(f"gen_what_we_miss: probes produced no finding for {sorted(missing)} — "
+                         f"either a rule changed shape or this page is about to under-report "
+                         f"the coverage it is supposed to be honest about")
     return found
 
 

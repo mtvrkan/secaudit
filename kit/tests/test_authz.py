@@ -17,7 +17,8 @@ import sys
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, KIT)
 
-from secaudit_core import authz                              # noqa: E402
+from secaudit_core import structural                        # noqa: E402
+from secaudit_core.structural import authz                  # noqa: E402
 
 fails: list[str] = []
 
@@ -224,9 +225,9 @@ def test_unparseable_and_non_python_files_say_nothing() -> None:
 
 
 def test_limitations_name_the_language() -> None:
-    text = " ".join(authz.limitations())
+    text = " ".join(structural.limitations())
     check("Python" in text, "limitations do not name the analysed language")
-    check(bool(authz.AUTHZ_EXTS), "AUTHZ_EXTS is empty — the matrix would claim nothing")
+    check(bool(structural.EXTS), "structural.EXTS is empty — the matrix would claim nothing")
 
 
 def main() -> int:

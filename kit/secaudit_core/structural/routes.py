@@ -1,70 +1,73 @@
-"""Authorization analysis — the two classes a pattern pack structurally cannot decide.
+"""Shared machinery for the structural analyses: what a request handler *is*.
 
-`broken_access_control` and `missing_authentication` were the two largest zeroes in the
-external measurement (0/76 and 0/74), and `docs/what-we-miss.md` said of them: *"whether a
-handler checks that the caller owns the row it returns is a question about intent, not shape.
-There is no token sequence that distinguishes a correct lookup from a missing ownership
-predicate."*
-
-That sentence is right about **tokens** and wrong about **structure**, and the difference is
-what this module is. A regex sees a line. What decides these two classes is a relation between
-three things in one handler — who the caller is, which identifier the request supplied, and
-what the data operation filtered on — and a parser can see all three at once.
-
-So the rule is not "this line looks dangerous". It is:
-
-* **IDOR / broken access control.** The handler *has* an authenticated principal — it took a
-  `current_user` parameter, or read `request.user`, or is wrapped in an auth decorator — so
-  authentication was clearly intended. A request-supplied identifier then reaches a data
-  operation, and the principal is never used to constrain it. The developer proved they knew
-  who was calling and then looked the object up by the caller's own number. That is the bug,
-  and it is a *structural* fact: principal present, principal unused, request id used.
-
-* **Missing authentication.** The inverse. A state-changing route handler with no
-  authorization evidence anywhere — no decorator, no principal, no gate call, no 401/403 — that
-  nevertheless performs a data operation.
-
-**Why the second one is the dangerous rule to write, and what stops it firing.** The benchmark
-carries 42 deliberate traps for exactly this rule, and they all have the same shape: a handler
-with no auth *decorator* that calls a small local helper which compares a header against an
-environment token. A rule that looked for decorators would report all 42. So authorization
-evidence is resolved **through local calls**: `_gate(request)` counts as an auth check when the
-body of `_gate` contains one. That is the whole reason this module builds a function table for
-the module before it judges any handler in it — and the reason it only claims the languages
-where it can build one.
-
-Bounds, stated because a rule about intent that overstates its reach is worse than no rule:
-
-* Python only. The claim is derived from `AUTHZ_LANGS`, so it cannot drift out of the docs.
-* Evidence is resolved through calls to functions **defined in the same module**. A gate
-  imported from elsewhere is not followed, so the module errs toward *not* reporting: an
-  unresolved call is treated as possible authorization.
-* Object-ownership is judged by whether the principal appears in the data operation's filter
-  at all — not by whether the filter is *correct*. A handler that filters on the wrong user's
-  id is a bug this cannot see.
-* Decorator names are matched by suffix against a list of framework conventions. A project
-  with a bespoke decorator name gets no credit for it, which again means silence, not noise.
+Route detection, the authenticated-principal model, and the request-reading helpers were all
+written for the authorization rules and then needed verbatim by the rate-limit, upload and
+mass-assignment rules — the four questions differ, the notion of "a handler and what it can
+see" does not. Keeping one copy is not just tidiness: `_route_of` encodes which frameworks are
+recognised at all, and four drifting copies of that would mean four different answers to
+"is this a route" in one report.
 """
 from __future__ import annotations
 
 import ast
 from typing import Union
 
-from .schema import Confidence, Finding, Severity, Verdict
-
 # `ast.walk` yields both flavours of function and every framework in scope defines async
 # handlers, so the two are the same thing everywhere below.
 AnyFunc = Union[ast.FunctionDef, ast.AsyncFunctionDef]
 
-# Languages this analysis understands, in the shape `gen_language_matrix.py` reads. Derived
-# from here, never typed into a document — the language matrix once claimed "single file" for
-# months because the scope was a literal in the generator rather than a fact in the engine.
-AUTHZ_LANGS: dict[str, dict] = {
+# The languages every structural analysis claims, in the shape `gen_language_matrix.py` reads.
+# Derived from here and nowhere else — the language matrix once said "single file" for months
+# because the scope was a literal in the generator rather than a fact in the engine.
+LANGS: dict[str, dict] = {
     "Python": {"exts": (".py",), "frontend": "stdlib `ast` parse",
-               "resolves": "module-local helper calls"},
+               "resolves": "module-local helper calls and references"},
 }
-AUTHZ_EXTS: tuple[str, ...] = tuple(
-    ext for spec in AUTHZ_LANGS.values() for ext in spec["exts"])
+EXTS: tuple[str, ...] = tuple(ext for spec in LANGS.values() for ext in spec["exts"])
+
+
+def _evidence(lines: list[str], line: int) -> str:
+    return lines[line - 1].strip()[:200] if 0 < line <= len(lines) else ""
+
+
+# Path fragments that mean a file is not code serving traffic. Every rule in this package
+# describes something a *deployed handler* fails to do, so a test module, a fixture, a migration
+# or a one-off script is out of scope by construction — not merely noisy. (The detector pack
+# still scans these files: a committed secret in a test is a real secret. That is a different
+# question from "this endpoint has no rate limit".)
+_NON_PRODUCTION = ("/tests/", "/test/", "test_", "_test.py", "tests.py", "test.py",
+                   "conftest.py", "/migrations/",
+                   "/fixtures/", "/scripts/", "/examples/", "/samples/", "/benchmarks/")
+
+
+def is_production_source(rel: str) -> bool:
+    normalised = "/" + rel.replace("\\", "/").lstrip("/")
+    tail = normalised.rsplit("/", 1)[-1]
+    return not (any(m in normalised for m in _NON_PRODUCTION if m.startswith("/"))
+                or any(tail.startswith(m) or tail.endswith(m)
+                       for m in _NON_PRODUCTION if not m.startswith("/")))
+
+
+def module_functions(tree: ast.AST) -> dict[str, AnyFunc]:
+    """Every function defined in the module, by name.
+
+    Built once per file and handed to each rule: resolving a gate, a limiter or a validator
+    through a helper is the difference between a rule that works and one that reports the
+    codebases which factored that helper out.
+    """
+    return {node.name: node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+
+
+def routes_in(tree: ast.AST) -> list[tuple[Route, AnyFunc]]:
+    """Every mounted handler in the module, paired with its function node."""
+    out = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            route = _route_of(node)
+            if route is not None:
+                out.append((route, node))
+    return out
 
 # --------------------------------------------------------------------------- route detection
 
@@ -499,112 +502,3 @@ def _receives(call: ast.Call, principals: set[str]) -> bool:
             or any(_mentions(k.value, principals) for k in call.keywords))
 
 
-# --------------------------------------------------------------------------- the analysis
-
-def analyze_file(rel: str, text: str) -> list[Finding]:
-    """Every authorization finding in one Python source file."""
-    if not rel.lower().endswith(AUTHZ_EXTS):
-        return []
-    try:
-        tree = ast.parse(text)
-    except (SyntaxError, ValueError, RecursionError):
-        return []          # a file we cannot parse is a file we say nothing about
-
-    lines = text.splitlines()
-    functions: dict[str, AnyFunc] = {
-        node.name: node for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
-
-    findings: list[Finding] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        route = _route_of(node)
-        if route is None:
-            continue
-        findings += _judge(route, rel, lines, functions)
-    return findings
-
-
-def _evidence(lines: list[str], line: int) -> str:
-    return lines[line - 1].strip()[:200] if 0 < line <= len(lines) else ""
-
-
-def _judge(route: Route, rel: str, lines: list[str],
-           functions: dict[str, AnyFunc]) -> list[Finding]:
-    func = route.func
-    principals = _principal_names_in_scope(func)
-    authed = _auth_evidence(func, route.decorators, functions)
-    operations = _data_operations(func)
-
-    # ---- IDOR: authentication was intended, and then not used to constrain the lookup.
-    # Needs an actual data operation: without a row to fetch there is no object to own.
-    if operations and authed and principals:
-        request_ids = _request_id_names(route)
-        for call in operations:
-            # The identifier is either bound to a local first — the usual shape — or read
-            # inline and handed straight to the query: `Order.query.get(request.args["id"])`.
-            # Only the first was recognised, which meant the tersest form of the bug, the one
-            # with no intervening variable to name, was the one form that went unreported.
-            if not _mentions(call, request_ids) and not _reads_request_inline(call):
-                continue
-            if _principal_constrains(call, principals, func, functions):
-                continue
-            return [Finding(
-                detector_id="AUTHZ-PY-IDOR",
-                title="Broken access control — object looked up by a caller-supplied id "
-                      "without an ownership check",
-                severity=Severity.HIGH, confidence=Confidence.MEDIUM,
-                cwe="CWE-284", owasp="A01",
-                file=rel, line=call.lineno,
-                evidence=_evidence(lines, call.lineno),
-                fix=f"`{func.name}` knows who is calling ("
-                    f"`{sorted(principals)[0]}`) but selects the row with an identifier the "
-                    f"caller supplied. Constrain the query by the principal — e.g. add "
-                    f"`user_id={sorted(principals)[0]}.id` to the filter — or compare "
-                    f"ownership and reject with 403 before returning.",
-                source="authz", verdict=Verdict.UNVERIFIED)]
-
-    # ---- Missing authentication: a state-changing handler with no authorization at all.
-    # The bar is that the handler *acts on what the caller sent*, not that it reaches a
-    # database. Requiring a data operation here found nothing at all (0 true positives against
-    # 7 false ones): the unauthenticated endpoints that get labelled are the ones that evaluate
-    # an expression, shell out, or parse XML from the request body, and none of those touches a
-    # row. What they share is an anonymous caller reaching an operation with a side effect.
-    if (not authed and not principals and route.state_changing
-            and not route.public_by_design and (operations or _reads_request(func))):
-        return [Finding(
-            detector_id="AUTHZ-PY-NOAUTH",
-            title="Missing authentication on a state-changing endpoint",
-            severity=Severity.HIGH, confidence=Confidence.MEDIUM,
-            cwe="CWE-306", owasp="A01",
-            file=rel, line=route.line,
-            evidence=_evidence(lines, route.line),
-            fix=f"`{func.name}` handles "
-                f"{'/'.join(sorted(m.upper() for m in route.methods & _STATE_CHANGING))} and "
-                f"reaches persistent state, but nothing in it — no decorator, no principal, no "
-                f"gate helper, no 401/403 — establishes who is calling. Require an "
-                f"authenticated identity before the write.",
-            source="authz", verdict=Verdict.UNVERIFIED)]
-
-    return []
-
-
-def analyze_files(files: dict[str, str]) -> list[Finding]:
-    return [f for rel, text in sorted(files.items()) for f in analyze_file(rel, text)]
-
-
-def limitations() -> list[str]:
-    """The bounds this analysis reports in every scan that runs it."""
-    langs = ", ".join(sorted(AUTHZ_LANGS))
-    return [
-        f"Authorization analysis ({langs} only) decides two structural questions: whether a "
-        f"handler that knows its caller then ignores them when selecting a row, and whether a "
-        f"state-changing handler establishes a caller at all. Authorization evidence is "
-        f"followed through calls to functions defined in the same module; a gate imported from "
-        f"another module is not followed, and the handler is left unreported rather than "
-        f"assumed unauthenticated.",
-        "Ownership is judged by whether the principal constrains the query at all, never by "
-        "whether it constrains it correctly — a handler that filters on the wrong identity is "
-        "outside what this decides.",
-    ]

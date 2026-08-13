@@ -41,7 +41,8 @@ secaudit-mcp = "secaudit_mcp.server:main"
 # it was split); with the old two-entry list the wheel would have installed a
 # `secaudit_core` whose import of `.taint` fails — a break that no test in a source
 # checkout can see, because a checkout has the directory either way.
-packages = ["secaudit_core", "secaudit_core.taint", "secaudit_mcp"]
+packages = ["secaudit_core", "secaudit_core.structural", "secaudit_core.taint",
+            "secaudit_mcp"]
 
 # The locale bundles are data the renderer reads at runtime, so they must travel in the wheel.
 # Without this they exist only in a checkout and `--lang tr` silently renders English on every

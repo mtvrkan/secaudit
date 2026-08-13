@@ -8,14 +8,14 @@ import subprocess
 
 from .detectors import detectors_for, group_of
 from .schema import Finding, ScanResult, Severity, Confidence, Verdict
-from . import authz, deps, exploitation, redos, scanners, taint
+from . import deps, exploitation, redos, scanners, structural, taint
 
 # Higher-fidelity sources win when two findings collide at the same file/line/class.
 # `taint` outranks `builtin` because a proven source→sink path is strictly more evidence than
 # a pattern match at the same spot, and sits below the real scanners, which carry their own
 # dataflow engines. It never *replaces* a corroborated finding, though — see `_corroborate`.
 _SOURCE_RANK = {"semgrep": 4, "osv": 4, "gitleaks": 4, "npm-audit": 3, "taint": 3,
-                "authz": 3, "redos": 3, "llm": 2, "builtin": 1}
+                "structural": 3, "redos": 3, "llm": 2, "builtin": 1}
 
 # How far apart a pattern match and a taint path may be and still describe the same bug.
 # The regex usually fires where the dangerous string is built and the taint path where it is
@@ -106,13 +106,15 @@ def _read_sources(root: str, exts: tuple[str, ...]) -> dict[str, str]:
     return files
 
 
-def scan_authz(root: str) -> list[Finding]:
-    """Run the authorization analysis — the two classes the pattern pack cannot decide.
+def scan_structural(root: str) -> list[Finding]:
+    """Run the structural analyses — the classes the pattern pack cannot decide.
 
-    Separate from `scan_taint` because it asks a different question. Taint asks where a value
-    came from; this asks whether the handler that used the value knew who was calling. A value
-    can be perfectly clean and the handler still hand it to the wrong person."""
-    return authz.analyze_files(_read_sources(root, authz.AUTHZ_EXTS))
+    Separate from `scan_taint` because they ask a different kind of question. Taint asks where a
+    value came from; these ask what the handler around it failed to do. A value can be perfectly
+    clean and the handler still hand the row to the wrong person, accept unlimited password
+    guesses, write an executable it never inspected, or let the caller pick which columns to
+    set."""
+    return structural.analyze_files(_read_sources(root, structural.EXTS))
 
 
 def scan_redos(root: str) -> list[Finding]:
@@ -323,7 +325,7 @@ def _dedupe(findings: list[Finding]) -> list[Finding]:
 
 def scan(target: str, run_deps: bool = True, use_scanners: bool = True,
          use_taint: bool = True, only: set[str] | None = None,
-         check_exploitation: bool = False, use_authz: bool = True,
+         check_exploitation: bool = False, use_structural: bool = True,
          use_redos: bool = True) -> ScanResult:
     result = ScanResult(target=target, backend="none")
     result.tools_used.append("builtin-detectors")
@@ -331,9 +333,9 @@ def scan(target: str, run_deps: bool = True, use_scanners: bool = True,
     if use_taint:
         result.tools_used.append("taint")
         result.findings.extend(scan_taint(target))
-    if use_authz:
-        result.tools_used.append("authz")
-        result.findings.extend(scan_authz(target))
+    if use_structural:
+        result.tools_used.append("structural")
+        result.findings.extend(scan_structural(target))
     if use_redos:
         result.tools_used.append("redos")
         result.findings.extend(scan_redos(target))
@@ -362,8 +364,8 @@ def scan(target: str, run_deps: bool = True, use_scanners: bool = True,
         "outside this tier; run with an LLM backend for triage + logic-bug discovery.")
     if use_taint:
         result.notes.extend(taint.limitations())
-    if use_authz:
-        result.notes.extend(authz.limitations())
+    if use_structural:
+        result.notes.extend(structural.limitations())
     if use_redos:
         result.notes.extend(redos.limitations())
     return result

@@ -25,7 +25,7 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "kit"))
 
-from secaudit_core import authz, deps, redos, taint          # noqa: E402
+from secaudit_core import deps, redos, structural, taint     # noqa: E402
 from secaudit_core.detectors import DETECTORS                # noqa: E402
 
 OUT = os.path.join(REPO, "docs", "language-coverage.md")
@@ -111,8 +111,8 @@ def structural_note(name: str) -> str:
     and neither of these, so it needs its own column rather than a footnote on the taint one.
     """
     claims = []
-    if name in authz.AUTHZ_LANGS:
-        claims.append("authorization")
+    if name in structural.LANGS:
+        claims.append("authorization + rate limit + upload + mass assignment")
     if name in redos.REDOS_LANGS:
         claims.append("ReDoS")
     return " + ".join(claims) if claims else "—"

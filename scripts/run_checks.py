@@ -44,6 +44,8 @@ GATES: list[tuple[str, list[str], bool]] = [
     ("taint tier (reachability)",  ["kit/tests/test_taint.py"], False),
     ("authorization analysis (IDOR + missing auth)", ["kit/tests/test_authz.py"], False),
     ("ReDoS analysis (catastrophic backtracking)", ["kit/tests/test_redos.py"], False),
+    ("structural analyses (rate limit, upload, mass assignment)",
+                                  ["kit/tests/test_structural.py"], False),
     ("dependency reachability / VEX", ["kit/tests/test_deps.py"], False),
     ("compliance mapping / SBOM / CRA", ["kit/tests/test_compliance.py"], False),
     ("eval ground truth is current", ["eval/build_ground_truth.py", "--check"], True),

@@ -189,7 +189,7 @@ live in [`eval/thresholds.json`](eval/thresholds.json), and CI fails if the comm
 **This is a regression floor, not a forecast.** These fixtures were written alongside the
 detectors, so the number says "this still works", not "this will work on your code".
 
-### The external number: F3 26.0
+### The external number: F3 30.9
 
 Measured on the [RealVuln benchmark](https://github.com/kolega-ai/Real-Vuln-Benchmark) — 66 real
 vulnerable repositories labelled by people who have never seen this code, scored by their scorer,
@@ -200,7 +200,7 @@ not ours.
 | Purpose-built (Kolega.Dev) | 73.0 | 0.388 | 0.809 |
 | General-purpose LLM (Claude Sonnet 4.6) | 51.7 | 0.785 | 0.498 |
 | Rule-based SAST (Semgrep) | 17.7 | 0.205 | 0.175 |
-| **SecAudit Tier 0** | **26.0** | **0.511** | **0.246** |
+| **SecAudit Tier 0** | **30.9** | **0.540** | **0.295** |
 
 **Read the caveat before the number.** The first two runs scored 12.5 and 13.3 and were blind —
 the engine had never seen this corpus. 24.6 and 26.0 are not: the rules added since were chosen
@@ -210,19 +210,21 @@ debug-on-by-default, open redirect, NoSQL injection, credentials in logs, catast
 backtracking), so none is a pattern fitted to a fixture — but the *selection* was informed by
 the corpus, which is the same disclosure `eval/scorecard.md` has always carried about the
 fixture set. 12.5 is what this engine did on a corpus it had not read; 26.0 is what it does on
-one it has read twice, and the gap between those two numbers is the size of the advantage.
+one it has read repeatedly, and the gap between those two numbers is the size of the advantage.
 
-What moved in the latest round: `denial_of_service` **0 → 16 of 44**, all of it from a ReDoS
-analysis that decides catastrophic backtracking from the regex's parse tree — 17 true positives
-and **zero** false ones. `missing_auth` 0 → 4 of 74 and `broken_access_control` 0 → 1 of 76: off
-zero, and not much more than that. **Precision rose with recall again** (0.504 → 0.511), the
-second round running, which is the reason to read these as rules rather than as curve-fitting.
+What moved in the latest round: **missing rate limiting 0 → 85 true positives at 0.842
+precision**, the largest single-rule gain in the project — a credential-testing endpoint that
+bounds nothing is a property of a handler, not of a line. Unrestricted upload 0 → 8. Before that,
+`denial_of_service` 0 → 16 of 44 from a ReDoS analysis with **zero** false positives.
+**Precision rose with recall for the third consecutive round** (0.504 → 0.511 → 0.540), which is
+the reason to read these as rules rather than as curve-fitting.
 
-What still does not move: `broken_access_control` at 1/76 is the round's disappointment — the
-structural IDOR rule is right about the shape and finds almost nothing, because every version
-that found more also reported correct code (the full accounting is in
-[`eval/realvuln/`](eval/realvuln)). `path_traversal` stayed at 3/39 and was deliberately not
-attempted a third time. `other`, at 133 of 831 labels, is the ceiling on the whole score.
+What still does not move: `broken_access_control` (1/76), `missing_auth` (4/74) and
+`path_traversal` (3/39). Reading the misses in the two largest remaining pools —
+`sensitive_data_exposure` and `security_misconfiguration` — shows why: most of those labels sit
+on a handler definition, so the flaw is a property of everything the handler returns rather than
+of anything inside it. That needs the business-logic pass, not another rule, and the full
+accounting is in [`eval/realvuln/`](eval/realvuln).
 
 **The LLM tier has no measured number.** Every figure above is Tier 0. The enrichment tier —
 triage, verification, the logic bugs the deterministic tier cannot reach — is the headline claim

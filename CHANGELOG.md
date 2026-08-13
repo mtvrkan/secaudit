@@ -6,6 +6,50 @@ All notable changes to SecAudit are documented here. This project follows
 ## [Unreleased]
 
 ### Added
+- **F3 30.9 on RealVuln**, up from 26.0, with **precision rising alongside recall for the third
+  consecutive round** (0.511 → 0.540; recall 0.246 → 0.295). Five runs now share one clone:
+  12.5 → 13.3 → 24.6 → 26.0 → 30.9. [2026-08-13]
+- **Missing rate limiting on credential-testing endpoints — 0 → 85 true positives at 0.842
+  precision**, the largest single-rule gain in the project. 99 labels named a missing rate limit
+  and the engine found none, because "endpoint without a limiter" describes almost every
+  endpoint. The labels are narrower: an endpoint that *tests a credential* accepts unlimited
+  attempts (CWE-307). The rule fires only where the route names an authentication action and the
+  handler reaches a credential check, and it looks for a limiter in decorators, dependencies,
+  module-local helpers and anything registered on the app — a limiter installed as middleware
+  protects handlers that never mention it. [2026-08-13]
+- **Unrestricted file upload (CWE-434) — 0 → 8 at 0.800 precision.** An upload is read, a write
+  happens, and no check stands between them. [2026-08-13]
+- **Mass assignment (CWE-915) — 0 → 1.** Effectively unmoved, and published as such: the corpus's
+  labels mostly pass the body through a helper *named* like a validator that does not restrict
+  fields, and this rule judges whether an allowlist is present, never whether it is adequate.
+  [2026-08-13]
+- `secaudit_core/structural/` — the four handler-level analyses now share one model of what a
+  route is. `_route_of` decides which frameworks are recognised at all, and four private copies
+  would have given four answers to "is this a route" inside one report. [2026-08-13]
+
+### Changed
+- **The structural analyses are scoped to production sources.** Every rule in the package
+  describes something a *deployed handler* fails to do, so test modules, fixtures, migrations and
+  scripts are out of scope by construction. The detector pack still scans them — a committed
+  secret in a test is a real secret. [2026-08-13]
+- `docs/what-we-miss.md` now covers brute force, unrestricted upload and mass assignment, and its
+  generator refuses to write the page if any rule's probe stops producing its CWE — a silent drop
+  would move a class back to "no deterministic coverage" on a page that looked freshly generated.
+  [2026-08-13]
+
+### Fixed
+- **Extension *extraction* is no longer read as extension *validation*.** Counting `splitext` as
+  a check silenced the one handler that splits the extension off precisely so it can keep it on
+  the file it writes. [2026-08-13]
+- **An upload attribute now counts only on a value reached from the request.** Matching
+  `.filename` anywhere reported a password-list generator and a test module as vulnerable
+  handlers; anchoring it removed twelve of fourteen false positives and gained a true one.
+  [2026-08-13]
+- `secaudit_core.structural` was added to `[tool.setuptools] packages` — the packaging gate
+  caught it, which is the second time that gate has stopped a subpackage from being absent from
+  the wheel while every source-checkout test passed. [2026-08-13]
+
+### Added
 - **F3 26.0 on RealVuln, and the first two structural analyses.** Precision rose with recall
   again (0.504 → 0.511, recall 0.233 → 0.246), the second round running — the signal that these
   are rules rather than curve-fitting. Four runs now share one clone: 12.5 → 13.3 → 24.6 → 26.0,

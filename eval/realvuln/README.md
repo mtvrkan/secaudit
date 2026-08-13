@@ -1,16 +1,16 @@
 # RealVuln — the external number
 
-**Result: F3 26.0 on 62 of 66 repositories, Tier 0.**
+**Result: F3 30.9 on 62 of 66 repositories, Tier 0.**
 Run 2026-08-13. Scored by the benchmark's own scorer; the raw output is committed as
 [`result.json`](result.json) and every figure below is read from it.
 
-| | Now | Config + crypto hygiene | Targeted at the first diagnosis | First run |
-|---|---|---|---|---|
-| F3 (recall weighted 9x — RealVuln's primary metric) | **26.0** | 24.6 | 13.3 | 12.5 |
-| F2 | 27.5 | 26.1 | 14.4 | 13.5 |
-| Precision | 0.511 | 0.504 | 0.393 | 0.407 |
-| Recall | 0.246 | 0.233 | 0.124 | 0.116 |
-| TP / FP / FN | 434 / 416 / 1328 | 410 / 404 / 1352 | 219 / 339 / 1543 | 204 / 297 / 1558 |
+| | Now | Authorization + ReDoS | Config + crypto hygiene | First diagnosis | First run |
+|---|---|---|---|---|---|
+| F3 (recall weighted 9x — RealVuln's primary metric) | **30.9** | 26.0 | 24.6 | 13.3 | 12.5 |
+| F2 | 32.5 | 27.5 | 26.1 | 14.4 | 13.5 |
+| Precision | 0.540 | 0.511 | 0.504 | 0.393 | 0.407 |
+| Recall | 0.295 | 0.246 | 0.233 | 0.124 | 0.116 |
+| TP / FP / FN | 520 / 442 / 1242 | 434 / 416 / 1328 | 410 / 404 / 1352 | 219 / 339 / 1543 | 204 / 297 / 1558 |
 
 Every column is the same corpus, the same scorer and the same clone. The corpus was re-cloned
 for this round and its ground-truth digest recomputed: `sha256:af5901bf…`, identical to the one
@@ -40,7 +40,7 @@ So read 26.0 as "what the engine does on a corpus it has been tuned against acro
 and read 12.5 as "what it did on a corpus it had not". The honest successor to a blind number
 is a run against a benchmark this repository has not read; until there is one, the blind figure
 in the right-hand column is the more conservative claim about your code. **The gap between 12.5
-and 26.0 is the size of the advantage this disclosure is about.**
+and 30.9 is the size of the advantage this disclosure is about, and it has widened every round.**
 
 Against the published baselines:
 
@@ -49,10 +49,10 @@ Against the published baselines:
 | Security-specialized | Kolega.Dev | 73.0 | 0.388 | 0.809 |
 | General-purpose LLM | Claude Sonnet 4.6 | 51.7 | 0.785 | 0.498 |
 | Rule-based SAST | Semgrep | 17.7 | 0.205 | 0.175 |
-| **Rule-based SAST + taint + structural** | **SecAudit Tier 0** | **26.0** | **0.511** | **0.246** |
+| **Rule-based SAST + taint + structural** | **SecAudit Tier 0** | **30.9** | **0.540** | **0.295** |
 
 **The deterministic tier scores above rule-based SAST's published 17.7, on both metrics** —
-1.4x the recall and 2.5x the precision — having been below it on the two earliest runs. Read
+1.7x the recall and 2.6x the precision — having been below it on the two earliest runs. Read
 that against the section above: the earlier comparison was blind and this one is not, so the
 right claim is "above Semgrep on a corpus we have since read", not "better than Semgrep".
 
@@ -72,94 +72,86 @@ findings omitted; the full set is in `result.json`):
 
 | Family | Found / labelled | Recall | Previous run | First run |
 |---|---|---|---|---|
-| `other` | 133 / 831 | 16.0% | 131 / 831 **+2** | 35 / 831 |
+| `other` | 219 / 831 | 26.4% | 133 / 831 **+86** | 35 / 831 |
 | `sensitive_data_exposure` | 31 / 141 | 22.0% | 31 / 141 | 0 / 141 |
 | `security_misconfiguration` | 39 / 108 | 36.1% | 39 / 108 | 17 / 108 |
 | `xss` | 11 / 98 | 11.2% | 11 / 98 | 1 / 98 |
-| `broken_access_control` | 1 / 76 | 1.3% | 0 / 76 **+1** | 0 / 76 |
-| `missing_auth` | 4 / 74 | 5.4% | 0 / 74 **+4** | 0 / 74 |
+| `broken_access_control` | 1 / 76 | 1.3% | 1 / 76 | 0 / 76 |
+| `missing_auth` | 4 / 74 | 5.4% | 4 / 74 | 0 / 74 |
 | `sql_injection` | 11 / 71 | 15.5% | 11 / 71 | 2 / 71 |
 | `hardcoded_credentials` | 6 / 52 | 11.5% | 6 / 52 | 5 / 52 |
 | `command_injection` | 39 / 46 | 84.8% | 39 / 46 | 39 / 46 |
-| `denial_of_service` | 16 / 44 | 36.4% | 0 / 44 **+16** | 0 / 44 |
+| `denial_of_service` | 16 / 44 | 36.4% | 16 / 44 | 0 / 44 |
 | `open_redirect` | 37 / 40 | 92.5% | 37 / 40 | 0 / 40 |
 | `path_traversal` | 3 / 39 | 7.7% | 3 / 39 | 3 / 39 |
 | `ssrf` | 16 / 37 | 43.2% | 16 / 37 | 16 / 37 |
-| `xxe` | 32 / 36 | 88.9% | 31 / 36 **+1** | 31 / 36 |
+| `xxe` | 32 / 36 | 88.9% | 32 / 36 | 31 / 36 |
 | `insecure_deserialization` | 27 / 34 | 79.4% | 27 / 34 | 27 / 34 |
 | `code_injection` | 28 / 30 | 93.3% | 28 / 30 | 28 / 30 |
 
-The shape has changed again. Two families that had never produced a single true positive
-now do, and one of them moved a long way — but the two that were supposed to be the point of
-this round barely moved at all, which is the part worth reading first.
+The shape has changed again, and this time almost all of it landed in one bucket: `other`,
+which the previous round called "the ceiling on the whole score", went from 133 to **219 of
+831**. That bucket is where the scorer files rate limiting, unrestricted upload and mass
+assignment — three classes that had produced **zero** true positives between them across every
+previous run.
 
-### Round three — the two structural classes, and what actually happened
+### Round four — three more structural rules, and one of them is the largest single gain yet
 
-The three families stuck at exactly zero across every previous run were
-`broken_access_control` (0/76), `missing_auth` (0/74) and `denial_of_service` (0/44). The
-previous round's conclusion about them was that *"more patterns will not fix it"* — that
-deciding them needs to know what the application intends. That was half right, and the half it
-got wrong is the interesting one: these classes are not decidable from a **line**, but two of
-the three are partly decidable from a handler's **structure**, which a parser can see and a
-regex cannot. Two analyses were built on that basis (`secaudit_core/authz.py`,
-`secaudit_core/redos.py`), and the results split sharply.
+The method was the same one that worked in round three: read the labelled misses, notice what
+shape they share, and build the smallest thing that decides it. What the labels showed was that
+three of the biggest untouched pools are not judgement calls at all — they are properties of a
+handler that a parser can check.
 
-- **`denial_of_service` 0 → 16 of 44** (36.4%), every one of them from the ReDoS analysis, at
-  **17 true positives and 0 false positives** measured against the labels. Catastrophic
-  backtracking is decided from the regex's parse tree — star height above one, and repeated
-  groups whose alternatives overlap — and `docs/what-we-miss.md` was wrong to file it as out of
-  reach: an automaton decides it *exactly*, but the shapes that actually blow up are structural
-  and cheap. This is the round's real result.
-- **`missing_auth` 0 → 4 of 74** and **`broken_access_control` 0 → 1 of 76.** Off zero, and
-  that is close to all that can be said for it. The IDOR rule contributes a single true
-  positive across the whole corpus.
-- **`xxe` 31 → 32** and **`other` 131 → 133** are incidental.
+- **Missing rate limiting: 0 → 85 true positives at 0.842 precision.** The largest single-rule
+  gain in the project. 99 labels across four related classes named a missing rate limit and the
+  engine found none of them, because "this endpoint has no limiter" describes almost every
+  endpoint in almost every application. The labels are narrower than that: the flaw is that a
+  **credential-testing** endpoint accepts unlimited attempts. So the rule fires only where the
+  path or handler names an authentication action *and* the handler actually reaches a credential
+  check — and it looks for a limiter in the decorators, the dependencies, module-local helpers,
+  and anything registered on the app, because a limiter installed as middleware protects handlers
+  that never mention it.
+- **Unrestricted upload: 0 → 8, at 0.800 precision after one correction.** An upload is read, a
+  write happens, and no check stands between them. The first version scored 8 TP against 14 FP;
+  twelve of those false positives were not handlers at all — a test module, a password-list
+  generator — matched because `.filename` is an attribute plenty of objects have. Anchoring the
+  attribute to a request read removed all twelve.
+- **Mass assignment: 0 → 1.** Effectively unmoved, and the reason is worth stating: the corpus's
+  mass-assignment labels mostly pass the body through a helper that *is* named like a validator
+  (`validate_update_form`) while not actually restricting fields. This rule judges whether a field
+  allowlist is present, never whether it is adequate, so those are outside what it decides. That
+  is a bound, not a bug, and it is in `limitations()`.
 
-**Precision went up again while recall rose: 0.504 → 0.511.** Twenty-four more true positives
-against twelve more false ones. That is the signal these are rules rather than curve-fitting,
-and it is the second round in a row it has held.
+**Precision rose with recall for the third consecutive round: 0.511 → 0.540.** Eighty-six more
+true positives against twenty-six more false ones.
 
-### What the authorization analysis cost to get right, since the failures are the lesson
+### What the rules cost to get right
 
-The first working version of the IDOR rule scored **6 true positives against 48 false ones** —
-a rule that would have made the report worse. Nearly every false positive was one shape: the
-handler fetches the row by id and *then* authorizes it through a helper —
-`dispute = db.get(Dispute, dispute_id)` followed by `_require_view(current_user, dispute)`.
-That is the **correct** idiom, and the rule was punishing the codebases that had factored their
-authorization out properly. Counting a delegated call as a check dropped the false positives to
-zero — and took five of the six true positives with them, which is why the rule now finds one.
+Two corrections were measured rather than reasoned about, and both are now tests:
 
-A refinement that tried to keep both — count a delegated call only when the callee *looks* like
-a check, by name or by containing a comparison — was built and measured, and it recovered
-**none** of the lost true positives while adding nine false ones. It was reverted. The
-conservative reading is in the engine and the refinement is not, because a rule that reports the
-*absence* of a check has to be sure of the absence.
+**`splitext` is not validation.** Treating extension *extraction* as an extension *check*
+silenced the one handler that splits the extension off precisely so it can keep it on the file it
+writes. Removing `splitext` and `suffix` from the validation markers recovered that finding.
 
-The missing-authentication rule failed the other way first: **0 true positives against 7 false
-ones**, because it required the handler to touch a database. The endpoints that actually get
-labelled unauthenticated do not touch a database — they evaluate an expression, shell out, or
-parse XML straight from the request body. The bar had to be "acts on what the caller sent", not
-"reaches a row".
+**The structural rules are scoped to production sources.** Every rule in the package describes
+something a *deployed handler* fails to do, so a test module, a fixture, a migration or a
+one-off script is out of scope by construction. The detector pack still scans those files — a
+committed secret in a test is a real secret — but "this endpoint has no rate limit" is not a
+question a test file can answer.
 
-The benchmark's 42 `missing_authentication_false_positive` traps are all one shape: a handler
-with no auth decorator that reaches a small local helper comparing a header to an environment
-token. A decorator-based rule reports all 42. Following module-local calls clears them — and
-the FastAPI variant, where the same gate is injected as a parameter default
-(`gate: None = Depends(_wrk_gate)`) and never called in the body at all, needed the analysis to
-follow *references* rather than call targets. Every one of these shapes is now a test in
-`kit/tests/test_authz.py`, asserted in both directions, so the fixes cannot be undone silently.
+### An honest ceiling on all four rules
 
-### What did not move, again
+They are AST-based, so a **Python 2 source does not parse and produces nothing**. The corpus
+contains such files, and at least one labelled upload lives in one. Nothing is guessed there.
 
-`path_traversal` stayed at **3/39**. It was not attempted this round, and that is a deliberate
-decision rather than an oversight: nine filesystem sinks were added across the two previous
-rounds, the class was predicted to move twice, and it did not move either time. The evidence
-says its misses are about which values are believed attacker-controlled, not which call is
-dangerous, and a third round of sinks would be the same experiment run a third time. It is
-recorded here as untouched rather than quietly re-attempted.
+### What still does not move
 
-`other` at 133/831 remains the ceiling on the whole score — 831 labels in one bucket, of which
-this engine finds one in six.
+`broken_access_control` (1/76), `missing_auth` (4/74) and `path_traversal` (3/39) are unchanged.
+`sensitive_data_exposure` (31/141) and `security_misconfiguration` (39/108) are unchanged too, and
+reading their misses explains why: about 130 of those labels sit on a `def` line, meaning the flaw
+is a property of what the whole handler returns or configures rather than of anything in it. That
+is the same shape as broken access control, and the same answer applies — it needs the
+business-logic pass, not another rule.
 
 ## Per repository
 
