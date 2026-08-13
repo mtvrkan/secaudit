@@ -24,6 +24,14 @@ Excerpts are packed first, so a truncated context loses discovery breadth and ne
 code behind a finding being triaged. Truncation is recorded and reported; a clean triage over a
 partial view must not read as a clean triage over the repository.
 
+A third payload sits beside those two and is not source at all: the **handler map**
+(`structural/handlermap.py`), a deterministic extract of what each mounted handler knows about
+its caller, which identifiers the request chose, and what it then read or wrote. Showing a model
+the code was necessary and is not sufficient — asked "is anything wrong here", it answers about
+the code it happens to be looking at, and the classes this tier exists to reach are precisely
+the ones whose evidence is a *relation* spread across a handler. The map is what turns an open
+question into an adjudication of specific, pre-narrowed candidates.
+
 **Privacy.** This changed what leaves the host. Before, a remote backend saw findings metadata;
 now it sees source. That is the point — a model cannot audit code it cannot read — but it makes
 `--backend ollama` (local, nothing leaves the machine) a materially different choice rather than
@@ -42,6 +50,7 @@ from dataclasses import dataclass, field
 
 from .engine import MAX_BYTES, SKIP_DIRS
 from .schema import ScanResult
+from .structural import handlermap
 
 # Lines kept on each side of a finding. Wide enough to carry the enclosing function in ordinary
 # code — a triage decision usually turns on the guard clause above the sink, not on the sink.
@@ -57,6 +66,16 @@ EXCERPT_AFTER = 14
 # hundred-call bill.
 CHUNK_BUDGET_CHARS = 240_000
 MAX_CHUNKS = 4
+
+# The business-logic pass gets one of those four calls, and a budget of its own for the handler
+# map that call carries. The reservation is taken from inside MAX_CHUNKS rather than added on top
+# of it: that number is quoted as a cost ceiling — four model calls per scan, whatever the
+# repository — and a feature that raised it to five would be spending the reader's money against
+# a promise they had already read. On any repository small enough to fit in three chunks the
+# reservation costs nothing at all; on one large enough to fill four it costs a quarter of the
+# discovery breadth, and `note()` says so rather than letting the report narrow in silence.
+MAP_BUDGET_CHARS = 60_000
+LOGIC_CALLS = 1
 
 # Extensions worth showing a security model. Deliberately not "every text file": lockfiles,
 # minified bundles and generated migrations burn budget that handler code should have.
@@ -97,6 +116,13 @@ class SourceContext:
     secret_files_withheld: list[str] = field(default_factory=list)
     source_files_total: int = 0
     omitted_for_budget: int = 0
+    handler_map: str = ""
+    handler_count: int = 0
+    handlers_omitted: int = 0
+    triage_calls_reduced: bool = False
+    logic_source: str = ""                            # the code sent alongside the map
+    logic_files: list = field(default_factory=list)   # what that code covers — the grounding set
+    handlers: list = field(default_factory=list)      # facts whose source was actually sent
 
     @property
     def truncated(self) -> bool:
@@ -115,6 +141,18 @@ class SourceContext:
         if self.secret_files_withheld:
             parts.append(f"{len(self.secret_files_withheld)} file(s) matching credential "
                          f"patterns were withheld from the model by policy.")
+        if self.handler_count:
+            parts.append(f"The business-logic pass was given a map of {self.handler_count} "
+                         f"request handler(s) in one further model call.")
+        if self.handler_count and len(self.handlers) < self.handler_count:
+            parts.append(f"Only {len(self.handlers)} of them had their source sent alongside the "
+                         f"map, and the rest could not be reported on either way.")
+        if self.handlers_omitted:
+            parts.append(f"{self.handlers_omitted} further handler(s) did not fit the map budget "
+                         f"and were not described to the model.")
+        if self.triage_calls_reduced:
+            parts.append("One model call was reserved for the business-logic pass, so triage and "
+                         "discovery had one call fewer than they would otherwise have used.")
         return " ".join(parts)
 
 
@@ -220,10 +258,12 @@ def build(result: ScanResult, root: str | None = None) -> SourceContext:
 
     # Pass 1 — the code behind each finding. Packed first so truncation never costs triage.
     blocks: list[tuple[str, str, bool]] = []          # (rel, rendered, is_excerpt)
+    sources: dict[str, str] = {}                      # every text read, for the handler map
     for rel in sorted(flagged):
         text = _read(root, rel)
         if text is None:
             continue
+        sources[rel] = text
         spans = _merged_ranges(flagged[rel], len(text.splitlines()))
         blocks.append((rel, _render(rel, text, spans), True))
 
@@ -231,7 +271,42 @@ def build(result: ScanResult, root: str | None = None) -> SourceContext:
     for rel in sorted((f for f in usable if f not in flagged), key=_discovery_rank):
         text = _read(root, rel)
         if text is not None:
+            sources[rel] = text
             blocks.append((rel, _render(rel, text, None), False))
+
+    # The handler map is built from every source read, not from what survives the chunk budget:
+    # it is facts about handlers rather than their code, so the whole repository fits in a
+    # fraction of one call. A handler the budget hid from discovery is still described here.
+    rendered_map = handlermap.render(handlermap.build(sources), MAP_BUDGET_CHARS)
+    if rendered_map.included:
+        ctx.handler_map = rendered_map.text
+        ctx.handler_count = rendered_map.included
+        ctx.handlers_omitted = rendered_map.omitted
+        # The map is a shortlist and the source is the evidence, so the logic call gets both, in
+        # the map's own ranking order, within one call's budget. Assembled here rather than
+        # reusing a triage chunk because the two are packed for different questions: chunk 1 is
+        # whatever sat around Tier 0's findings, which is precisely the code this pass is NOT
+        # about. `handlers` is then narrowed to the ones whose source actually went — a handler
+        # described but not shown cannot be confirmed, so it must not be reportable either.
+        room = CHUNK_BUDGET_CHARS - len(rendered_map.text)
+        parts: list[str] = []
+        sent: list[str] = []
+        used = 0
+        for fact in rendered_map.facts:               # already in rank order
+            if fact.file in sent or fact.file not in sources:
+                continue
+            block = _render(fact.file, sources[fact.file], None)
+            if used + len(block) > room:
+                break
+            parts.append(block)
+            sent.append(fact.file)
+            used += len(block)
+        ctx.logic_source = "\n".join(parts)
+        ctx.logic_files = sent
+        ctx.handlers = [f for f in rendered_map.facts if f.file in set(sent)]
+
+    # A call is reserved for the business-logic pass only when there is a map for it to carry.
+    cap = MAX_CHUNKS - LOGIC_CALLS if ctx.handler_count else MAX_CHUNKS
 
     chunks: list[str] = []
     current: list[str] = []
@@ -240,8 +315,9 @@ def build(result: ScanResult, root: str | None = None) -> SourceContext:
         if current and size + len(rendered) > CHUNK_BUDGET_CHARS:
             chunks.append("\n".join(current))
             current, size = [], 0
-            if len(chunks) >= MAX_CHUNKS:
+            if len(chunks) >= cap:
                 ctx.omitted_for_budget = len(blocks) - i
+                ctx.triage_calls_reduced = cap < MAX_CHUNKS
                 break
         # A single block larger than the whole budget is truncated rather than dropped: half a
         # handler still shows a missing authorization check, and dropping it silently would be

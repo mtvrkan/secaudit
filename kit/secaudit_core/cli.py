@@ -36,8 +36,10 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="secaudit", description=__doc__.splitlines()[0])
     ap.add_argument("target", help="file or directory to audit")
     ap.add_argument("--backend", default="none",
-                    choices=["none", "anthropic", "claude", "openai", "ollama"],
-                    help="LLM enrichment backend (default: none — pure Tier 0)")
+                    choices=["none", "anthropic", "claude", "openai", "ollama", "replay"],
+                    help="LLM enrichment backend (default: none — pure Tier 0). `replay` reads a "
+                         "recorded model response from $SECAUDIT_REPLAY and makes no network "
+                         "call: it is how the Tier-1 path is exercised without a key")
     ap.add_argument("--format", default="md",
                     choices=["md", "html", "json", "sarif", "semgrep", "openvex",
                              "cyclonedx", "spdx", "cra"],

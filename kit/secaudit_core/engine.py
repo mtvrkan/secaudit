@@ -15,7 +15,7 @@ from . import deps, exploitation, redos, scanners, structural, taint
 # a pattern match at the same spot, and sits below the real scanners, which carry their own
 # dataflow engines. It never *replaces* a corroborated finding, though — see `_corroborate`.
 _SOURCE_RANK = {"semgrep": 4, "osv": 4, "gitleaks": 4, "npm-audit": 3, "taint": 3,
-                "structural": 3, "redos": 3, "llm": 2, "builtin": 1}
+                "structural": 3, "redos": 3, "llm": 2, "llm-logic": 2, "builtin": 1}
 
 # How far apart a pattern match and a taint path may be and still describe the same bug.
 # The regex usually fires where the dangerous string is built and the taint path where it is

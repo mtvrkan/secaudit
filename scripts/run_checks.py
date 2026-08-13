@@ -48,6 +48,7 @@ GATES: list[tuple[str, list[str], bool]] = [
                                   ["kit/tests/test_structural.py"], False),
     ("structural analyses on JS/TS (the unmeasured half)",
                                   ["kit/tests/test_structural_js.py"], False),
+    ("handler map (the business-logic scaffold)", ["kit/tests/test_logic.py"], False),
     ("dependency reachability / VEX", ["kit/tests/test_deps.py"], False),
     ("compliance mapping / SBOM / CRA", ["kit/tests/test_compliance.py"], False),
     ("eval ground truth is current", ["eval/build_ground_truth.py", "--check"], True),

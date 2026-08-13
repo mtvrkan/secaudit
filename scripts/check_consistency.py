@@ -311,12 +311,17 @@ def check_24_compliance_mapping_is_complete(f: dict) -> list[str]:
     mapping: the report shows a clean compliance section next to an unmapped Critical. Keying
     the check on what the engine emits — rather than on the mapping table — means adding a
     detector forces the decision instead of deferring it."""
+    from secaudit_core.backends import LOGIC_CLASSES
     from secaudit_core.compliance import CWE_TO_ASVS, UNMAPPED_CWES, ASVS_CHAPTERS
     from secaudit_core.taint import PY_SINKS, JS_SINKS, JS_ASSIGN_SINKS
 
     emitted = {d.cwe for d in DETECTORS}
     emitted |= {s.cwe for s in PY_SINKS.values()}
     emitted |= {s.cwe for _, s in JS_SINKS + JS_ASSIGN_SINKS}
+    # The business-logic pass emits its own weaknesses, from its own table. Keying on that table
+    # is what makes a class added there a decision about compliance mapping rather than a silent
+    # omission — the same reason this check reads the detector pack instead of the ASVS map.
+    emitted |= {spec.cwe for spec in LOGIC_CLASSES.values()}
     emitted.add("CWE-1395")     # dependency advisories, emitted by scan_dependencies
 
     fails = [f"check 24: `{cwe}` is emitted by the engine but has no ASVS chapter "

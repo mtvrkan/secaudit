@@ -26,7 +26,12 @@ LANGS: dict[str, dict] = {
                # generator instead of the sentence it used to hard-code: the moment a second
                # language claimed a different subset, a typed claim there would have been wrong
                # for whichever one it was not describing.
-               "analyses": ("authorization", "rate limit", "upload", "mass assignment")},
+               "analyses": ("authorization", "rate limit", "upload", "mass assignment"),
+               # The handler map (`handlermap.py`) is not an analysis — it emits no finding —
+               # but it is the language bound of the Tier-1 business-logic pass, and a reader
+               # comparing languages needs to see that the pass stops here. Flagged rather than
+               # added to `analyses` so the four measured rules stay the four measured rules.
+               "logic_map": True},
 }
 EXTS: tuple[str, ...] = tuple(ext for spec in LANGS.values() for ext in spec["exts"])
 

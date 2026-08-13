@@ -97,6 +97,13 @@ CWE_TO_ASVS: dict[str, str] = {
     "CWE-732": "V8",    # Incorrect permission assignment
     "CWE-862": "V8",    # Missing authorization
 
+    # Business logic. Both land in V2 rather than in the chapter that names the symptom: the
+    # control you implement for a skipped workflow step is a server-side state check, and the
+    # control for a price the client chose is server-side revalidation. Neither is an
+    # authorization control, which is why they are not in V8 next to the two above.
+    "CWE-841": "V2",    # Improper enforcement of behavioral workflow
+    "CWE-602": "V2",    # Client-side enforcement of server-side security
+
     # Cryptography
     "CWE-327": "V11",   # Broken or risky cryptographic algorithm
     "CWE-338": "V11",   # Cryptographically weak PRNG

@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.request
+from dataclasses import dataclass
 
 from . import llmcontext
 from .schema import ScanResult, Severity, Verdict
@@ -43,6 +44,75 @@ _TRIAGE_SYS = (
     "Reply ONLY with JSON: {\"triage\":[{\"detector_id\":str,\"file\":str,\"line\":int,"
     "\"verdict\":\"confirmed|plausible|refuted\",\"severity\":\"Critical|High|Medium|Low|Informational\","
     "\"note\":str}],\"extra\":[{\"title\":str,\"file\":str,\"line\":int,\"severity\":str,\"note\":str}]}"
+)
+
+# The business-logic classes this pass will accept, and what each one *is* in the report. The
+# table is the single source of truth: consistency check 24 reads the CWEs out of it, so a class
+# added here without an ASVS chapter fails the build rather than shipping unmapped.
+#
+# Four classes, not five. `race_window` (CWE-367) was left out deliberately: whether a
+# read-then-write is exploitable depends on transaction isolation the extract does not carry, so
+# asking about it is asking the model to guess, and a guess in a channel whose whole defence is
+# narrowness is the one thing that would sink it.
+@dataclass(frozen=True)
+class LogicClass:
+    detector_id: str
+    cwe: str
+    owasp: str
+    title: str
+    # Tier-0 weaknesses this class would be RESTATING if one already sits in the same handler.
+    # Keyed on a family rather than on equality with `cwe`, because the deterministic rules and
+    # this pass name the same bug with different ids — `AUTHZ-PY-IDOR` files broken access
+    # control under CWE-284 and `AUTHZ-PY-NOAUTH` files missing authentication under CWE-306,
+    # while the logic classes use the narrower CWE-639 and CWE-862. An equality check looked
+    # exactly like a working suppression and would have fired on nothing at all.
+    restates: tuple
+
+
+LOGIC_CLASSES: dict[str, LogicClass] = {
+    "missing_ownership": LogicClass(
+        "LOGIC-IDOR", "CWE-639", "A01",
+        "Object accessed by a caller-supplied id with no ownership check",
+        ("CWE-639", "CWE-284", "CWE-285")),
+    "missing_authorization": LogicClass(
+        "LOGIC-AUTHZ", "CWE-862", "A01",
+        "Endpoint performs a privileged action with no authorization",
+        ("CWE-862", "CWE-306")),
+    "workflow_skip": LogicClass(
+        "LOGIC-WORKFLOW", "CWE-841", "A04",
+        "Workflow state advanced without the preceding step",
+        ("CWE-841",)),
+    "trusted_client_value": LogicClass(
+        "LOGIC-CLIENTTRUST", "CWE-602", "A04",
+        "Server trusts a value the client chose",
+        ("CWE-602", "CWE-915")),
+}
+
+_LOGIC_SYS = (
+    "You are an application-security reviewer adjudicating a SHORTLIST. You are given a handler "
+    "map — deterministic facts extracted from the source about each mounted request handler — and "
+    "the source code itself, line-numbered. "
+    "Do NOT hunt for vulnerabilities across the repository. For each handler in the map, decide "
+    "whether the facts plus the source show one of exactly four business-logic flaws:\n"
+    "  missing_ownership     — a caller-supplied identifier selects a record and no principal "
+    "narrows it (look at `request_ids`, `ops[].constrained_by_principal`, `principals`).\n"
+    "  missing_authorization — a state-changing, non-public handler performs a privileged action "
+    "with nothing establishing the caller (`auth_evidence`, `state_changing`, `public_by_design`).\n"
+    "  workflow_skip         — a state field is written with no check of the state it came from "
+    "(`state_writes` without a corresponding `state_checks`).\n"
+    "  trusted_client_value  — a price, amount or quantity is taken from the request and used "
+    "without server-side revalidation (`money_from_request`).\n"
+    "The map is an EXTRACT, not the code. Confirm every candidate against the source before "
+    "reporting it, and stay silent when the source shows the check the map did not see — "
+    "`auth_evidence` is followed only through functions defined in the same module, so a gate "
+    "imported from elsewhere is absent from the map and present in the code. Reporting a handler "
+    "that is correct is worse than missing one that is not. "
+    "Cite the `handler` name exactly as the map spells it, and a `line` inside that handler's "
+    "`line`..`end_line` span. A flaw you cannot tie to a handler in the map is out of scope: do "
+    "not report it. "
+    "Reply ONLY with JSON: {\"logic\":[{\"class\":\"missing_ownership|missing_authorization|"
+    "workflow_skip|trusted_client_value\",\"handler\":str,\"file\":str,\"line\":int,\"title\":str,"
+    "\"severity\":\"Critical|High|Medium|Low|Informational\",\"note\":str}]}"
 )
 
 
@@ -76,6 +146,101 @@ class Backend:
                            "discover a flaw in code you have not been shown.")
         return head + "\n\nSource code (line-numbered):\n" + source
 
+    def _logic_prompt(self, result: ScanResult, handler_map: str, source: str = "") -> str:
+        """The business-logic call: a shortlist to adjudicate, not a repository to search.
+
+        Kept separate from `_prompt` rather than bolted onto it as a third channel. The triage
+        prompt tells the model to be adversarial about a scanner's claims; this one tells it to
+        be conservative about its own. One message asking for both produces a model that applies
+        whichever posture it read last, and the posture is the entire precision argument here.
+        """
+        head = ("Target: " + result.target + "\nHandler map (JSON lines):\n" + handler_map)
+        if not source:
+            return (head + "\n\nNo source code accompanies this map. Return an EMPTY `logic` "
+                           "list: the map is an extract and confirming a flaw against it alone "
+                           "is guessing.")
+        return head + "\n\nSource code (line-numbered):\n" + source
+
+    def _apply_logic(self, result: ScanResult, data: dict, shown: set[str] | None,
+                     handlers: list) -> ScanResult:
+        """Merge the business-logic channel, refusing everything it cannot tie to a handler.
+
+        Four refusals, each counted and reported rather than dropped quietly:
+
+        * a class outside `LOGIC_CLASSES` — no fallback CWE, because stamping one weakness id on
+          whatever the model happened to say is how a compliance section ends up describing a
+          flaw nobody found;
+        * a file the model was not shown;
+        * a line outside every handler span in that file — naming a file it was shown and a line
+          in some other function is not a finding;
+        * a handler where Tier 0 already reported the same weakness, which is a restatement.
+
+        Dedup is keyed on the handler rather than the line, so one flaw reported at two lines of
+        one handler — the shape a repeated call produces — lands once.
+        """
+        from .schema import Confidence, Finding
+        by_file: dict[str, list] = {}
+        for fact in handlers:
+            by_file.setdefault(fact.file, []).append(fact)
+        allowed = set(shown) | set(by_file) if shown is not None else None
+
+        unknown = ungrounded = outside = restated = 0
+        for item in data.get("logic", []):
+            spec = LOGIC_CLASSES.get(str(item.get("class", "")))
+            if spec is None:
+                unknown += 1
+                continue
+            cited = str(item.get("file", "?")).replace("\\", "/")
+            if allowed is not None and cited not in allowed:
+                ungrounded += 1
+                continue
+            line = int(item.get("line", 0) or 0)
+            name = str(item.get("handler", ""))
+            fact = next((f for f in by_file.get(cited, [])
+                         if f.contains(line) and (not name or f.name == name)), None)
+            if fact is None:
+                outside += 1
+                continue
+            # Tier 0 got there first: `AUTHZ-PY-IDOR` and `LOGIC-IDOR` are the same sentence about
+            # the same handler, and a report that prints both has inflated its own finding count.
+            prior = next((f for f in result.findings
+                          if f.file == cited and fact.contains(f.line)
+                          and (f.cwe in spec.restates or f.detector_id == spec.detector_id)), None)
+            if prior is not None:
+                # Two different things collide here and only one of them is a refusal. A prior
+                # finding from another tier means this pass is restating a bug that was already
+                # reported, and the reader is owed that count. A prior finding from THIS pass
+                # means the same flaw came back from a second model call — a duplicate, merged
+                # once, worth no sentence. Counting the second as the first would inflate the
+                # refusal figure with the pass's own repetitions and make it unreadable.
+                if prior.source != "llm-logic":
+                    restated += 1
+                continue
+            try:
+                sev = Severity(str(item.get("severity", "Medium")))
+            except ValueError:
+                sev = Severity.MEDIUM
+            # An unverified model claim must not outrank a proven Tier-0 Critical in the same
+            # report, however confidently it was phrased.
+            if sev.rank > Severity.HIGH.rank:
+                sev = Severity.HIGH
+            result.findings.append(Finding(
+                detector_id=spec.detector_id, title=str(item.get("title") or spec.title)[:200],
+                severity=sev, confidence=Confidence.MEDIUM, cwe=spec.cwe, owasp=spec.owasp,
+                file=cited, line=line or fact.line, evidence=f"(business-logic pass: {fact.name})",
+                fix="See triage note.", source="llm-logic", verdict=Verdict.PLAUSIBLE,
+                triage_note=str(item.get("note", ""))[:500]))
+
+        refusals = [(unknown, "named a class the pass does not define"),
+                    (ungrounded, "cited a file that was not in the context sent"),
+                    (outside, "cited a line outside every handler in the map"),
+                    (restated, "restated a weakness Tier 0 had already reported in that handler")]
+        for count, reason in refusals:
+            if count:
+                result.notes.append(f"{count} business-logic finding(s) {reason}, so they were "
+                                    f"not merged.")
+        return result
+
     def _apply(self, result: ScanResult, data: dict, shown: set[str] | None = None) -> ScanResult:
         by_key = {(f.detector_id, f.file, f.line): f for f in result.findings}
         for t in data.get("triage", []):
@@ -104,6 +269,13 @@ class Backend:
             if shown is not None and cited not in shown:
                 ungrounded += 1
                 continue
+            # One scan sends up to `MAX_CHUNKS` calls and a repository-wide logic flaw is visible
+            # from more than one of them, so the same finding arrived up to four times and the
+            # report counted it four times. Nothing here was deduplicating a channel that appends.
+            line_no = int(e.get("line", 1) or 1)
+            if any(f.detector_id == "LLM-LOGIC" and f.file == cited and f.line == line_no
+                   for f in result.findings):
+                continue
             try:
                 sev = Severity(str(e.get("severity", "Medium")))
             except ValueError:
@@ -111,7 +283,7 @@ class Backend:
             result.findings.append(Finding(
                 detector_id="LLM-LOGIC", title=str(e.get("title", "Logic flaw"))[:200],
                 severity=sev, confidence=Confidence.MEDIUM, cwe="CWE-284", owasp="A01",
-                file=str(e.get("file", "?")), line=int(e.get("line", 1) or 1),
+                file=cited, line=line_no,
                 evidence="(model-identified)", fix="See triage note.",
                 source="llm", verdict=Verdict.PLAUSIBLE, triage_note=str(e.get("note", ""))[:500]))
         if ungrounded:
@@ -166,11 +338,23 @@ class _HTTPBackend(Backend):
             result.backend = self.name
             return result
         shown = set(ctx.excerpt_files) | set(ctx.discovery_files) if ctx.chunks else None
+        # The business-logic call is one of the `MAX_CHUNKS`, not an extra on top of it — the
+        # reservation happens in `llmcontext.build`, which is why `total` can be counted here.
+        total = len(chunks) + (1 if ctx.handlers else 0)
         completed = 0
         try:
             for chunk in chunks:
                 text = self._call(self._prompt(result, chunk))
                 self._apply(result, self._parse_json(text), shown)
+                completed += 1
+            if ctx.handlers:
+                text = self._call(self._logic_prompt(result, ctx.handler_map, ctx.logic_source))
+                # Grounded on the files whose source went WITH the map, not on everything the
+                # scan sent: this call is stateless and knows nothing about the triage calls, so
+                # a citation into a file only they carried is a citation into code this model
+                # never saw.
+                self._apply_logic(result, self._parse_json(text), set(ctx.logic_files),
+                                  ctx.handlers)
                 completed += 1
         except Exception as e:                       # noqa: BLE001 - reported, not swallowed
             # A failure on chunk 3 of 4 leaves real triage already merged from chunks 1 and 2.
@@ -178,10 +362,10 @@ class _HTTPBackend(Backend):
             # would look like a full Tier-1 pass over a partial one.
             if completed:
                 result.notes.append(
-                    f"{self.name} backend failed after {completed} of {len(chunks)} context "
-                    f"chunk(s) ({e}); the triage below covers only what was sent before the "
+                    f"{self.name} backend failed after {completed} of {total} model call(s) "
+                    f"({e}); the triage below covers only what was sent before the "
                     f"failure and the rest of the tree is unexamined, not clean.")
-                result.backend = f"{self.name} (partial: {completed}/{len(chunks)})"
+                result.backend = f"{self.name} (partial: {completed}/{total})"
             else:
                 result.notes.append(
                     f"{self.name} backend unavailable ({e}); returned Tier-0 findings.")
