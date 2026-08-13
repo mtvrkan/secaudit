@@ -18,7 +18,7 @@
 #
 # Keep the `# python:<tag>` comment on each FROM: a bare digest tells a reader nothing about
 # which image it is, and the comment is what makes the pin reviewable.
-FROM python@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2 AS build   # python:3.12-slim-bookworm
+FROM python@sha256:297cf11d0b98b38ac26a56136f0279df845314bcd0347c1f6383fee6e75125ee AS build   # python:3.12-slim-bookworm
 
 WORKDIR /build
 COPY kit/ ./kit/
@@ -31,7 +31,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade build && \
 COPY scripts/assert_no_runtime_deps.py /build/
 RUN python3 /build/assert_no_runtime_deps.py /dist
 
-FROM python@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2   # python:3.12-slim-bookworm
+FROM python@sha256:297cf11d0b98b38ac26a56136f0279df845314bcd0347c1f6383fee6e75125ee   # python:3.12-slim-bookworm
 
 # `git` is here for exactly one reason: `--since <ref>` materialises the baseline tree with
 # `git archive`. Without it that flag fails with a clear message instead of silently auditing
