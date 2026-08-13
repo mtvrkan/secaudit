@@ -787,6 +787,47 @@ def _realvuln_run_count(history: list[dict]) -> list[str]:
     return fails
 
 
+def check_30_version_headings_have_tags(f: dict) -> list[str]:
+    """A `## [x.y.z]` heading claims a fetchable artefact. Refuse the ones nobody can fetch.
+
+    This gate exists because a heading reading `## [1.0.0] — 2026-07-11 · Initial public release`
+    sat at the bottom of CHANGELOG.md for a month while no `v1.0.0` tag existed, nothing had been
+    uploaded to PyPI, and the repository was private. Every other number in this repo is derived
+    from the thing it describes; the release history was the one claim still typed by hand, and it
+    was wrong in the direction that flatters — a reader would have concluded the project had
+    shipped and that everything above the heading was a later increment.
+
+    Tags are the source of truth, not PyPI: the release workflow fires on a `v*` tag and refuses
+    to build when the tag disagrees with `kit/pyproject.toml`, so a tag is the point at which a
+    version stops being an intention. Git that cannot answer is a failure rather than a pass —
+    the gate is undecidable then, and a gate that quietly degrades to "fine" is the shape of the
+    bug it was written for. CI must therefore fetch tags (`fetch-depth: 0` in validate.yml); a
+    shallow clone answers "no tags" for a repository that has them, which is exactly the false
+    "fine" this refuses to emit.
+    """
+    import subprocess                                                       # noqa: PLC0415
+
+    ch = read(os.path.join(REPO, "CHANGELOG.md"))
+    claimed = re.findall(r"^## \[(\d+\.\d+\.\d+)\]", ch, re.M)
+    if not claimed:
+        return []
+    try:
+        proc = subprocess.run(["git", "-C", REPO, "tag", "--list"],
+                              capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return [f"check 30: CHANGELOG.md claims release(s) {', '.join(claimed)} but git cannot "
+                f"be asked whether the matching tags exist ({exc.__class__.__name__}), so the "
+                f"claim is unverifiable rather than verified"]
+    if proc.returncode != 0:
+        return [f"check 30: CHANGELOG.md claims release(s) {', '.join(claimed)} but "
+                f"`git tag --list` failed, so the claim is unverifiable rather than verified"]
+    tags = {t.strip() for t in proc.stdout.splitlines() if t.strip()}
+    return [f"check 30: CHANGELOG.md has a `## [{v}]` release heading but no `v{v}` tag exists — "
+            f"a version heading is a claim that an artefact with that number can be fetched. "
+            f"Either push the tag or keep the entries under `## [Unreleased]`."
+            for v in claimed if f"v{v}" not in tags]
+
+
 CHECKS = [
     check_01_detector_ids_unique,
     check_02_detector_regexes_compile,
@@ -807,6 +848,7 @@ CHECKS = [
     check_27_realvuln_claims_match_the_scorer,
     check_28_code_shape_has_one_source_of_truth,
     check_29_no_typed_gate_count,
+    check_30_version_headings_have_tags,
 ]
 
 

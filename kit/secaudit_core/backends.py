@@ -9,8 +9,15 @@ vendor SDK is required:
   * openai    — OpenAI Chat Completions (OPENAI_API_KEY).
   * ollama    — a LOCAL model via http://localhost:11434 (no key, code never leaves the host).
 
+**These backends send your source code.** `llmcontext` builds the payload and the reasoning is
+there; the consequence belongs here, next to the API calls that make it true. A remote backend
+receives excerpts around every finding plus whole files it has not been shown a reason to skip,
+which is what makes triage and logic-bug discovery possible at all — and which makes `ollama`
+the choice to reach for when the code may not leave the machine, rather than merely the cheap
+one. Files matching credential patterns are withheld from every backend, local included.
+
 The LLM backends are wired end-to-end but are not exercised in CI (no keys / no local model
-there); `none` is fully covered by the test suite.
+there); `none` and the full prompt/parse/merge path are covered by stub and replay backends.
 """
 from __future__ import annotations
 
@@ -18,12 +25,21 @@ import json
 import os
 import urllib.request
 
+from . import llmcontext
 from .schema import ScanResult, Severity, Verdict
 
 _TRIAGE_SYS = (
-    "You are an adversarial application-security verifier. For each candidate finding decide if "
-    "it is real and reachable from untrusted input in THIS code. Default to skeptical. Also report "
-    "any logic/authorization flaws (e.g. IDOR, missing ownership checks) the pattern scan missed. "
+    "You are an adversarial application-security verifier. You are given candidate findings from "
+    "a pattern scanner AND the source code they refer to, line-numbered. "
+    "For each candidate finding decide, FROM THE SOURCE SHOWN, whether it is real and reachable "
+    "from untrusted input. Default to skeptical: refute anything the code shows is guarded, "
+    "parameterized, or unreachable. "
+    "Then report logic and authorization flaws the pattern scan cannot detect — missing ownership "
+    "checks (IDOR), endpoints with no authentication, broken access control, business-logic flaws "
+    "— using ONLY the files shown to you. "
+    "Every `file` you cite must be one that appears in the source above and every `line` must be "
+    "a line number printed in it. Do not report a flaw in a file you were not shown, and do not "
+    "speculate about code that is not present: an unshown file is unknown, not clean. "
     "Reply ONLY with JSON: {\"triage\":[{\"detector_id\":str,\"file\":str,\"line\":int,"
     "\"verdict\":\"confirmed|plausible|refuted\",\"severity\":\"Critical|High|Medium|Low|Informational\","
     "\"note\":str}],\"extra\":[{\"title\":str,\"file\":str,\"line\":int,\"severity\":str,\"note\":str}]}"
@@ -45,14 +61,22 @@ class Backend:
         raise NotImplementedError
 
     # -- shared helpers --------------------------------------------------
-    def _prompt(self, result: ScanResult) -> str:
+    def _prompt(self, result: ScanResult, source: str = "") -> str:
         items = [{"detector_id": f.detector_id, "title": f.title, "file": f.file,
                   "line": f.line, "severity": f.severity.value, "evidence": f.evidence}
                  for f in result.findings]
-        return ("Target: " + result.target + "\nCandidate findings (JSON):\n"
+        head = ("Target: " + result.target + "\nCandidate findings (JSON):\n"
                 + json.dumps(items, indent=2))
+        if not source:
+            # No readable tree (a live-URL scan, or a target that vanished). Say so in the
+            # prompt itself: a model given a bare finding list and no statement about why will
+            # answer the discovery question anyway, out of nothing.
+            return (head + "\n\nNo source code is available for this target. Triage from the "
+                           "evidence lines only, and return an EMPTY `extra` list — you cannot "
+                           "discover a flaw in code you have not been shown.")
+        return head + "\n\nSource code (line-numbered):\n" + source
 
-    def _apply(self, result: ScanResult, data: dict) -> ScanResult:
+    def _apply(self, result: ScanResult, data: dict, shown: set[str] | None = None) -> ScanResult:
         by_key = {(f.detector_id, f.file, f.line): f for f in result.findings}
         for t in data.get("triage", []):
             f = by_key.get((t.get("detector_id"), t.get("file"), t.get("line")))
@@ -68,7 +92,18 @@ class Backend:
             except ValueError:
                 pass
         from .schema import Finding, Confidence
+        ungrounded = 0
         for e in data.get("extra", []):
+            # A discovered flaw must point at a file the model was actually shown. `shown` is
+            # None only where no context was built at all (nothing to check against); where it
+            # exists, a citation outside it is not a finding — it is the model answering the
+            # question from prior knowledge of what web apps usually get wrong. Counted and
+            # reported rather than dropped in silence, because a filtered register is not
+            # evidence anywhere else in this codebase either.
+            cited = str(e.get("file", "?")).replace("\\", "/")
+            if shown is not None and cited not in shown:
+                ungrounded += 1
+                continue
             try:
                 sev = Severity(str(e.get("severity", "Medium")))
             except ValueError:
@@ -79,6 +114,11 @@ class Backend:
                 file=str(e.get("file", "?")), line=int(e.get("line", 1) or 1),
                 evidence="(model-identified)", fix="See triage note.",
                 source="llm", verdict=Verdict.PLAUSIBLE, triage_note=str(e.get("note", ""))[:500]))
+        if ungrounded:
+            result.notes.append(
+                f"{ungrounded} model-reported finding(s) cited a file that was not in the "
+                f"context sent, so they were not merged — a citation the reader cannot open is "
+                f"not a finding.")
         result.backend = self.name
         return result
 
@@ -113,16 +153,44 @@ class _HTTPBackend(Backend):
             return json.loads(r.read().decode())
 
     def enrich(self, result: ScanResult) -> ScanResult:
-        if not result.findings:
+        """Triage + discovery over the repository's source, in at most `MAX_CHUNKS` calls.
+
+        A scan with zero Tier-0 findings is no longer an early return. That was defensible while
+        the payload was the finding list itself — an empty list is nothing to send — but a clean
+        Tier-0 result on a repository full of handlers is exactly the case where discovery is
+        worth the most, and skipping it made "no findings" self-confirming.
+        """
+        ctx = llmcontext.build(result)
+        chunks = ctx.chunks or [""]
+        if not result.findings and not ctx.chunks:
             result.backend = self.name
             return result
+        shown = set(ctx.excerpt_files) | set(ctx.discovery_files) if ctx.chunks else None
+        completed = 0
         try:
-            text = self._call(self._prompt(result))
-            return self._apply(result, self._parse_json(text))
+            for chunk in chunks:
+                text = self._call(self._prompt(result, chunk))
+                self._apply(result, self._parse_json(text), shown)
+                completed += 1
         except Exception as e:                       # noqa: BLE001 - reported, not swallowed
-            result.notes.append(f"{self.name} backend unavailable ({e}); returned Tier-0 findings.")
-            result.backend = f"{self.name} (fallback: none)"
+            # A failure on chunk 3 of 4 leaves real triage already merged from chunks 1 and 2.
+            # Discarding it would be wasteful; keeping it silently would be worse — the report
+            # would look like a full Tier-1 pass over a partial one.
+            if completed:
+                result.notes.append(
+                    f"{self.name} backend failed after {completed} of {len(chunks)} context "
+                    f"chunk(s) ({e}); the triage below covers only what was sent before the "
+                    f"failure and the rest of the tree is unexamined, not clean.")
+                result.backend = f"{self.name} (partial: {completed}/{len(chunks)})"
+            else:
+                result.notes.append(
+                    f"{self.name} backend unavailable ({e}); returned Tier-0 findings.")
+                result.backend = f"{self.name} (fallback: none)"
             return result
+        if ctx.chunks:
+            result.notes.append(ctx.note())
+        result.backend = self.name
+        return result
 
     def _call(self, prompt: str) -> str:
         raise NotImplementedError

@@ -6,6 +6,35 @@ All notable changes to SecAudit are documented here. This project follows
 ## [Unreleased]
 
 ### Fixed
+- **The LLM tier never saw the code it was asked to audit.** The enrichment prompt carried only
+  Tier-0's own output — detector id, file, line, severity and a single line of `evidence` — and no
+  source. Two claims rested on that payload and neither could hold: triage ("decide if this is
+  real and reachable in THIS code") was judging a citation rather than the code, and **logic-bug
+  discovery was structurally impossible** — the `extra` channel asks for the flaws the pattern
+  scan missed, which live in handlers Tier 0 never flagged and were therefore never in the
+  payload. `secaudit_core/llmcontext.py` now builds a real source context: merged excerpts around
+  every finding first, then whole unflagged files ranked toward request handlers, so a truncated
+  context loses discovery breadth and never loses the code behind a finding. Bounded at
+  240k characters per call and **four calls per scan**, and what was not sent is reported —
+  a triage over a partial view is not printed as a clean bill. A model-reported finding citing a
+  file outside the context is refused and counted rather than merged. Every assertion is on the
+  payload that reaches the transport, not on the builder's return value; proven by five
+  mutations, two of which initially survived. [2026-08-13]
+- **This file claimed a release that never happened.** `## [1.0.0] — 2026-07-11 · Initial public
+  release` sat at the bottom of the changelog while no `v1.0.0` tag existed, nothing had been
+  uploaded to PyPI and the repository was private — so a reader would have concluded the project
+  had shipped and that everything above that heading was a later increment. It was the last claim
+  in the repo still typed by hand rather than derived from the thing it describes, and it was
+  wrong in the flattering direction. The section is now dated prose inside `[Unreleased]`, where
+  all of it belongs until a tag exists. **Check 30** refuses any `## [x.y.z]` heading with no
+  matching `vx.y.z` tag, proven by re-introducing the heading and watching the build fail.
+  `validate.yml` gained `fetch-depth: 0` for the same reason: the default shallow checkout fetches
+  no tags, so the gate would have answered "no tags exist" for a repository that has them and
+  failed the first correct release. [2026-08-13]
+- **Three rows of the gap analysis pointed at a phase the roadmap did not contain.** G7, G11 and
+  G12 are routed to P4; the document went P3 → P5, with P4's items (MCP server, PyPI packaging,
+  Action, Docker, live-target depth, continuous mode) absorbed under P3's heading along with its
+  exit criteria. P4 — Distribution now exists where its content already was. [2026-08-13]
 - **The rate-limit rule was silent on the code it exists to report, in three ways.** A limiter
   mentioned anywhere in a file silenced every route in it, so one `@limiter.limit` on `/login`
   protected an unlimited `/admin-login` beside it; `attempt` was a limiter marker on its own, so
@@ -23,6 +52,13 @@ All notable changes to SecAudit are documented here. This project follows
   [2026-08-13]
 
 ### Changed
+- **Tier 1 now sends your source code, and the docs say so before you run it.** This is a real
+  change in what leaves the machine: previously a remote backend saw findings metadata, now it
+  sees source. `--backend ollama` (local, nothing leaves the host) is therefore a different
+  decision rather than a cheaper one, and the README and FAQ answer the question per run mode
+  instead of only for the Claude Code plugin. Files matching credential patterns (`.env*`,
+  `*.pem`, `*.key`, `*.p12`, `id_rsa`, `secrets/`, `*.tfstate`, …) are withheld from **every**
+  backend including the local one, and the count of withheld files is reported. [2026-08-13]
 - **Check 27 now gates the prose, the run-history table, the per-family recall table and the
   per-repository leaderboard**, not just headings and headline rows. Four sentences kept the
   previous round's F3 through a green build, the per-family table read `other 219 / 831` after
@@ -928,12 +964,18 @@ finding: unauthenticated config/settings endpoints leaking SMTP credentials whol
   (uncontrolled error-path signal); duplicate/conflicting security headers from two layers
   (reverse proxy + app middleware) is its own finding independent of either value's safety.
 
-## [1.0.0] — 2026-07-11
+### The first plugin build — 2026-07-11
 
-Initial public release — a Claude Code plugin + marketplace for authorized, defensive
-security auditing of a live URL or a source-code repo.
+The Claude Code plugin + marketplace for authorized, defensive security auditing of a live
+URL or a source-code repo. This was written as `## [1.0.0] — 2026-07-11 · Initial public
+release`, and it was never released: no `v1.0.0` tag exists, nothing was uploaded to PyPI,
+and the repository has been private throughout. A version heading is a claim that an
+artefact with that number exists and can be fetched; nothing here can be. Everything in this
+file is therefore unreleased, and the first tag pushed will be `v1.0.0` covering all of it —
+which is what `kit/pyproject.toml` and `docs/launch-checklist.md` already say. Check 30 now
+refuses any version heading that has no matching git tag, so this cannot recur silently.
 
-### Core
+#### Core
 - `/secaudit`, `/secaudit-code`, `/secaudit-passive`, `/secaudit-deps` commands.
 - `security-audit` skill with a phased methodology (P1–P9) and progressive-disclosure references.
 - `secaudit-verifier` adversarial finding-verification agent — **read-only** (`Read`, `Grep`,
@@ -954,7 +996,7 @@ security auditing of a live URL or a source-code repo.
   `--selftest` (18 active blocked, 12 passive allowed) gated in CI.
 - English + Turkish report output.
 
-### Coverage
+#### Coverage
 - OWASP Web Top 10 (2025), API Top 10 (2023), LLM Top 10 (2025), Mobile Top 10 (2024),
   CWE Top 25; dependency/CVE (OSV/GHSA/NVD/CISA KEV); secrets; infra/IaC/containers.
 - **Auth & identity** (`auth-identity.md`): JWT (`alg:none`, RS256→HS256 confusion,
@@ -978,12 +1020,12 @@ security auditing of a live URL or a source-code repo.
   runtime hardening (Frida/objection), dynamic toolchain (MobSF, apktool/jadx, adb, proxy).
 - Business-logic / race-condition and cloud IAM privilege-escalation coverage.
 
-### Reporting
+#### Reporting
 - Severity-ranked findings with impact, evidence, root cause, specific fix, and retest step.
 - `CONFIRMED` / `PLAUSIBLE` / `REFUTED` verdicts plus a "Considered & Dismissed" section, a
   dependency/CVE register, positive controls, and a 24–72h / 7–14d / 30–60d remediation roadmap.
 
-### Quality & safety
+#### Quality & safety
 - Self-test harness: a **multi-language** intentionally-vulnerable fixture (`tests/fixtures/`)
   with **20 planted code flaws** (16 JavaScript + 4 Python), a golden set
   (`tests/expected-findings.md`), a fallback-mode dogfooding run (`examples/self-test-report.md`),
@@ -1005,7 +1047,7 @@ security auditing of a live URL or a source-code repo.
   self-test**, and a **pinned, blocking** `zizmor` self-lint.
 - Scope template, sanitized example report, and full documentation set.
 
-### Standalone kit (provider-agnostic, self-running)
+#### Standalone kit (provider-agnostic, self-running)
 - `kit/` — a dependency-free Python CLI that runs **outside** a Claude Code session (CI / cron /
   shell) and is **not tied to Claude**. Two tiers: **Tier 0** (deterministic detectors + installed
   scanners + `npm audit`, no LLM, always runs) and **Tier 1** (optional LLM enrichment — triage +

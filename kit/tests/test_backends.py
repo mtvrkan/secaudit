@@ -52,6 +52,165 @@ def _sample_result() -> ScanResult:
     return r
 
 
+def _test_source_context() -> list[str]:
+    """The property the enrichment tier was missing entirely: the model is shown the code.
+
+    Every assertion here is about the payload that actually reaches `_call`, not about the
+    context builder's own return value. Asserting on the builder would have passed just as well
+    while `_prompt` ignored it, which is the shape of bug this suite already caught twice
+    elsewhere (a severity map asserted by reading itself, a privacy claim asserted by grepping
+    its own source).
+    """
+    import shutil                                                           # noqa: PLC0415
+    import tempfile                                                         # noqa: PLC0415
+    from secaudit_core import llmcontext                                    # noqa: PLC0415
+
+    fails: list[str] = []
+    seen: list[str] = []
+
+    class Capture(_HTTPBackend):
+        name = "capture"
+
+        def _call(self, prompt: str) -> str:
+            seen.append(prompt)
+            return ('{"triage":[],"extra":[{"title":"IDOR on /invoice","file":"routes/api.py",'
+                    '"line":4,"severity":"High","note":"no owner filter"},'
+                    '{"title":"invented","file":"nowhere/ghost.py","line":1,'
+                    '"severity":"High","note":"model made this up"}]}')
+
+    root = tempfile.mkdtemp(prefix="secaudit-ctx-")
+    try:
+        os.makedirs(os.path.join(root, "routes"))
+        os.makedirs(os.path.join(root, "secrets"))
+        with open(os.path.join(root, "routes", "api.py"), "w", encoding="utf-8") as f:
+            f.write("def get_invoice(id):\n    return db.invoice(id)\n" * 4)
+        with open(os.path.join(root, "app.py"), "w", encoding="utf-8") as f:
+            f.write("import os\n" * 40 + "eval(request.args['x'])\n")
+        # Sorts BEFORE `routes/api.py` alphabetically and carries no handler hint, so it is the
+        # file that separates "ranked toward handlers" from "whatever the walk returned first".
+        with open(os.path.join(root, "aaa_helpers.py"), "w", encoding="utf-8") as f:
+            f.write("def slugify(s):\n    return s.lower()\n")
+        # Credential material, in three shapes the exclusion list has to catch separately.
+        with open(os.path.join(root, ".env"), "w", encoding="utf-8") as f:
+            f.write("AWS_SECRET_ACCESS_KEY=" + "x" * 40 + "\n")
+        with open(os.path.join(root, "server.pem"), "w", encoding="utf-8") as f:
+            f.write("-----BEGIN PRIVATE KEY-----\n")
+        with open(os.path.join(root, "secrets", "prod.py"), "w", encoding="utf-8") as f:
+            f.write("DB_PASSWORD = 'hunter2'\n")
+
+        res = ScanResult(target=root, backend="none")
+        res.findings = [Finding("SEC-PY-EVAL", "eval on request data", Severity.CRITICAL,
+                                Confidence.HIGH, "CWE-95", "A03", "app.py", 41,
+                                "eval(request.args['x'])", "do not eval")]
+        out = Capture().enrich(res)
+
+        if not seen:
+            return ["source context: backend was never called"]
+        prompt = "\n".join(seen)
+
+        # 1. The bug this whole change exists for: source must be in the payload.
+        if "eval(request.args['x'])" not in prompt or "FILE app.py" not in prompt:
+            fails.append("source context: the flagged file's code never reached the prompt")
+        if "   41 |" not in prompt:
+            fails.append("source context: excerpt lines are not line-numbered, so a model's "
+                         "reported line cannot be checked against them")
+
+        # 2. Discovery needs files Tier 0 said nothing about.
+        if "FILE routes/api.py" not in prompt:
+            fails.append("source context: an unflagged handler file was not sent, so the model "
+                         "cannot report anything the pattern scan missed")
+
+        # 3. Credential material must never be shipped, in any of its three shapes.
+        for marker, what in (("AWS_SECRET_ACCESS_KEY", ".env"),
+                             ("BEGIN PRIVATE KEY", "*.pem"),
+                             ("hunter2", "secrets/ directory")):
+            if marker in prompt:
+                fails.append(f"source context: {what} content was sent to the backend")
+
+        # 4. A discovered flaw in a file the model was shown is kept; one in a file it was not
+        #    shown is refused and counted.
+        logic = [f for f in out.findings if f.detector_id == "LLM-LOGIC"]
+        if len(logic) != 1 or logic[0].file != "routes/api.py":
+            fails.append(f"source context: expected exactly the grounded logic finding, "
+                         f"got {[f.file for f in logic]}")
+        if not any("not in the context sent" in n for n in out.notes):
+            fails.append("source context: an ungrounded model finding was dropped without "
+                         "saying so — a silent filter is the failure mode, not the fix")
+
+        # 5. The result must state what the model actually saw.
+        if not any("of 3 source files" in n for n in out.notes):
+            fails.append(f"source context: coverage was not reported in the notes ({out.notes})")
+
+        # 5b. Discovery budget goes to handlers first. Without the ranking these two files come
+        #     back in plain alphabetical order, which spends the budget on a slug helper before
+        #     the route file where the undetectable classes actually live.
+        if prompt.find("FILE routes/api.py") > prompt.find("FILE aaa_helpers.py"):
+            fails.append("source context: discovery order is not ranked toward handlers")
+
+        # 6. Determinism — the same tree must produce a byte-identical payload.
+        seen.clear()
+        Capture().enrich(_fresh(root))
+        second = "\n".join(seen)
+        if second != prompt:
+            fails.append("source context: two runs over one tree produced different payloads")
+
+        # 7. No source (a live-URL target) must not silently invite discovery.
+        seen.clear()
+        url = ScanResult(target="https://example.com", backend="none")
+        url.findings = [Finding("SEC-HDR", "missing header", Severity.LOW, Confidence.HIGH,
+                                "CWE-693", "A05", "-", 1, "-", "add it")]
+        Capture().enrich(url)
+        if not seen or "No source code is available" not in seen[0]:
+            fails.append("source context: a target with no source did not say so in the prompt")
+
+        # 8. The budget is a real ceiling, not documentation.
+        if llmcontext.MAX_CHUNKS < 1 or llmcontext.CHUNK_BUDGET_CHARS < 1000:
+            fails.append("source context: implausible budget constants")
+        big = llmcontext.build(_fresh(root))
+        if any(len(c) > llmcontext.CHUNK_BUDGET_CHARS * 1.05 for c in big.chunks):
+            fails.append("source context: a chunk exceeded the character budget")
+        if len(big.chunks) > llmcontext.MAX_CHUNKS:
+            fails.append("source context: more chunks than MAX_CHUNKS — the cost ceiling leaks")
+
+        # 9. Truncation: the branch that BOUNDS the payload, exercised rather than assumed.
+        #    A budget nobody has watched overflow is a budget nobody knows the shape of, and
+        #    "what was not sent is reported" is a published claim, so it gets a failing case.
+        #    Ten handler files against a budget that fits about one forces the cap.
+        for i in range(10):
+            with open(os.path.join(root, f"route_{i}.py"), "w", encoding="utf-8") as f:
+                f.write(f"# handler {i}\ndef view_{i}(request):\n    return db.get(request.args)\n"
+                        * 200)
+        budget, chunks_cap = llmcontext.CHUNK_BUDGET_CHARS, llmcontext.MAX_CHUNKS
+        llmcontext.CHUNK_BUDGET_CHARS, llmcontext.MAX_CHUNKS = 4_000, 2
+        try:
+            tight = llmcontext.build(_fresh(root))
+            if not tight.truncated:
+                fails.append("source context: a tree far over budget did not report truncation")
+            if len(tight.chunks) > 2:
+                fails.append(f"source context: MAX_CHUNKS=2 produced {len(tight.chunks)} chunks")
+            if "budget ran out" not in tight.note() or "cannot be ruled out" not in tight.note():
+                fails.append(f"source context: truncation is not stated in the note "
+                             f"({tight.note()!r})")
+            # The ordering guarantee that makes truncation survivable: excerpts are packed
+            # first, so the code behind a finding is never what gets dropped.
+            if "app.py" not in tight.excerpt_files:
+                fails.append("source context: truncation dropped the excerpt behind a finding — "
+                             "the one thing the packing order exists to protect")
+        finally:
+            llmcontext.CHUNK_BUDGET_CHARS, llmcontext.MAX_CHUNKS = budget, chunks_cap
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return fails
+
+
+def _fresh(root: str) -> ScanResult:
+    r = ScanResult(target=root, backend="none")
+    r.findings = [Finding("SEC-PY-EVAL", "eval on request data", Severity.CRITICAL,
+                          Confidence.HIGH, "CWE-95", "A03", "app.py", 41,
+                          "eval(request.args['x'])", "do not eval")]
+    return r
+
+
 def main() -> int:
     fails: list[str] = []
 
@@ -103,6 +262,8 @@ def main() -> int:
     boom = Boom().enrich(_sample_result())
     if len(boom.findings) != 2 or "fallback" not in boom.backend:
         fails.append("backend error should fall back to Tier-0 findings, not crash or drop them")
+
+    fails += _test_source_context()
 
     if fails:
         print("BACKEND TESTS FAILED:")

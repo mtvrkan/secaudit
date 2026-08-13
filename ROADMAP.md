@@ -314,6 +314,16 @@ Make the claims falsifiable, then publish them.
   not more catalog entries. `path_traversal` stayed at 3/39 across nine added filesystem sinks
   in two rounds, which says its misses are about which values are believed attacker-controlled.
 
+- **The tier that was supposed to reach them could not see the code (fixed 2026-08-13).** The
+  enrichment prompt carried Tier-0's finding list and nothing else, so the `extra` channel — the
+  one meant to report exactly `broken_access_control` and `missing_auth` — was asking a model to
+  find flaws in handlers it had never been shown. `secaudit_core/llmcontext.py` now sends
+  finding excerpts plus unflagged handler files, bounded at four calls per scan, and a cited file
+  outside that context is refused rather than merged. **This changes nothing about the numbers
+  above and must not be read as if it did:** every figure on this page is Tier 0, and the
+  enrichment tier is still unmeasured. It moves the tier from *cannot* to *untested*, which is a
+  smaller claim than it sounds like and the honest one.
+
 - ✅ **Fixture expansion** — 61 planted flaws across 15 languages, each with a paired
   safe twin implementing the same feature. Ten languages had detectors and no fixtures
   before this; one of those detectors (`SEC-RS-CMDI`) turned out to have never been able
@@ -393,6 +403,13 @@ Make the claims falsifiable, then publish them.
   in English on purpose, because they change with the engine and a stale translated fix
   is not visibly wrong. Original note below:
 - **i18n as data:** report strings in `i18n/en.json` + `i18n/tr.json`, not prose forked per
+
+### P4 — Distribution (G7, G10-partial, G11, G12)
+
+Reach the harnesses and pipelines that are not a Claude Code session. The gap table routes G7,
+G11 and G12 here; this heading was missing while its items sat under P3, which made three rows of
+that table point at a phase the document did not contain.
+
 - ✅ **MCP server** (`kit/secaudit_mcp/`, `python3 -m secaudit_mcp`) exposing `scan_source`,
   `scan_dependencies`, `generate_sbom`, `compliance_pack`, `explain_finding` and `coverage`.
   Per-client config in [`docs/mcp.md`](docs/mcp.md). Two planned tools were deliberately not
