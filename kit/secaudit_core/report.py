@@ -235,7 +235,7 @@ def _esc(text: str) -> str:
             .replace('"', "&quot;"))
 
 
-def to_html(result: ScanResult) -> str:
+def to_html(result: ScanResult, locale: str = i18n.DEFAULT) -> str:
     """A self-contained, printable HTML report — and the PDF path, via the browser's own
     print-to-PDF rather than a rendering dependency the kit would have to ship and pin.
 
@@ -243,55 +243,69 @@ def to_html(result: ScanResult) -> str:
     file can be attached to a ticket, mailed to an auditor, or opened on a machine with no
     network and render identically. Executive summary and technical body are separate sections
     because they have different readers, and the print rules keep a finding from splitting
-    across a page break."""
+    across a page break.
+
+    `locale` selects the same bundle `to_markdown` uses, and localizes the same layer: the
+    report's own furniture, never a finding's title, evidence or fix. This renderer took no
+    locale at all until it was noticed that `--lang tr --format html` was accepted and produced
+    an English document — the flag was not refused, it was ignored, which is the failure mode the
+    CLI's `--summary` and `--suggest-patches` handling had in the same pass."""
+    t = i18n.Strings(locale)
     counts = result.counts()
     total = len(result.findings)
     top = [f for f in result.by_severity() if f.severity.rank >= Severity.HIGH.rank]
 
     cards = "".join(
         f'<div class="card" style="--c:{_SEVERITY_COLOR[s.value]}">'
-        f'<b>{counts[s.value]}</b><span>{_esc(s.value)}</span></div>'
+        f'<b>{counts[s.value]}</b><span>{_esc(t.severity(s.value))}</span></div>'
         for s in Severity)
 
     blocks = []
     for f in result.by_severity():
-        rows = [("Location", f"<code>{_esc(f.file)}:{f.line}</code>"),
-                ("Class", f"{_esc(f.cwe)} · OWASP {_esc(f.owasp)}"),
-                ("Detector", f"<code>{_esc(f.detector_id)}</code> ({_esc(f.source)}, "
-                             f"confidence {_esc(f.confidence.value)}, "
-                             f"verdict {_esc(f.verdict.value)})"),
-                ("Evidence", f"<pre>{_esc(f.evidence)}</pre>")]
+        # Built before the f-string, not inside it: an expression spanning lines within `{}` is
+        # a syntax error until 3.12 and this package advertises a lower floor (check 32).
+        meta = t("field.detector_meta", source=f.source, confidence=f.confidence.value,
+                 verdict=f.verdict.value)
+        rows = [(t("field.location"), f"<code>{_esc(f.file)}:{f.line}</code>"),
+                (t("field.class"), f"{_esc(f.cwe)} · OWASP {_esc(f.owasp)}"),
+                (t("field.detector"),
+                 f"<code>{_esc(f.detector_id)}</code> ({_esc(meta)})"),
+                (t("field.evidence"), f"<pre>{_esc(f.evidence)}</pre>")]
         if f.taint_path:
-            rows.append(("Reachability", f"<pre>{_esc(f.taint_path)}</pre>"))
+            rows.append((t("field.reachability"), f"<pre>{_esc(f.taint_path)}</pre>"))
         if f.vex_status:
             just = f" ({_esc(f.vex_justification)})" if f.vex_justification else ""
-            rows.append(("VEX", f"<code>{_esc(f.vex_status)}</code>{just}"))
+            rows.append((t("field.vex"), f"<code>{_esc(f.vex_status)}</code>{just}"))
         if f.exploitation:
             note = f" {_esc(f.exploitation_note)}" if f.exploitation_note else ""
-            rows.append(("Exploitation", f"<code>{_esc(f.exploitation)}</code>{note}"))
+            rows.append((t("field.exploitation"), f"<code>{_esc(f.exploitation)}</code>{note}"))
         if f.triage_note:
-            rows.append(("Triage", _esc(f.triage_note)))
-        rows.append(("Fix", _esc(f.fix)))
-        body = "".join(f"<tr><th>{label}</th><td>{value}</td></tr>" for label, value in rows)
+            rows.append((t("field.triage"), _esc(f.triage_note)))
+        rows.append((t("field.fix"), _esc(f.fix)))
+        body = "".join(f"<tr><th>{_esc(label)}</th><td>{value}</td></tr>"
+                       for label, value in rows)
         blocks.append(
             f'<article class="finding" style="--c:{_SEVERITY_COLOR[f.severity.value]}">'
             f'<h3><span class="sev">{_esc(f.severity.value)}</span> {_esc(f.title)}</h3>'
             f"<table>{body}</table></article>")
 
-    summary = (f"{total} finding(s): "
-               + ", ".join(f"{counts[s.value]} {s.value.lower()}"
-                           for s in Severity if counts[s.value]) or "no findings")
-    lede = (f"The deterministic tier reported {summary} for <code>{_esc(result.target)}</code>."
-            if total else
-            f"The deterministic tier reported no findings for "
-            f"<code>{_esc(result.target)}</code>.")
+    target_html = f"<code>{_esc(result.target)}</code>"
+    if total:
+        breakdown = ", ".join(f"{counts[s.value]} {t.severity(s.value).lower()}"
+                              for s in Severity if counts[s.value])
+        lede = _esc(t("html.lede", n=total, target="\x00", breakdown=breakdown))
+    else:
+        lede = _esc(t("html.lede_none", target="\x00"))
+    # The target is substituted AFTER escaping so its `<code>` markup survives while everything
+    # the bundle contributed is still escaped. A NUL placeholder cannot occur in a locale string.
+    lede = lede.replace("\x00", target_html)
 
     notes = "".join(f"<li>{_esc(n)}</li>" for n in result.notes)
 
     return f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="{_esc(t.locale)}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SecAudit report — {_esc(result.target)}</title>
+<title>{_esc(t("html.title"))} — {_esc(result.target)}</title>
 <style>
 :root{{--bg:#fbfbfa;--panel:#fff;--ink:#16150f;--muted:#5f5c53;--line:#e5e2dc;--code:#f3f1ec}}
 @media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{
@@ -331,24 +345,23 @@ footer{{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
   h2{{break-after:avoid}}
 }}
 </style></head><body><div class="wrap">
-<h1>SecAudit report</h1>
-<p class="meta"><code>{_esc(result.target)}</code> · backend {_esc(result.backend)} ·
- tools: {_esc(', '.join(result.tools_used))}</p>
+<h1>{_esc(t("html.title"))}</h1>
+<p class="meta"><code>{_esc(result.target)}</code> ·
+ {_esc(t("html.meta", backend=result.backend, tools=', '.join(result.tools_used)))}</p>
 
-<h2>Executive summary</h2>
+<h2>{_esc(t("report.summary"))}</h2>
 <p>{lede}</p>
 <div class="cards">{cards}</div>
-{'<p>Highest severity first, ' + str(len(top)) + ' at high or above.</p>' if top else ''}
+{'<p>' + _esc(t("html.top", n=len(top))) + '</p>' if top else ''}
 
-<h2>Findings</h2>
-{''.join(blocks) or '<p>No findings from the deterministic tier.</p>'}
+<h2>{_esc(t("report.findings"))}</h2>
+{''.join(blocks) or '<p>' + _esc(t("html.none")) + '</p>'}
 
-<h2>Notes &amp; limitations</h2>
-<ul>{notes or '<li>None recorded.</li>'}</ul>
+<h2>{_esc(t("html.notes"))}</h2>
+<ul>{notes or '<li>' + _esc(t("html.notes_none")) + '</li>'}</ul>
 
-<footer>Best-effort assessment, not a guarantee. A report with no findings means these rules
-did not fire — it is not a statement that the code is safe. The deterministic tier is a
-reproducible floor; quality with an LLM backend depends on the model.</footer>
+<footer>{_esc(t("html.footer"))} {_esc(t("clean.meaning"))}
+{_esc(t("lang.note")) if t.locale != i18n.DEFAULT else ''}</footer>
 </div></body></html>
 """
 

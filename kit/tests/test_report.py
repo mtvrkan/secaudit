@@ -10,7 +10,7 @@ KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO = os.path.dirname(KIT)
 sys.path.insert(0, KIT)
 
-from secaudit_core import engine, report              # noqa: E402
+from secaudit_core import engine, i18n, report        # noqa: E402
 from secaudit_core.schema import Finding, ScanResult, Severity, Confidence   # noqa: E402
 
 VULN = os.path.join(REPO, "tests", "fixtures", "vulnerable-app")
@@ -54,8 +54,19 @@ def check_html(res, fails: list[str]) -> str:
                      f"expected {len(res.findings)}")
     if "@media print" not in doc:
         fails.append("HTML report must carry print rules — it is also the PDF path")
-    if "not a statement that the code is safe" not in doc:
-        fails.append("HTML report must say what an empty result does not mean")
+    # The "an empty report is not a clean bill" disclaimer must be present — in whatever
+    # language the report is rendered in. Asserted against the locale bundle rather than
+    # against a hardcoded English sentence: the renderer gained a `locale` argument, and a test
+    # that pins the English wording would pass only until someone ran `--lang tr`, which is the
+    # supported case it exists to protect.
+    for locale in i18n.available():
+        rendered = report.to_html(res, locale)
+        disclaimer = i18n.Strings(locale)("clean.meaning")
+        if disclaimer not in rendered:
+            fails.append(f"HTML report in '{locale}' must say what an empty result does not "
+                         f"mean; the {locale} disclaimer is missing")
+        if f'lang="{locale}"' not in rendered:
+            fails.append(f"HTML report in '{locale}' must declare that language on <html>")
 
     # Non-vacuous escaping check: a finding whose evidence is markup must not become markup.
     hostile = ScanResult(target="<b>t</b>", backend="none")

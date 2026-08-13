@@ -213,6 +213,45 @@ def test_incompatible_format_is_refused() -> None:
         repo.close()
 
 
+def test_since_reaches_the_patch_step() -> None:
+    """`--since` used to return before `--suggest-patches` was ever consulted.
+
+    So the combination that most obviously belongs together — gate a pull request on what it
+    introduced, then offer a fix for it — wrote no patches, printed no refusals and exited 0.
+    Asserted through the `--backend none` refusal because that message is proof the patch step
+    ran at all: before the fix nothing was printed, because nothing was reached.
+    """
+    repo = Repo()
+    try:
+        repo.write("server.js", "// nothing here yet\n")
+        base = repo.commit("empty")
+        repo.write("server.js", VULNERABLE)
+        out_dir = os.path.join(repo.path, "patches")
+        _, out = repo.run("--since", base, "--suggest-patches", out_dir, "--backend", "none")
+        check("--suggest-patches needs a model" in out,
+              f"--since must still reach --suggest-patches; got {out.strip()[:200]!r}")
+    finally:
+        repo.close()
+
+
+def test_since_states_that_the_diff_is_not_translated() -> None:
+    """`--lang tr --since` rendered an English diff without saying so.
+
+    The diff report's vocabulary is not in the locale bundles, so there is nothing for `--lang`
+    to select — which is a bound worth stating rather than a flag worth ignoring.
+    """
+    repo = Repo()
+    try:
+        repo.write("server.js", VULNERABLE)
+        base = repo.commit("baseline")
+        code, out = repo.run("--since", base, "--lang", "tr")
+        check(code == 0 and "not translated" in out,
+              f"--lang with --since must say the diff is not translated; got exit {code}: "
+              f"{out.strip()[:200]!r}")
+    finally:
+        repo.close()
+
+
 def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -230,14 +269,17 @@ def main() -> int:
     test_repeated_identical_lines_stay_distinct()
     test_missing_ref_and_non_repo_explain_themselves()
     test_incompatible_format_is_refused()
+    test_since_reaches_the_patch_step()
+    test_since_states_that_the_diff_is_not_translated()
 
     if fails:
         print("DIFF TESTS FAILED:")
         print("\n".join("  - " + f for f in fails))
         return 1
     print("DIFF TESTS PASSED — introduced/resolved classification, pre-existing debt does not "
-          "fail the gate, line drift is not a change, identical lines stay distinct, and bad "
-          "refs / non-repos / single-scan formats explain themselves.")
+          "fail the gate, line drift is not a change, identical lines stay distinct, bad "
+          "refs / non-repos / single-scan formats explain themselves, and --since reaches "
+          "--suggest-patches instead of silently dropping it.")
     return 0
 
 

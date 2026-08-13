@@ -151,14 +151,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.suggest_patches:
         _suggest_patches(args, result, only)
 
-    out = {"json": report.to_json, "sarif": report.to_sarif, "html": report.to_html,
+    out = {"json": report.to_json, "sarif": report.to_sarif,
+           "html": lambda r: report.to_html(r, args.lang),
            "semgrep": report.to_semgrep_json, "openvex": report.to_openvex,
            "cyclonedx": lambda r: sbom.to_json(r.target),
            "spdx": lambda r: spdx.to_json(r.target),
            "cra": report.to_cra_pack,
            "md": lambda r: report.to_markdown(r, args.lang)}[args.format](result)
     _emit(out, args.output, f"{len(result.findings)} finding(s), backend={result.backend}")
-    _write_summary(args.summary, report.to_markdown(result, args.lang), args.format)
+    _write_summary(args.summary, report.to_markdown(result, args.lang), args.format, args.output)
 
     if args.min_sev:
         threshold = _MIN[args.min_sev]
@@ -211,13 +212,34 @@ def _looks_like_a_url(target: str) -> bool:
     return lowered.startswith(("http://", "https://", "ftp://", "ws://", "wss://"))
 
 
-def _write_summary(path: str | None, markdown: str, fmt: str) -> None:
+def _same_file(a: str, b: str) -> bool:
+    """Whether two paths name the same file on disk.
+
+    `samefile` is the accurate answer and needs both paths to exist, which they do wherever it
+    is asked here: `-o` has already been written by the time a summary is considered. The
+    normcase fallback covers the case where it has not, and the two answers differ only for
+    paths related by a link — which cannot arise between an output path and itself.
+    """
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+
+def _write_summary(path: str | None, markdown: str, fmt: str, output: str | None) -> None:
     """`--summary PATH` — the readable rendering of the scan that just ran, not a second scan.
 
-    Skipped when `--format md` already produced it, so `-o r.md --summary r.md` cannot end up
-    writing the same file twice.
+    Skipped only when `-o` has already written this exact file, which is all the old
+    `fmt == "md"` guard was reaching for. That guard was wrong in the ordinary case: without
+    `-o` the Markdown report goes to *stdout*, so `--format md --summary r.md` wrote nothing,
+    said nothing and exited 0 — and a CI job that publishes `r.md` afterwards publishes a file
+    from some earlier run, or none at all. A flag that silently does nothing is the failure this
+    tool refuses everywhere else: it is why a URL target is turned away instead of scanned as a
+    path, and why an unknown `--only` group is an error instead of an empty scan.
     """
-    if not path or fmt == "md":
+    if not path:
+        return
+    if fmt == "md" and output and _same_file(output, path):
         return
     with open(path, "w", encoding="utf-8") as f:
         f.write(markdown)
@@ -238,6 +260,14 @@ def _run_diff(args, current, only: set[str] | None) -> int:
         print(f"--since renders as md or json; --format {args.format} describes a single scan, "
               f"not a comparison.", file=sys.stderr)
         return 2
+    if args.lang != i18n.DEFAULT:
+        # Said rather than silently rendered in English. The diff report has its own vocabulary
+        # — introduced, resolved, moved — and none of it is in the locale bundles, so there is
+        # nothing here for `--lang` to select. Stating the bound costs one line; leaving it
+        # unsaid means the flag was accepted and ignored, which is the same defect this pass
+        # fixed in `--summary` and `--suggest-patches`.
+        print(f"--lang {args.lang}: the diff report is not translated — its vocabulary is not in "
+              f"the locale bundles. Rendering it in '{i18n.DEFAULT}'.", file=sys.stderr)
     try:
         tree = gitref.baseline_tree(args.since, args.target)
     except gitref.GitError as e:
@@ -269,7 +299,18 @@ def _run_diff(args, current, only: set[str] | None) -> int:
     _emit(out, args.output,
           f"{counts['introduced']} introduced, {counts['resolved']} resolved, "
           f"{counts['unchanged']} unchanged")
-    _write_summary(args.summary, diff.to_markdown(result), args.format)
+    _write_summary(args.summary, diff.to_markdown(result), args.format, args.output)
+
+    if args.suggest_patches:
+        # Patch what the change INTRODUCED, not the debt it inherited — the same bar the exit
+        # code uses two lines down. `main` used to return here before reaching the patch step at
+        # all, so `--since X --suggest-patches DIR` wrote no patches, printed no refusals and
+        # exited 0; the flag combination that most obviously belongs together (gate a pull
+        # request on what it added, then offer a fix for it) was the one that did nothing.
+        # Verification still rescans the work tree, which is where an introduced finding lives.
+        introduced = ScanResult(target=current.target, backend=current.backend,
+                                findings=list(result.introduced), tools_used=current.tools_used)
+        _suggest_patches(args, introduced, only)
 
     if args.min_sev and diff.gate(result, _MIN[args.min_sev]):
         return 1

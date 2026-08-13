@@ -23,6 +23,15 @@
   "severity.medium": "Orta",
   "severity.low": "Düşük",
   "severity.informational": "Bilgilendirme",
+  "html.title": "SecAudit raporu",
+  "html.meta": "arka uç {backend} · araçlar: {tools}",
+  "html.lede": "Belirlenimci katman {target} için {n} bulgu raporladı: {breakdown}.",
+  "html.lede_none": "Belirlenimci katman {target} için hiçbir bulgu raporlamadı.",
+  "html.top": "Önem sırasına göre; {n} tanesi yüksek ve üzeri.",
+  "html.none": "Belirlenimci katmandan bulgu yok.",
+  "html.notes": "Notlar ve sınırlar",
+  "html.notes_none": "Kayıt yok.",
+  "html.footer": "Bu, en iyi çaba değerlendirmesidir; garanti değildir. Belirlenimci katman yeniden üretilebilir bir tabandır; LLM arka ucuyla kalite, kullanılan modele bağlıdır.",
   "clean.meaning": "Bulgu içermeyen bir rapor, taranan dosyalarda bu kuralların ateşlenmediği ve hiçbir taint yolunun kanıtlanmadığı anlamına gelir. Kodun güvenli olduğu anlamına gelmez.",
   "lang.note": "Bulgu başlıkları, kanıt satırları ve düzeltme yönergeleri bilerek İngilizce gösterilir: bunlar detektör tanımlarından gelir ve motorla birlikte değişir. Bayatlamış bir çeviri düzeltme, İngilizcesinden daha kötüdür — çünkü yanlış olduğu görünmez."
 }

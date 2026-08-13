@@ -6,6 +6,39 @@ All notable changes to SecAudit are documented here. This project follows
 ## [Unreleased]
 
 ### Fixed
+- **Three flags were accepted and then ignored.** All three failed the same way — no output, no
+  message, exit 0 — which is the one failure mode this tool refuses everywhere else (it is why a
+  URL target is turned away instead of scanned as a path, and why an unknown `--only` group is an
+  error instead of an empty scan). `--summary PATH` was skipped for *every* `--format md` run, on
+  the reasoning that markdown had already produced the file; without `-o` the report goes to
+  stdout, so `--format md --summary r.md` wrote nothing at all, and a CI job publishing `r.md`
+  afterwards published an earlier run's file or none. It is now skipped only when `-o` has
+  already written that exact path, which is all the original guard was reaching for.
+  `--suggest-patches` was unreachable under `--since`, because `main` returned into diff mode
+  before the patch step — so the combination that most obviously belongs together (gate a pull
+  request on what it introduced, then offer a fix for it) did nothing; it now patches the
+  **introduced** findings, the same set the exit code is derived from. And `--lang` never reached
+  the HTML renderer, which took no locale argument at all, so `--lang tr --format html` produced
+  an English document; `to_html` is now localized against the same bundle `to_markdown` uses,
+  including the `<html lang>` attribute. Where a bound genuinely exists rather than a bug —
+  the diff report's vocabulary is not in the locale bundles — `--lang` now says so instead of
+  quietly rendering English. Each fix is proven by reverting it and watching its test fail.
+  [2026-08-13]
+- **The HTML report's disclaimer was asserted as an English sentence.** The test pinned the
+  literal string "not a statement that the code is safe", so it would have passed a Turkish
+  report that carried no disclaimer at all — the assertion was about wording, not about the
+  guarantee. It now checks, for every shipped locale, that the bundle's own `clean.meaning`
+  reaches the rendered page and that `<html lang>` matches. [2026-08-13]
+
+### Changed
+- **The RealVuln page now states the stricter reading of its own run.** The benchmark's scorer
+  emits two aggregates and `result.json` has carried both since the first round: the `micro` one
+  the published 31.5 comes from, and a `strict_micro` one counting 141 more labels as missed —
+  F3 **29.3**, recall 0.2785, on the identical 530 true positives and 448 false ones. `micro`
+  remains the quoted figure because it is the aggregate RealVuln's own baselines are quoted in,
+  but a stricter number sitting in the committed raw output and named nowhere in the prose is the
+  omission that page exists to prevent. The honest range is now published as 29.3 – 31.5.
+  [2026-08-13]
 - **The LLM tier never saw the code it was asked to audit.** The enrichment prompt carried only
   Tier-0's own output — detector id, file, line, severity and a single line of `evidence` — and no
   source. Two claims rested on that payload and neither could hold: triage ("decide if this is

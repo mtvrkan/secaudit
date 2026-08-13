@@ -12,6 +12,16 @@ Run 2026-08-13. Scored by the benchmark's own scorer; the raw output is committe
 | Recall | 0.301 | 0.295 | 0.246 | 0.233 | 0.124 | 0.116 |
 | TP / FP / FN | 530 / 448 / 1232 | 520 / 442 / 1242 | 434 / 416 / 1328 | 410 / 404 / 1352 | 219 / 339 / 1543 | 204 / 297 / 1558 |
 
+**The same scorer also reports a stricter reading of this run, and it is 2.2 points lower.**
+`result.json` has carried both from the first round: the `micro` aggregate above, and a
+`strict_micro` one that counts 141 further labels as missed — F3 **29.3**, recall **0.2785**, on
+the identical 530 true positives and 448 false ones. `micro` is what is quoted here because it is
+the aggregate RealVuln's own published baselines are quoted in, and comparing against them in a
+different metric would be comparing two different things. But a stricter figure sitting in the
+committed raw output and named nowhere in the prose is exactly the omission this page exists to
+prevent. So: the honest range for this run is **29.3 – 31.5**, and 29.3 is the one to use for any
+purpose other than comparing against the baselines below.
+
 Every column is the same corpus, the same scorer and the same clone. The corpus was re-cloned
 for this round and its ground-truth digest recomputed: `sha256:af5901bf…`, identical to the one
 the earlier columns were measured against, so nothing moved underneath the comparison. The

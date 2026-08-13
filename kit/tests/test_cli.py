@@ -152,13 +152,62 @@ def main() -> int:
             fails.append(f"[pre-commit] hook `{name}` has arguments the CLI rejects: "
                          f"{' '.join(args)} -> exit 2. {out.strip().splitlines()[-1] if out.strip() else ''}")
 
+    # 10) `--summary PATH` writes the readable report whenever it is asked to.
+    #     It used to be skipped for EVERY `--format md` run, on the reasoning that markdown had
+    #     "already produced it" — but without `-o` the report goes to stdout, so the flag wrote
+    #     nothing, printed nothing and exited 0. A CI job that publishes the summary afterwards
+    #     published a file from some earlier run, or none at all.
+    with tempfile.TemporaryDirectory() as tmp:
+        alone = os.path.join(tmp, "human.md")
+        run([SECURE, "--no-deps", "--no-scanners", "--format", "md", "--summary", alone])
+        if not os.path.exists(alone):
+            fails.append("[summary] --format md --summary wrote nothing (report went to stdout)")
+        elif "SecAudit report" not in open(alone, encoding="utf-8").read():
+            fails.append("[summary] --summary wrote a file that is not the report")
+
+        beside = os.path.join(tmp, "other.md")
+        run([SECURE, "--no-deps", "--no-scanners", "--format", "md",
+             "-o", os.path.join(tmp, "report.md"), "--summary", beside])
+        if not os.path.exists(beside):
+            fails.append("[summary] --summary to a second path alongside -o wrote nothing")
+
+        # The one case the skip existed for: the same file must not be written twice.
+        same = os.path.join(tmp, "same.md")
+        run([SECURE, "--no-deps", "--no-scanners", "--format", "md",
+             "-o", same, "--summary", same])
+        written = open(same, encoding="utf-8").read().count("# SecAudit report")
+        if written != 1:
+            fails.append(f"[summary] -o and --summary naming one file wrote the report "
+                         f"{written} times")
+
+    # 11) `--lang` reaches the HTML renderer. `to_html` took no locale at all, so
+    #     `--format html --lang tr` was accepted and produced an English document — the flag
+    #     was not refused, it was ignored, which is the same defect as (10) in a second place.
+    with tempfile.TemporaryDirectory() as tmp:
+        tr_page, en_page = os.path.join(tmp, "tr.html"), os.path.join(tmp, "en.html")
+        run([SECURE, "--no-deps", "--no-scanners", "--format", "html",
+             "--lang", "tr", "-o", tr_page])
+        run([SECURE, "--no-deps", "--no-scanners", "--format", "html", "-o", en_page])
+        tr_html = open(tr_page, encoding="utf-8").read()
+        en_html = open(en_page, encoding="utf-8").read()
+        if 'lang="tr"' not in tr_html:
+            fails.append("[lang] --lang tr did not set the HTML document language")
+        if "Bulgular" not in tr_html:
+            fails.append("[lang] --lang tr rendered English section headings in the HTML report")
+        if "\x00" in tr_html:
+            fails.append("[lang] the target placeholder leaked into the rendered HTML")
+        if 'lang="en"' not in en_html or "Findings" not in en_html:
+            fails.append("[lang] the default HTML report stopped being English")
+
     if fails:
         print("CLI TESTS FAILED:")
         print("\n".join("  - " + f for f in fails))
         return 1
     print("CLI TESTS PASSED — --min gate (high/critical/none), json+sarif formats, -o file "
           "output, secret masking, a URL target refused with a reason (and a host-named "
-          "directory still scanned), and every shipped pre-commit hook's flags accepted.")
+          "directory still scanned), every shipped pre-commit hook's flags accepted, "
+          "--summary written whenever asked (and never twice), and --lang honoured by the "
+          "HTML renderer.")
     return 0
 
 
