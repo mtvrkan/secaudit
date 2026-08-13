@@ -5,6 +5,191 @@ All notable changes to SecAudit are documented here. This project follows
 
 ## [Unreleased]
 
+### Added
+- **F3 26.0 on RealVuln, and the first two structural analyses.** Precision rose with recall
+  again (0.504 → 0.511, recall 0.233 → 0.246), the second round running — the signal that these
+  are rules rather than curve-fitting. Four runs now share one clone: 12.5 → 13.3 → 24.6 → 26.0,
+  with the previous engine re-scored on this checkout first and reproducing 24.6 / 0.5037 /
+  0.2327 digit for digit, and the ground-truth digest recomputed and unmoved. [2026-08-13]
+- **ReDoS analysis (`secaudit_core/redos.py`) — `denial_of_service` 0 → 16 of 44**, from 17 true
+  positives and **zero** false ones. Catastrophic backtracking is decided from the regex's parse
+  tree (star height above one; repeated groups with overlapping alternatives). The limitations
+  page had filed this class as out of reach; it was wrong, and now says what is actually
+  missing. [2026-08-13]
+- **Authorization analysis (`secaudit_core/authz.py`) — `missing_auth` 0 → 4 of 74,
+  `broken_access_control` 0 → 1 of 76.** Off zero, and close to all that can be said for the
+  IDOR half; the honest accounting of what each version cost is in `eval/realvuln/README.md`.
+  The 42 deliberate false-positive traps in the corpus are all cleared, including the FastAPI
+  shape where the gate is injected as a parameter default and never called. [2026-08-13]
+- **A Tier-1 measurement harness for the external corpus** (`eval/realvuln/run.py --backend`).
+  The LLM tier is the kit's headline claim and has no measured number; the harness makes the
+  measurement one command, refuses to write under the reproducible `secaudit` slug, and ships
+  **unrun** — with the README saying so rather than leaving the gap unnamed. [2026-08-13]
+- **Integration-seam coverage** (`kit/tests/test_integration_seams.py`): scanner adapters
+  spawned as real subprocesses against fake executables on PATH, and the LLM request shape,
+  key refusal and error-containment policies asserted through an injected transport. Coverage
+  floor 88% → 89%; `backends.py` 66% → 90%, `scanners.py` 69% → 84%. [2026-08-13]
+
+### Fixed
+- **A `.cmd`/`.bat`-shimmed scanner was detected and then unrunnable on Windows.** `shutil.which`
+  honours PATHEXT so `_has` reported the tool present, but `CreateProcess` does not apply PATHEXT
+  when searching PATH — so semgrep, gitleaks or osv-scanner installed via npm, scoop or pipx was
+  silently downgraded to the built-in pack with a note blaming the tool. Found by covering the
+  seam rather than by a bug report. [2026-08-13]
+- **A stale gate count in `validate.yml`** said 32 where the runner listed 35, and a second in
+  `CONTRIBUTING.md` said 15. Check 29 now derives the count and fails the build on any typed one,
+  in any workflow or document. [2026-08-13]
+- The default Anthropic model is `claude-opus-5`, and `max_tokens` was raised to 16000 because it
+  bounds thinking and response text together on a model that thinks by default — 4096 could
+  truncate the triage JSON mid-object. [2026-08-13]
+
+### Added
+- **F3 24.6 on RealVuln — above rule-based SAST's published 17.7 for the first time, on both
+  metrics** (precision 0.504 vs 0.205, recall 0.233 vs 0.175). Three runs on one clone of the
+  corpus: 12.5 → 13.3 → 24.6, with the original engine re-run on the same checkout and
+  reproducing 12.5 digit for digit, so every delta is the engine.
+
+  **The number is no longer blind, and that is disclosed wherever it appears.** 12.5 and 13.3
+  were measured on a corpus this engine had never seen. 24.6 was measured after its 1,543 false
+  negatives were grouped by class and the code behind them read. What that showed was not a
+  modelling weakness but an inventory gap — a set of rules any SAST ships and this one did not
+  have — so nothing added is fitted to a fixture; but the *selection* was corpus-informed, which
+  is the same caveat `eval/scorecard.md` has always carried about the fixture set. The honest
+  successor is a benchmark this repository has not read.
+
+  What moved: `open_redirect` **0 → 37 of 40** (there was no Python redirect sink at all),
+  `other` **35 → 131 of 831** and `sensitive_data_exposure` **0 → 31 of 141** (six configuration
+  and crypto-hygiene detectors, plus credentials and raw bodies reaching a logger),
+  `security_misconfiguration` **17 → 39 of 108**, `sql_injection` **2 → 11 of 71**. The
+  highest-leverage change added no sinks at all: `request.url`, `request.META`, `request.COOKIES`
+  and a dozen more were not *sources*, so every sink downstream of them was unreachable however
+  well it was modelled. **Precision rose with recall** (0.407 → 0.504), which is the reason to
+  read these as rules rather than as curve-fitting.
+
+  What did not move, and will not through more patterns: `broken_access_control` (0/76),
+  `missing_auth` (0/74) and `denial_of_service` (0/44) have no local signature.
+  `path_traversal` stayed at 3/39 across nine added filesystem sinks over two rounds — the
+  prediction that more sinks would help it was made twice and was wrong twice. [2026-08-13]
+- **Six configuration and crypto-hygiene detectors**, each with a safe-shape control in the
+  suite because a config linter that fires on a correct settings module is one everybody
+  switches off on day two: a non-cryptographic PRNG generating tokens (CWE-330, bound to
+  security-shaped variable names so `random.choice` picking a colour is untouched), cookies set
+  without `HttpOnly`/`Secure` (CWE-1004), CSRF exemptions (CWE-352), `DEBUG` defaulting on when
+  the environment variable is unset (CWE-16), `ALLOWED_HOSTS = ['*']` (CWE-16), and a signing
+  key whose fallback literal is committed to the source (CWE-321). Plus four taint sinks —
+  open redirect, `Template()` SSTI, NoSQL injection through pymongo, and CWE-532 for
+  credentials, cookies, headers or raw bodies reaching a logger. The logging rule is narrowed to
+  material that must not be persisted: every service logs request data on purpose, and a rule
+  that fired on all of it would be muted within a day. 79 → 85 detectors. [2026-08-13]
+
+### Changed
+- **`taint.py` is a package.** 2,100 lines in one module was the last standing design flag
+  against an otherwise well-gated engine. Split along the seams the file already had as comment
+  banners — `model`, `catalog`, `lexical`, `pyanalysis`, `jsanalysis`, and the cross-module
+  resolver in `__init__` — with the import arrow running one way so a cycle is a build error
+  rather than an initialisation-order bug. Every name the rest of the repository imported from
+  `taint` is still importable from `taint`; the longest module is now 524 lines.
+  **The split exposed a packaging bug that would have shipped:** `[tool.setuptools] packages`
+  is an explicit list, so the new subpackage was simply absent from the wheel — an installed
+  copy would have failed at import while every test in a source checkout passed, because a
+  checkout has the directory either way. `scripts/check_packaging.py` now walks the tree and
+  fails on any importable package the manifest does not list. [2026-08-13]
+- **Check 28: `CODE_SHAPE_DETECTORS` is the only thing that may set `literal=False`.** Four
+  detectors set it in their own constructors, so the pack scanned the blanked view for 42
+  detectors while the set that documents which ones listed 38 — and check 25 compares the prose
+  against the set. A prose number, a set and a field, with the field silently outvoting the
+  other two. [2026-08-13]
+
+### Added
+- **The RealVuln diagnosis was acted on, and re-measured: F3 12.5 → 13.3.** The previous run
+  said SQL injection scored 2 of 71 on real Django and FastAPI code because the ORM escape
+  hatches were not sinks. They are now — `.raw()`, `.extra()` including the keyword arguments it
+  is almost always called with, and `execute`/`executemany`/`exec_driver_sql` on a receiver named
+  like a connection or session — and a route handler's parameters are treated as request data
+  rather than a MEDIUM lead, for the two shapes that can be recognised without guessing: a
+  routing decorator, and a Django view whose first parameter is named `request`. **SQL injection
+  2 → 7 of 71.** The larger gain came from a sink that was simply absent: `res.send(str)` sets
+  `Content-Type: text/html`, so reflected XSS through Express was invisible — **XSS 1 → 11 of
+  98**, with Django's `HttpResponse` and `mark_safe` alongside it.
+  **Path traversal was predicted to move and did not: 3 → 3 of 39**, through nine added
+  filesystem sinks on both languages, plus one false positive. The prediction was wrong, and the
+  remaining misses there are about which values are believed attacker-controlled rather than
+  which call is dangerous.
+  The previous engine was re-scanned and re-scored on the same clone of the corpus, and
+  reproduced the committed 2026-08-12 figures digit for digit (F3 12.5, TP 204 / FP 297 /
+  FN 1558) — which is what makes the delta attributable to the engine rather than to corpus
+  drift. **Cost, stated because it is real:** precision 0.407 → 0.393, forty-two more false
+  positives for fifteen more true positives, and the row is still last of the four in the
+  comparison table, below Semgrep's 17.7. `eval/realvuln/run.py` gained `--scanner` so two
+  builds can be scored against one clone, and its printed instructions no longer name a
+  `--all-repos` flag that does not exist. [2026-08-13]
+- **A third Windows reproduction note.** Recomputing the benchmark's ground-truth content hash
+  on Windows produces a different digest for an identical corpus — `compute_gt_hash.py` hashes
+  raw bytes and joins paths with `os.sep`, so a CRLF checkout and backslash separators each
+  change it. Normalising to LF with forward slashes reproduces the published digest exactly.
+  Recorded in `result.json` because the first reading looks like the ground truth moved, which
+  would have invalidated the whole comparison. [2026-08-13]
+
+### Fixed
+- **`pytest kit/tests` could not go red.** Every suite here is a script: assertions append to a
+  `fails` list and the verdict is `main()`'s exit code. The `test_*`-named functions pytest
+  collects do not raise, so a returned list of failures was a value pytest ignored — and most of
+  what each suite checks is only reachable from `main()`, which pytest never called. Verified by
+  deleting the flagship JavaScript SQL-injection sink from the engine: `pytest` reported 75
+  passed, while `scripts/run_checks.py` went red on four gates. CI was always running the
+  scripts directly, so the gates were real and only the pytest view was fictional — but that is
+  the view a contributor runs. Added `kit/tests/conftest.py` (a per-test fixture that fails the
+  test which grew its module's `fails`, giving attribution) and `kit/tests/test_zz_suite_mains.py`
+  (runs every suite's `main()` under pytest, giving coverage). Re-verified by breaking the same
+  sink again: 3 failed, 3 errors. Three test functions that returned a value instead of
+  asserting were split into a checking function and a `test_`-named wrapper. [2026-08-13]
+- **`dirpath` was reported unused and then really was.** The new lint gate caught an
+  undefined-name error introduced while fixing its own warning, which is the shortest possible
+  argument for having one. Also closed two file handles left to the garbage collector in
+  `engine.py` and one in `tests/grade-report.py`. [2026-08-13]
+
+### Added
+- **Lint, type and coverage gates.** `ruff` (correctness rules, not house style), `mypy` over the
+  shipped package, and a coverage floor measured at **88%** and set there rather than at a round
+  number below it — the same rule `eval/thresholds.json` states for the detection floors.
+  Configuration lives in a new repository-root `pyproject.toml` that holds tool settings and
+  deliberately no `[project]` table. The three tools are the only gates that need something this
+  repository does not ship, so they SKIP when absent and CI passes `--require`, which turns the
+  skip back into a failure. mypy's 20 findings were fixed rather than silenced: `gitref._git`
+  returned `bytes | str` from one flag and every caller had to guess; the MCP tool dispatcher
+  indexed its handler table with an unvalidated JSON value; the Python taint helpers were
+  annotated `ast.AST`, the base class, which has none of the attributes they use. [2026-08-13]
+- **`--tier1` on the eval harness, so the LLM tier has a number.** Tier 1 was excluded from the
+  scorecard on the correct grounds that a model is not reproducible — but "not in the gate" had
+  become "not measured at all", and *"the LLM tier reaches what Tier 0 cannot"* was sitting
+  beside two measured claims as an unmeasured one. `--tier1 replay` runs a captured response
+  through the real enrichment path, so it measures the pipeline rather than any model, and it
+  refuses to combine with `--check` or `--gate` because the committed scorecard is the Tier-0
+  floor. **What it reports is not flattering and is now printed:** Tier 1 adds exactly one
+  finding, in the right place — inside the `V3` IDOR block that is Tier 0's only labelled miss —
+  and it does not score as a recovery, because it reports `CWE-284` where the label accepts
+  `CWE-639`. Under the repository's own label rules that is not grounds for widening the label:
+  `CWE-284` is a parent, and only a more specific child is admissible. [2026-08-13]
+- **Dependabot for GitHub Actions and Docker, and a CodeQL workflow.** Every action here is
+  pinned to a commit SHA, which is immutable — that is the point, and also the problem: a pinned
+  action never updates, including past the advisory that made the update necessary. CodeQL is
+  the only reading of this source that is not ours; the dogfood gate runs *this* engine on
+  itself and therefore cannot find a class of bug the engine does not model. It is gated on an
+  `ENABLE_CODEQL` repository variable because CodeQL needs Advanced Security on a private
+  repository, and a permanently-red workflow is one everybody learns to ignore. The
+  `github/codeql-action` SHA was resolved through the GitHub API, not written from memory.
+  [2026-08-13]
+
+### Changed
+- **CI runs the gate list instead of restating it.** The Linux job was twenty hand-written steps
+  duplicating `scripts/run_checks.py`, which the Windows job already called. It now calls the
+  runner too, so there is one list. Check 26 was inverted to match: instead of comparing two
+  copies of the same list — a problem that no longer exists — it now walks the repository and
+  fails if any check script is in *neither*, which is the hole the old form could not see. A
+  test file nobody runs looks exactly like a test file that passes. The packaging check that
+  lived as an inline heredoc in the workflow moved to `scripts/check_packaging.py` so it can be
+  run locally, and gained a check that the locale bundles still ship. [2026-08-13]
+
 ### Security
 - **The Pages workflow held `pages: write` and `id-token: write` at workflow level**, so the
   build job — which checks out the tree and runs a generator over it — ran holding a token that

@@ -46,3 +46,10 @@ __pycache__/
 # on the page is derived from this repo at build time, so they cannot live apart from it).
 # Only the rendered output is ignored; CI publishes that to gh-pages.
 site/dist/
+
+# Coverage artefacts. The floor lives in pyproject.toml and is enforced in CI; the database
+# and any rendered report are per-run and mean nothing to anyone else.
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml

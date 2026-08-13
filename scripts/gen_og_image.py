@@ -119,7 +119,7 @@ def main(argv: list[str]) -> int:
             with open(OUT, "rb") as f:
                 current = f.read()
         except OSError:
-            print(f"FAIL — site/og.png is missing. Run: python3 scripts/gen_og_image.py")
+            print("FAIL — site/og.png is missing. Run: python3 scripts/gen_og_image.py")
             return 1
         if current != rendered:
             print("FAIL — site/og.png no longer matches the measured numbers. "

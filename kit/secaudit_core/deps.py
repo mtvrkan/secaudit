@@ -161,7 +161,7 @@ def indexed_languages(root: str) -> bool:
     Without this check a Go or Rust project would get `not_affected` for every advisory purely
     because we cannot parse it — a false all-clear, which is the worst failure mode a security
     tool has."""
-    for dirpath, dirnames, filenames in os.walk(root):
+    for _dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for name in filenames:
             if os.path.splitext(name)[1].lower() in (*_JS_EXTS, ".py"):

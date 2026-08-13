@@ -119,7 +119,7 @@ class _HTTPBackend(Backend):
         try:
             text = self._call(self._prompt(result))
             return self._apply(result, self._parse_json(text))
-        except Exception as e:
+        except Exception as e:                       # noqa: BLE001 - reported, not swallowed
             result.notes.append(f"{self.name} backend unavailable ({e}); returned Tier-0 findings.")
             result.backend = f"{self.name} (fallback: none)"
             return result
@@ -138,7 +138,7 @@ class _HTTPBackend(Backend):
         """
         try:
             return self._call(prompt)
-        except Exception as e:                       # noqa: BLE001 - reported, not swallowed
+        except Exception as e:
             return f"[backend error: {e.__class__.__name__}: {e}]"
 
 
@@ -150,11 +150,23 @@ class AnthropicBackend(_HTTPBackend):
         key = os.environ.get("ANTHROPIC_API_KEY")
         if not key:
             raise RuntimeError("ANTHROPIC_API_KEY not set")
-        model = os.environ.get("SECAUDIT_MODEL", "claude-opus-4-8")
+        model = os.environ.get("SECAUDIT_MODEL", "claude-opus-5")
+        # `max_tokens` bounds thinking AND response text together, and this model thinks by
+        # default — the 4096 that was ample when the default model did not think can now
+        # truncate the triage JSON mid-object, which the parser would report as a malformed
+        # response rather than as a cut-off one. 16000 is the ceiling that stays inside the
+        # HTTP timeout for a non-streaming call.
+        #
+        # Note there is no `temperature` here and there must not be: it is rejected outright
+        # by this model family. Raw HTTP rather than the official SDK is deliberate — the
+        # shipped package declares zero runtime dependencies and `assert_no_runtime_deps.py`
+        # gates it, so adding `anthropic` would fail the build, not merely enlarge it.
         data = self._post("https://api.anthropic.com/v1/messages", {
-            "model": model, "max_tokens": 4096, "system": _TRIAGE_SYS,
+            "model": model, "max_tokens": 16000, "system": _TRIAGE_SYS,
             "messages": [{"role": "user", "content": prompt}],
         }, {"x-api-key": key, "anthropic-version": "2023-06-01"})
+        # Only text blocks carry the triage JSON; thinking blocks have no "text" key and are
+        # skipped by the .get("text", "") rather than concatenated into the payload.
         return "".join(b.get("text", "") for b in data.get("content", []))
 
 

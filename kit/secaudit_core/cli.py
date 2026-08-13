@@ -25,10 +25,13 @@ def main(argv: list[str] | None = None) -> int:
     # Reports carry Unicode (→, ·). Don't let a legacy console codepage (e.g. Windows cp1254)
     # crash the tool on print — force UTF-8 where the stream supports it.
     for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue                    # a replaced stream (a StringIO in tests)
         try:
-            stream.reconfigure(encoding="utf-8")
-        except (AttributeError, ValueError):
-            pass
+            reconfigure(encoding="utf-8")
+        except ValueError:
+            pass                        # a detached or non-seekable stream
 
     ap = argparse.ArgumentParser(prog="secaudit", description=__doc__.splitlines()[0])
     ap.add_argument("target", help="file or directory to audit")

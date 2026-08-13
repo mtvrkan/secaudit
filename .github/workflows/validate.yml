@@ -27,170 +27,29 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Manifests, plugin layout, frontmatter, allowlist subset, dangling references,
-      # relative links, hook wiring and stray-secret hygiene — checks 11-20. These used to be
-      # inline heredocs here, which meant a contributor could not reproduce a red build without
-      # pushing. They now live in a file you can run locally with the same command.
-      - name: Repository structure gate (checks 11-20)
-        run: python3 scripts/check_repo.py
+      # Install the three tools the suite cannot bring with it. Pinned like every other tool
+      # in this workflow: an unpinned linter is a supply-chain hole in a pipeline whose job is
+      # to complain about supply-chain holes. pytest and coverage are here for the coverage
+      # gate; the suites themselves run on the standard library and need neither.
+      - name: Install the quality toolchain (pinned)
+        run: python3 -m pip install --disable-pip-version-check
+          "ruff==0.9.6" "mypy==2.3.0" "coverage==7.15.4" "pytest==8.3.4"
 
-      # Every number the docs state about the kit is recomputed from the detector table, the
-      # golden set and the shipped plugin tree — checks 01-10. A typed count fails the build.
-      - name: Stated-number consistency gate (checks 01-10, 21-25)
-        run: python3 scripts/check_consistency.py
-
-      # `requires-python = ">=3.9"` is a promise pip enforces by ALLOWING the install on 3.9,
-      # where the code then fails at import or at the first call into a too-new construct. The
-      # suite above runs on the pinned 3.12, so it cannot be what keeps that promise. This
-      # scans the package for constructs above the advertised floor instead. It was in the
-      # local runner (`scripts/run_checks.py`) from the start and only there — the one gate of
-      # the set that CI never ran, which is the same as not having it, because a gate only a
-      # contributor remembers to run is one a pull request can go around.
+      # Every gate, through the same runner a contributor runs. This step used to be twenty
+      # hand-written ones, and `scripts/run_checks.py` listed the same gates a second time for
+      # local use — two copies of one list, with nothing comparing them. The Windows job below
+      # already called the runner; this makes both platforms run the same thing, and check 26
+      # in `scripts/check_consistency.py` now fails the build if any check script in the
+      # repository is missing from that list.
       #
-      # Bound worth stating: this is static. It proves no construct newer than the floor is
-      # used; it does not prove the suite passes on 3.9, which would need a 3.9 job.
-      - name: Advertised Python floor (kit/pyproject.toml requires-python)
-        run: python3 scripts/check_python_floor.py
-        env:
-          PYTHONPATH: kit
+      # `--require` is what stops the lint/type gates from degrading here: they SKIP when the
+      # tool is absent so a fresh clone still runs, and CI must never take that path.
+      - name: All gates (scripts/run_checks.py)
+        run: python3 scripts/run_checks.py
 
-      # The landing page holds no figures of its own — only {{tokens}} the generator fills
-      # from the scorecard, the detector table and the gate list. A number typed into the
-      # template fails here, before it can be published.
-      - name: Landing page renders from repository facts
-        run: python3 scripts/gen_site.py --check
+      - name: Lint, types and the coverage floor (must not skip in CI)
+        run: python3 scripts/check_quality.py --lint --types --coverage --require
 
-      # The social card carries the recall figure, so it is generated from the scorecard like
-      # everything else and compared byte for byte. Written with zlib rather than a headless
-      # browser: an asset only regenerable by installing Chrome is one that stops matching the
-      # numbers on it the first time they move.
-      - name: Social card matches the measured numbers
-        run: python3 scripts/gen_og_image.py --check
-        env:
-          PYTHONPATH: kit
-
-      # Both pages are generated from the engine's own dispatch tables and the committed
-      # scorecard. "Supported languages" and "known limitations" are the two claims that decay
-      # in one direction only, so neither is allowed to be typed.
-      - name: Language coverage matrix is current
-        run: python3 scripts/gen_language_matrix.py --check
-        env:
-          PYTHONPATH: kit
-
-      - name: What-we-miss page is current
-        run: python3 scripts/gen_what_we_miss.py --check
-        env:
-          PYTHONPATH: kit
-
-      # Labels are DERIVED from the fixture markers + the golden set. Editing a fixture
-      # without regenerating them is a build failure, not a silently wrong score.
-      - name: Eval ground truth is current
-        run: python3 eval/build_ground_truth.py --check
-
-      # The committed scorecard must equal what the engine measures right now, and no
-      # metric may fall below eval/thresholds.json. Tier 0 is deterministic, so both are
-      # exact checks rather than tolerances.
-      - name: Eval scorecard + regression gate
-        run: |
-          set -e
-          python3 eval/harness.py --check
-          python3 eval/harness.py --gate
-        env:
-          PYTHONPATH: kit
-
-      - name: Fixture self-test (planted sinks + secrets + dep audit + secure negative control)
-        run: python3 tests/selftest.py
-
-      - name: Grade reference report against golden set (coverage regression gate)
-        run: |
-          set -e
-          python3 tests/grade-report.py --selftest
-          python3 tests/grade-report.py examples/self-test-report.md --min 20
-
-      - name: Standalone kit — compile + Tier-0 recall/precision measurement (no LLM)
-        run: |
-          set -e
-          python3 -m compileall -q kit/secaudit_core
-          # Deterministic floor: every planted class except the LLM-tier one found on the
-          # vulnerable corpus, and zero HIGH-confidence false positives on the secure
-          # negative control. Counts come from the golden set, never from this comment.
-          python3 kit/tests/test_engine.py
-          # Taint tier — lexical view, propagation, guards, sanitizers, argument positions,
-          # plus the corpus floor and zero HIGH-confidence paths on the negative control.
-          python3 kit/tests/test_taint.py
-          # Dependency reachability -> OpenVEX status. Guards the false-all-clear
-          # cases: a transitive package and an unindexable tree stay under_investigation.
-          python3 kit/tests/test_deps.py
-          # ASVS 5.0 / CRA mapping, CycloneDX SBOM, CRA evidence pack. Asserts the
-          # claims, not the plumbing: unresolved versions flagged not guessed,
-          # unsupported ecosystem stated, and the pack's disclaimer intact.
-          python3 kit/tests/test_compliance.py
-          # MCP server: JSON-RPC round-trip, notification silence, error shapes — and the
-          # boundary that matters, asserted against the published tool schemas rather than
-          # trusted from the implementation: no tool accepts a url/host/endpoint, so live-
-          # target scanning cannot be reintroduced behind an MCP argument.
-          python3 kit/tests/test_mcp.py
-          # KEV/EPSS enrichment and SPDX — offline; the feeds are injected, never fetched.
-          # The tests are shaped around not overstating: an unreachable feed must report
-          # `unknown`, never a clean bill.
-          python3 kit/tests/test_exploitation.py
-          # Verified patch suggestion. Almost every assertion is a REFUSAL: the value of the
-          # feature is the patches it declines to hand over. No model is called — a scripted
-          # backend returns canned diffs, which is exactly how the feature splits (proposing
-          # needs a model, vouching does not).
-          python3 kit/tests/test_patch.py
-          # Locale bundles: every key present in every bundle, placeholders consistent, and
-          # every key the renderer asks for actually defined. A translation rots where nobody
-          # who can see it is editing the renderer.
-          python3 kit/tests/test_i18n.py
-          # Exported Semgrep rules find exactly what the detectors they came from find.
-          python3 kit/tests/test_semgrep_pack.py
-          # Diff mode — builds throwaway git repositories and runs the real CLI against them.
-          # Stubbing git out would leave every failure mode this feature actually has (ref
-          # resolution, tree extraction, path agreement between two scan roots) untested.
-          python3 kit/tests/test_diff.py
-          # Scanner adapters (semgrep/gitleaks/osv) — parser correctness + secret masking, offline.
-          python3 kit/tests/test_scanners.py
-          # Multi-language / secret / IaC detector pack — sinks fire, safe variants suppressed.
-          python3 kit/tests/test_detectors.py
-          # Tier-1 enrichment plumbing (no key/network): triage merge + LLM-added logic finding.
-          python3 kit/tests/test_backends.py
-          # SARIF renderer — valid 2.1.0 for GitHub code scanning.
-          python3 kit/tests/test_report.py
-          # End-to-end two-tier pipeline (replayed model response, no key): triage + IDOR added.
-          python3 kit/tests/test_enrich_e2e.py
-          # Real-code precision: 0 High/Critical false positives on the kit's own source.
-          python3 kit/tests/test_dogfood.py
-          # CLI boundary: --min CI-gate exit codes, json/sarif formats, -o output, secret masking.
-          python3 kit/tests/test_cli.py
-          # Optional live-LLM smoke test — skips cleanly with no key (a user with one runs it).
-          python3 kit/tests/test_live_llm.py
-          # Packaging: pyproject parses, console entry point resolves, zero runtime deps.
-          python3 - <<'PY'
-          import tomllib, importlib, sys
-          d = tomllib.load(open("kit/pyproject.toml", "rb"))
-          assert d["project"]["dependencies"] == [], "kit must stay zero-runtime-dep"
-          mod, fn = d["project"]["scripts"]["secaudit"].split(":")
-          sys.path.insert(0, "kit")
-          assert hasattr(importlib.import_module(mod), fn), "console entry point missing"
-          print("pyproject OK — secaudit entry resolves, zero runtime deps")
-          PY
-          # The CLI must run end-to-end with no LLM and gate on severity.
-          python3 -m secaudit_core.cli tests/fixtures/secure-app --no-deps --min high
-        env:
-          PYTHONPATH: kit
-
-      # hooks.json wiring and the plugin.json hooks path are check 20 in the structure gate
-      # above; this runs the guard's own deterministic block/allow corpus.
-      - name: Active-scan guard self-test
-        run: python3 plugins/secaudit/hooks/active-scan-guard.py --selftest
-
-      # The one thing the local suite cannot check about the exported rule pack. Its tests
-      # verify the semantics — every exported pattern finds exactly what its detector finds —
-      # but not whether Semgrep accepts the YAML envelope, because Semgrep is deliberately not
-      # a dependency of the suite. This is where that half gets checked, against the real tool.
-      # Pinned, like every other tool here: an unpinned linter is a supply-chain hole in a
-      # workflow whose job is to complain about supply-chain holes.
       - name: Validate the exported rules against real Semgrep
         run: pipx run --spec "semgrep==1.140.0" semgrep --validate --config rules/secaudit/
 
@@ -209,10 +68,14 @@ jobs:
   # `shell=True` only on `nt`; and diff mode shells out to git. Each of those is a path that
   # ubuntu-latest cannot execute even once.
   #
-  # It runs `scripts/run_checks.py` — the same 32 gates, through one runner that sets PYTHONPATH
+  # It runs `scripts/run_checks.py` — the same gate list, through one runner that sets PYTHONPATH
   # and forces UTF-8 output itself, rather than a second copy of the step list above that would
   # drift from it. Not a `matrix` on the job above for the same reason the platform-specific
   # steps (pipx/semgrep/zizmor) belong to Linux only: they are not what this job is for.
+  #
+  # The count that used to be written here said 32 while the runner listed 35, for long enough
+  # that nobody read it as a claim any more. Check 29 in `scripts/check_consistency.py` now
+  # derives the number and fails the build on any typed one, here or in any doc.
   validate-windows:
     runs-on: windows-latest
     steps:

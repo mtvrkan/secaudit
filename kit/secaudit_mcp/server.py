@@ -194,7 +194,7 @@ def _explain_finding(args: dict) -> str:
                 f"- **Severity / confidence:** {d.severity.value} / {d.confidence.value}",
                 f"- **Applies to:** {', '.join(d.exts)}",
                 f"- **Matches:** `{d.pattern}`",
-                f"- **Matched against:** "
+                "- **Matched against:** "
                 + ("raw file text" if d.literal else
                    "a view with comments and string-literal contents blanked"),
                 (f"- **Cleared when the file contains:** `{d.suppress_if}`"
@@ -248,7 +248,7 @@ def _coverage(_args: dict) -> str:
         lines.append(f"- **{name}** — taint (source→sink dataflow): {spec['frontend']}, "
                      f"{', '.join(scope)}.")
 
-    lexical = sorted({ext for ext in taint._EXT_GROUP} - set(taint._TAINT_EXTS))
+    lexical = sorted(set(taint._EXT_GROUP) - set(taint._TAINT_EXTS))
     covered_exts = {e for d in DETECTORS for e in d.exts}
     pattern_only = sorted(covered_exts - set(taint._TAINT_EXTS))
     lines += [
@@ -344,7 +344,10 @@ def handle(message: dict) -> dict | None:
     if method == "tools/call":
         params = message.get("params") or {}
         name = params.get("name")
-        if name not in _TOOL_NAMES:
+        # `isinstance` before the membership test: the guard already refused an unknown
+        # tool name, but not a non-string one, so `_HANDLERS[name]` was indexed with
+        # whatever JSON put there. Same rejection, one type earlier.
+        if not isinstance(name, str) or name not in _TOOL_NAMES:
             return _error(request_id, INVALID_PARAMS, f"Unknown tool: {name}")
         try:
             text = _HANDLERS[name](params.get("arguments") or {})
@@ -368,6 +371,7 @@ def serve(stdin=None, stdout=None) -> int:
     """Read newline-delimited JSON-RPC from stdin, write responses to stdout."""
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
+    response: dict | None
     for line in stdin:
         line = line.strip()
         if not line:
@@ -390,10 +394,13 @@ def serve(stdin=None, stdout=None) -> int:
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue                    # a replaced stream (a StringIO in tests)
         try:
-            stream.reconfigure(encoding="utf-8")
-        except (AttributeError, ValueError):
-            pass
+            reconfigure(encoding="utf-8")
+        except ValueError:
+            pass                        # a detached or non-seekable stream
     if "--tools" in argv:
         print(json.dumps({"tools": TOOLS}, indent=2, ensure_ascii=False))
         return 0

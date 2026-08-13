@@ -108,7 +108,7 @@ def test_serve_loop() -> None:
                         '{"jsonrpc":"2.0","id":2,"method":"ping"}\n')
     stdout = io.StringIO()
     server.serve(stdin, stdout)
-    lines = [json.loads(l) for l in stdout.getvalue().splitlines() if l.strip()]
+    lines = [json.loads(line) for line in stdout.getvalue().splitlines() if line.strip()]
     check(len(lines) == 3,
           f"expected 3 responses (list, parse error, ping) — the notification must not "
           f"produce one (got {len(lines)})")

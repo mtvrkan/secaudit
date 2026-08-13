@@ -659,7 +659,201 @@ def corpus_paths(root: str) -> list[taint.TaintPath]:
     return out
 
 
-def test_corpora() -> tuple[int, int]:
+def test_orm_escapes() -> None:
+    """The ORM escape hatches — the shape SQL injection actually takes in framework code.
+
+    This is the class the RealVuln run scored 2 of 71 on. Not a dataflow failure: `.raw()`,
+    `.extra()` and `session.execute(text(...))` were not sinks, so an ORM codebase's only
+    remaining way to write injectable SQL was invisible. Every case below has a safe twin that
+    must stay silent, because the parameterised call is the FIX and reporting it would make the
+    finding worthless.
+    """
+    expect("a.py", "def view(request):\n"
+                   "    return Entry.objects.raw('SELECT * FROM b WHERE t = ' + request.GET['q'])\n",
+           "TAINT-PY-SQLI-ORM", True, "orm: Django .raw() with a concatenated request value")
+
+    expect("a.py", "def view(request):\n"
+                   "    return Entry.objects.raw('SELECT * FROM b WHERE t = %s', [request.GET['q']])\n",
+           "TAINT-PY-SQLI-ORM", False, "orm: .raw() with params is the fix, not the bug")
+
+    expect("a.py", "def view(request):\n"
+                   "    return Entry.objects.extra(where=['id = ' + request.GET['id']])\n",
+           "TAINT-PY-SQLI-ORM", True, "orm: .extra(where=) — the injectable arg is a keyword")
+
+    expect("a.py", "def view(request):\n"
+                   "    return Entry.objects.extra(where=['id = %s'], params=[request.GET['id']])\n",
+           "TAINT-PY-SQLI-ORM", False, "orm: .extra(params=) binds, so it must stay silent")
+
+    expect("a.py", "def view(request):\n"
+                   "    return db.session.execute(text('SELECT * FROM u WHERE n = ' + request.args['n']))\n",
+           "TAINT-PY-SQLI", True, "orm: SQLAlchemy session.execute(text(...)) through a receiver chain")
+
+    # The receiver allowlist is what keeps `execute` from becoming a generic CWE-89 label.
+    expect("a.py", "def run(request):\n"
+                   "    executor.execute(request.args['task'])\n",
+           "TAINT-PY-SQLI", False, "orm: executor.execute is not a database call")
+
+    expect("a.py", "def run(request):\n"
+                   "    execute(request.args['task'])\n",
+           "TAINT-PY-SQLI", False, "orm: a bare execute() with no receiver is not a DB call")
+
+
+def test_route_parameters_are_request_data() -> None:
+    """A route handler's parameters come from the framework, which passes attacker input.
+
+    They used to be seeded as ordinary parameters — a MEDIUM lead, on the stated grounds that
+    "whether they carry untrusted data depends on callers". A route handler has no callers to
+    depend on. The finding was usually there and one confidence rung below where anyone looks,
+    which is most of why real FastAPI and Django code scored the way it did.
+    """
+    paths = taint.analyze("a.py", "@app.get('/items/{item_id}')\n"
+                                  "def read(item_id: str):\n"
+                                  "    return conn.execute('SELECT * FROM i WHERE id = ' + item_id)\n")
+    check(paths and paths[0].confidence == Confidence.HIGH,
+          "route: a FastAPI path parameter reaching SQL must be HIGH, not a MEDIUM lead")
+
+    paths = taint.analyze("a.py", "def detail(request, slug):\n"
+                                  "    return cursor.execute('SELECT * FROM p WHERE s = ' + slug)\n")
+    check(paths and paths[0].confidence == Confidence.HIGH,
+          "route: a Django URL capture (first param named `request`) must be HIGH")
+
+    # An undecorated helper whose first parameter is not `request` is still just a parameter.
+    paths = taint.analyze("a.py", "def helper(slug):\n"
+                                  "    return cursor.execute('SELECT * FROM p WHERE s = ' + slug)\n")
+    check(paths and paths[0].confidence == Confidence.MEDIUM,
+          "route: a plain helper's parameter must stay a MEDIUM lead — nothing says it is a route")
+
+    # A framework-injected dependency is a service handle, not request data.
+    paths = taint.analyze("a.py", "@app.get('/x')\n"
+                                  "def read(db = Depends(get_db)):\n"
+                                  "    return conn.execute(db)\n")
+    check(paths and paths[0].confidence == Confidence.MEDIUM,
+          "route: a Depends()-injected parameter must not be treated as request data")
+
+
+def test_xss_and_path_sinks() -> None:
+    """Server-side XSS and the filesystem calls beyond `open`/`readFile`.
+
+    `res.send(str)` sets `Content-Type: text/html`, so a tainted string reflected through it is
+    the ordinary Express XSS. `res.json` is not a sink for the same reason it is the fix.
+    """
+    expect("a.py", "def view(request):\n"
+                   "    return HttpResponse('<b>' + request.GET['n'] + '</b>')\n",
+           "TAINT-PY-XSS", True, "xss: Django HttpResponse built from request data")
+
+    expect("a.py", "def view(request):\n"
+                   "    return mark_safe(request.GET['n'])\n",
+           "TAINT-PY-XSS", True, "xss: mark_safe on request data")
+
+    expect("a.py", "def view(request):\n"
+                   "    return render(request, 't.html', {'n': request.GET['n']})\n",
+           "TAINT-PY-XSS", False, "xss: passing the value as template context is the fix")
+
+    expect("a.js", "app.get('/x', (req, res) => { res.send('<h1>' + req.query.q + '</h1>'); });\n",
+           "TAINT-JS-XSS-REFLECTED", True, "xss: Express res.send of a built HTML string")
+
+    expect("a.js", "app.get('/x', (req, res) => { res.json({ q: req.query.q }); });\n",
+           "TAINT-JS-XSS-REFLECTED", False, "xss: res.json serialises — not an HTML sink")
+
+    expect("a.py", "def view(request):\n"
+                   "    os.remove(request.args['f'])\n",
+           "TAINT-PY-PATH", True, "path: os.remove with a request-supplied name")
+
+    expect("a.py", "def view(request):\n"
+                   "    shutil.rmtree(request.args['d'])\n",
+           "TAINT-PY-PATH", True, "path: shutil.rmtree with a request-supplied name")
+
+    expect("a.js", "app.get('/d', (req, res) => { res.sendFile(req.query.f); });\n",
+           "TAINT-JS-PATH", True, "path: res.sendFile does no containment check of its own")
+
+    expect("a.js", "app.get('/d', (req, res) => { fs.appendFileSync(req.query.f, 'x'); });\n",
+           "TAINT-JS-PATH", True, "path: fs.appendFileSync was outside the old sink list")
+
+
+def test_widened_request_sources() -> None:
+    """The source list is the entry point, so an attribute missing from it switches the whole
+    analysis off for that idiom — not one rule.
+
+    `request.url` is how a Flask app reflects the current page into an error template;
+    `request.META` and `request.COOKIES` are the only way Django reads headers and cookies.
+    None of the three were sources, so every sink downstream of them was unreachable however
+    well it was modelled.
+    """
+    for expr in ("request.url", "request.full_path", "request.referrer", "request.remote_addr",
+                 "request.META['HTTP_X_FORWARDED_FOR']", "request.COOKIES['sid']",
+                 "request.query_string"):
+        paths = taint.analyze("a.py", f"def view(request):\n    eval({expr})\n")
+        check(paths and paths[0].confidence == Confidence.HIGH,
+              f"sources: `{expr}` must be a HIGH-confidence request source")
+
+    # Not everything hanging off a request object is attacker-controlled; the list is a list.
+    paths = taint.analyze("a.py", "def view(request):\n    eval(request.app_config)\n")
+    check(not any(p.confidence == Confidence.HIGH for p in paths),
+          "sources: an attribute that is not in the list must not be HIGH")
+
+
+def test_open_redirect_ssti_and_nosql() -> None:
+    expect("a.py", "def view(request):\n"
+                   "    lane = request.GET.get('lane') or '/'\n"
+                   "    return redirect(lane)\n",
+           "TAINT-PY-OPENREDIR", True, "redirect: Flask/Django redirect to a request value")
+
+    expect("a.py", "def view(request):\n"
+                   "    return redirect('/dashboard')\n",
+           "TAINT-PY-OPENREDIR", False, "redirect: a constant destination is the fix")
+
+    expect("a.py", "def view(request):\n"
+                   "    return Template('<h1>%s</h1>' % request.url).render()\n",
+           "TAINT-PY-SSTI", True, "ssti: Template(source) is the same bug as "
+                                  "render_template_string, written the way Jinja suggests")
+
+    expect("a.py", "import json\n"
+                   "def view(request):\n"
+                   "    payload = json.loads(request.body.decode('utf-8'))\n"
+                   "    return coll.find_one(payload.get('filter', payload))\n",
+           "TAINT-PY-NOSQLI", True, "nosql: a decoded body used as a Mongo filter")
+
+    # `str.find` is not a database call, which is why bare `find` is deliberately not a sink.
+    expect("a.py", "def view(request):\n"
+                   "    return 'haystack'.find(request.GET['needle'])\n",
+           "TAINT-PY-NOSQLI", False, "nosql: str.find must never be reported as CWE-943")
+
+
+def test_sensitive_data_in_logs() -> None:
+    """CWE-532, narrowed to material that must not be persisted.
+
+    Every service logs request-derived data on purpose. A rule that fired on any tainted value
+    reaching a logger would be noise on every well-behaved application, and the first thing
+    anyone would do with it is switch it off — so the precision assertions here matter more
+    than the recall one.
+    """
+    expect("a.py", "def view(request):\n"
+                   "    body = request.body.decode('utf-8')\n"
+                   "    logger.warning('tally body=%s', body)\n",
+           "TAINT-PY-LOG-SENSITIVE", True, "logs: a raw request body written to the log")
+
+    expect("a.py", "def view(request):\n"
+                   "    logger.info('auth=%s', request.headers.get('authorization'))\n",
+           "TAINT-PY-LOG-SENSITIVE", True, "logs: an Authorization header written to the log")
+
+    expect("a.py", "def view(request):\n"
+                   "    page = request.args.get('page')\n"
+                   "    logger.info('listing page=%s', page)\n",
+           "TAINT-PY-LOG-SENSITIVE", False, "logs: an ordinary request parameter is not CWE-532")
+
+    expect("a.py", "def view(request):\n"
+                   "    body = request.body\n"
+                   "    process(body)\n",
+           "TAINT-PY-LOG-SENSITIVE", False, "logs: a body that never reaches a logger")
+
+
+def test_corpora() -> None:
+    """pytest's view of the corpus floor below. The counts it returns feed `main`'s summary
+    line; returning them from a `test_`-named function makes the verdict unreadable."""
+    corpora_counts()
+
+
+def corpora_counts() -> tuple[int, int]:
     vuln = corpus_paths(VULN)
     classes = {p.sink.maps_to for p in vuln if p.sink.maps_to}
     # These are the classes the taint tier reaches on the shipped corpus. It is a floor, not a
@@ -698,7 +892,13 @@ def main() -> int:
     test_js_interprocedural()
     test_cross_module()
     test_module_graph_is_order_independent()
-    n_vuln, n_high = test_corpora()
+    test_orm_escapes()
+    test_route_parameters_are_request_data()
+    test_xss_and_path_sinks()
+    test_widened_request_sources()
+    test_open_redirect_ssti_and_nosql()
+    test_sensitive_data_in_logs()
+    n_vuln, n_high = corpora_counts()
 
     if fails:
         print("TAINT TESTS FAILED:")

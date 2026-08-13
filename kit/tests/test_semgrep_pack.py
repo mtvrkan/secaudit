@@ -141,6 +141,12 @@ def test_withheld_detectors_stay_withheld() -> None:
 
 
 def test_exported_patterns_match_identically() -> None:
+    """pytest's view of the comparison below. The count it returns is for `main`'s summary
+    line; a test function that returns a value is one pytest cannot read a verdict from."""
+    compare_exported_patterns()
+
+
+def compare_exported_patterns() -> int:
     """The claim the pack makes: same regex, same hits. Checked, not asserted."""
     corpus = _files()
     check(len(corpus) > 5, f"the fixture corpus is too small to be evidence ({len(corpus)} files)")
@@ -216,7 +222,7 @@ def main() -> int:
 
     test_every_exportable_detector_is_exported()
     test_withheld_detectors_stay_withheld()
-    compared = test_exported_patterns_match_identically()
+    compared = compare_exported_patterns()
     test_flags_survive_the_translation()
     test_generator_check_mode_agrees_with_disk()
 

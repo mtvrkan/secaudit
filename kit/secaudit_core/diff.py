@@ -147,13 +147,13 @@ def to_markdown(diff: DiffResult) -> str:
     def block(title: str, findings: list[Finding], empty: str) -> list[str]:
         out = [f"## {title}", ""]
         if not findings:
-            return out + [empty, ""]
+            return [*out, empty, ""]
         out += ["| Severity | Rule | Location | Finding |", "|---|---|---|---|"]
         for f in findings:
             title_cell = f.title.replace("|", "\\|")
             out.append(f"| {f.severity.value} | `{f.detector_id}` | "
                        f"`{f.file}:{f.line}` | {title_cell} |")
-        return out + [""]
+        return [*out, ""]
 
     lines += block("Introduced", diff.introduced,
                    "Nothing new. This change did not add a finding.")

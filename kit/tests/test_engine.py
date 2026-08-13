@@ -27,7 +27,7 @@ REPO = os.path.dirname(KIT)
 sys.path.insert(0, KIT)
 
 from secaudit_core import engine                      # noqa: E402
-from secaudit_core.schema import Confidence, Severity  # noqa: E402
+from secaudit_core.schema import Confidence           # noqa: E402
 
 VULN = os.path.join(REPO, "tests", "fixtures", "vulnerable-app")
 SECURE = os.path.join(REPO, "tests", "fixtures", "secure-app")
@@ -58,9 +58,10 @@ def _regions() -> list[tuple[str, int, int, str]]:
     path = os.path.join(REPO, "eval", "ground-truth", "secaudit-fixtures", "ground-truth.json")
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
-    return [(l["file"], l["location"]["start_line"], l["location"]["end_line"], l["id"].split(":")[1])
-            for l in data["findings"]
-            if l["is_vulnerable"] and l.get("corpus") == "vulnerable-app"]
+    return [(label["file"], label["location"]["start_line"], label["location"]["end_line"],
+             label["id"].split(":")[1])
+            for label in data["findings"]
+            if label["is_vulnerable"] and label.get("corpus") == "vulnerable-app"]
 
 
 def _found_ids(findings) -> set[str]:
@@ -81,7 +82,12 @@ LLM_TIER_ONLY = {"V3"}
 RECALL_TARGET = ALL_SINKS - LLM_TIER_ONLY   # the classes the deterministic tier should catch
 
 
-def test_corroboration_keeps_distinct_bugs() -> list[str]:
+def test_corroboration_keeps_distinct_bugs() -> None:
+    """pytest's view of the check below — it must be able to go red, not just be collected."""
+    assert not check_corroboration_keeps_distinct_bugs()
+
+
+def check_corroboration_keeps_distinct_bugs() -> list[str]:
     """Two bugs of the same class, a few lines apart, must both survive corroboration.
 
     Corroboration folds a taint path into the pattern finding for the SAME bug so one bug is
@@ -114,7 +120,7 @@ def test_corroboration_keeps_distinct_bugs() -> list[str]:
 
 def main() -> int:
     fails: list[str] = []
-    fails += test_corroboration_keeps_distinct_bugs()
+    fails += check_corroboration_keeps_distinct_bugs()
 
     # ---- recall on the vulnerable fixture ----
     vres = engine.scan(VULN, run_deps=False)

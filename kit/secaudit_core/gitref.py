@@ -23,15 +23,26 @@ class GitError(RuntimeError):
     """Anything that stops us producing the baseline tree, phrased for the person running it."""
 
 
-def _git(args: list[str], cwd: str, binary: bool = False) -> bytes | str:
+def _git_bytes(args: list[str], cwd: str) -> bytes:
+    """Raw stdout from git, or GitError phrased for the person running it.
+
+    Split from `_git` (which returned `bytes | str` depending on a flag) because every caller
+    already knew which one it wanted, and the union meant each of them handed a value that
+    might be `str` to something that only accepts `bytes` — `io.BytesIO(blob)` below being the
+    one where that would surface as a TypeError at scan time rather than at the call site.
+    """
     try:
         done = subprocess.run(["git", *args], cwd=cwd, capture_output=True, check=False)
     except FileNotFoundError:
-        raise GitError("`git` is not on PATH, so there is no baseline to compare against.")
+        raise GitError("`git` is not on PATH, so there is no baseline to compare against.") from None
     if done.returncode != 0:
         detail = done.stderr.decode("utf-8", "replace").strip().splitlines()
         raise GitError(detail[-1] if detail else f"git {args[0]} failed ({done.returncode}).")
-    return done.stdout if binary else done.stdout.decode("utf-8", "replace").strip()
+    return done.stdout
+
+
+def _git(args: list[str], cwd: str) -> str:
+    return _git_bytes(args, cwd).decode("utf-8", "replace").strip()
 
 
 def repo_root(target: str) -> str:
@@ -59,7 +70,7 @@ def resolve(ref: str, root: str) -> str:
 
 def extract(ref: str, root: str, dest: str) -> None:
     """Write the tree at `ref` into `dest`."""
-    blob = _git(["archive", "--format=tar", ref], root, binary=True)
+    blob = _git_bytes(["archive", "--format=tar", ref], root)
     # `filter="data"` arrived in 3.12 and was backported to 3.9.17 — not to every 3.9 this
     # package claims to support, and passing it where it does not exist is a TypeError at the
     # worst moment. Feature-detected rather than assumed, and the manual checks below hold on
@@ -77,7 +88,7 @@ def extract(ref: str, root: str, dest: str) -> None:
                 raise GitError(f"refusing to extract `{member.name}` outside the baseline dir")
             if member.issym() or member.islnk() or member.isdev():
                 continue                       # nothing we analyse lives behind a link
-            tar.extract(member, dest, **extra)
+            tar.extract(member, dest, **extra)   # type: ignore[arg-type]  # see `extra`
 
 
 class baseline_tree:

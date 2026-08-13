@@ -8,14 +8,14 @@ import subprocess
 
 from .detectors import detectors_for, group_of
 from .schema import Finding, ScanResult, Severity, Confidence, Verdict
-from . import deps, exploitation, scanners, taint
+from . import authz, deps, exploitation, redos, scanners, taint
 
 # Higher-fidelity sources win when two findings collide at the same file/line/class.
 # `taint` outranks `builtin` because a proven source→sink path is strictly more evidence than
 # a pattern match at the same spot, and sits below the real scanners, which carry their own
 # dataflow engines. It never *replaces* a corroborated finding, though — see `_corroborate`.
 _SOURCE_RANK = {"semgrep": 4, "osv": 4, "gitleaks": 4, "npm-audit": 3, "taint": 3,
-                "llm": 2, "builtin": 1}
+                "authz": 3, "redos": 3, "llm": 2, "builtin": 1}
 
 # How far apart a pattern match and a taint path may be and still describe the same bug.
 # The regex usually fires where the dangerous string is built and the taint path where it is
@@ -58,7 +58,8 @@ def scan_code(root: str, only: set[str] | None = None) -> list[Finding]:
         try:
             if os.path.getsize(path) > MAX_BYTES:
                 continue
-            text = open(path, encoding="utf-8", errors="ignore").read()
+            with open(path, encoding="utf-8", errors="ignore") as fh:
+                text = fh.read()
         except OSError:
             continue
         rel = os.path.relpath(path, root if os.path.isdir(root) else os.path.dirname(root))
@@ -86,6 +87,39 @@ def scan_code(root: str, only: set[str] | None = None) -> list[Finding]:
     return findings
 
 
+def _read_sources(root: str, exts: tuple[str, ...]) -> dict[str, str]:
+    """Every analysable file under `root`, keyed by the forward-slash relative path every
+    finding, SARIF location and golden-set id is keyed on."""
+    files: dict[str, str] = {}
+    for path in _iter_files(root):
+        if not path.lower().endswith(exts):
+            continue
+        try:
+            if os.path.getsize(path) > MAX_BYTES:
+                continue
+            with open(path, encoding="utf-8", errors="ignore") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        rel = os.path.relpath(path, root if os.path.isdir(root) else os.path.dirname(root))
+        files[rel.replace("\\", "/")] = text
+    return files
+
+
+def scan_authz(root: str) -> list[Finding]:
+    """Run the authorization analysis — the two classes the pattern pack cannot decide.
+
+    Separate from `scan_taint` because it asks a different question. Taint asks where a value
+    came from; this asks whether the handler that used the value knew who was calling. A value
+    can be perfectly clean and the handler still hand it to the wrong person."""
+    return authz.analyze_files(_read_sources(root, authz.AUTHZ_EXTS))
+
+
+def scan_redos(root: str) -> list[Finding]:
+    """Run the catastrophic-backtracking analysis over every analysable file."""
+    return redos.analyze_files(_read_sources(root, redos.REDOS_EXTS))
+
+
 def scan_taint(root: str) -> list[Finding]:
     """Run the taint tier over every analyzable file and return one Finding per path.
 
@@ -97,18 +131,7 @@ def scan_taint(root: str) -> list[Finding]:
     # see an import edge, and the import edge is where most real handler→helper flows live:
     # the route that reads the request and the module that does the dangerous thing are
     # almost never the same file.
-    files: dict[str, str] = {}
-    for path in _iter_files(root):
-        if not path.lower().endswith((".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")):
-            continue
-        try:
-            if os.path.getsize(path) > MAX_BYTES:
-                continue
-            text = open(path, encoding="utf-8", errors="ignore").read()
-        except OSError:
-            continue
-        rel = os.path.relpath(path, root if os.path.isdir(root) else os.path.dirname(root))
-        files[rel.replace("\\", "/")] = text
+    files = _read_sources(root, (".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"))
 
     findings: list[Finding] = []
     for tp in taint.analyze_files(files):
@@ -300,13 +323,20 @@ def _dedupe(findings: list[Finding]) -> list[Finding]:
 
 def scan(target: str, run_deps: bool = True, use_scanners: bool = True,
          use_taint: bool = True, only: set[str] | None = None,
-         check_exploitation: bool = False) -> ScanResult:
+         check_exploitation: bool = False, use_authz: bool = True,
+         use_redos: bool = True) -> ScanResult:
     result = ScanResult(target=target, backend="none")
     result.tools_used.append("builtin-detectors")
     result.findings.extend(scan_code(target, only))
     if use_taint:
         result.tools_used.append("taint")
         result.findings.extend(scan_taint(target))
+    if use_authz:
+        result.tools_used.append("authz")
+        result.findings.extend(scan_authz(target))
+    if use_redos:
+        result.tools_used.append("redos")
+        result.findings.extend(scan_redos(target))
     if use_scanners:
         result.findings.extend(scanners.run_installed_scanners(target, result.notes, result.tools_used))
     if run_deps:
@@ -322,14 +352,18 @@ def scan(target: str, run_deps: bool = True, use_scanners: bool = True,
         # After dedupe: the same advisory can arrive from npm audit and osv, and asking two
         # feeds about the same CVE twice is a slower way to get the same answer.
         cves = [f.detector_id for f in result.findings]
-        catalog = exploitation.fetch([c for c in cves])
+        catalog = exploitation.fetch(list(cves))
         exploitation.apply(result.findings, catalog, result.notes)
         result.tools_used.append("cisa-kev+first-epss")
 
     result.notes.append(
-        "Tier-0 (deterministic, no LLM). IDOR / broken-access-control and other logic flaws "
-        "are not reliably detectable without the enrichment tier; run with an LLM backend for triage "
-        "+ logic-bug discovery.")
+        "Tier-0 (deterministic, no LLM). Business-logic flaws — the rules being broken are the "
+        "product's, and they are not written down anywhere the analyzer can read — remain "
+        "outside this tier; run with an LLM backend for triage + logic-bug discovery.")
     if use_taint:
         result.notes.extend(taint.limitations())
+    if use_authz:
+        result.notes.extend(authz.limitations())
+    if use_redos:
+        result.notes.extend(redos.limitations())
     return result

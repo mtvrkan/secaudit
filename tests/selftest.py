@@ -15,7 +15,11 @@ Exit code 0 = fixture matches the golden set; non-zero = a regression to fix.
 Run:  python3 tests/selftest.py
 """
 from __future__ import annotations
-import json, os, re, subprocess, sys
+import json
+import os
+import re
+import subprocess
+import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 FIX = os.path.join(ROOT, "fixtures", "vulnerable-app")

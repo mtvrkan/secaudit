@@ -1,0 +1,101 @@
+# Tool configuration only — this is NOT a package manifest.
+#
+# The distributable package lives in `kit/pyproject.toml` and stays there: it is built and
+# published from `kit/`, and it must keep declaring zero runtime dependencies. This file exists
+# because ruff, mypy and coverage resolve their configuration from the nearest pyproject.toml
+# above each file, and half this repository (`scripts/`, `eval/`, `tests/`, `plugins/`) sits
+# outside `kit/`. Without a root config those files would be linted with defaults that disagree
+# with the ones `kit/` is held to.
+#
+# There is deliberately no `[project]` table. `pip install .` at the repository root should fail
+# rather than quietly build something that is not the published package.
+
+[tool.ruff]
+line-length = 120
+# Matches `requires-python = ">=3.9"` in kit/pyproject.toml, so `UP` cannot propose a rewrite
+# the advertised floor would reject. That makes ruff a second, independent reading of the floor
+# alongside `scripts/check_python_floor.py` — which stays the authoritative one, because it
+# checks the shipped package rather than the style rules.
+target-version = "py39"
+
+exclude = [
+    # The measurement corpus. `vulnerable-app` is deliberately unsafe code and `secure-app` is
+    # its safe twin; both are DATA, and the golden set is keyed on their line numbers. A linter
+    # reformatting either one silently moves every label in eval/ground-truth. Never lint here.
+    "tests/fixtures",
+    # Generated artefacts, checked by their generators' own `--check` mode rather than by style.
+    "site/dist",
+    "eval/ground-truth",
+    "**/__pycache__",
+]
+
+[tool.ruff.lint]
+# Correctness rules, not house style: pyflakes (dead imports, undefined names), pycodestyle
+# errors, bugbear (real footguns), comprehension and modern-syntax cleanups.
+select = ["E", "W", "F", "B", "C4", "UP", "RUF"]
+
+ignore = [
+    # The ambiguous-unicode rules, all three of them. This repository's prose is a feature — em
+    # dashes, arrows and typographic quotes appear in docstrings, finding titles and report
+    # chrome on purpose, and `→` in particular is the character a taint path is rendered with.
+    # Flagging 178 deliberate characters would train everyone to run ruff with a blanket
+    # `--ignore`, which is how a linter stops being read at all.
+    "RUF001", "RUF002", "RUF003",
+
+    # unused-noqa. The source carries `# noqa` markers for rules this configuration does not
+    # select — `S310` on the one `urlopen` call, `BLE001` on the two places that catch broad
+    # and report rather than swallow. RUF100 calls those unused and its fix deletes them, which
+    # throws away the author's statement that the broad catch is deliberate and re-arms the
+    # finding for anyone who later enables flake8-bandit. A stale-noqa sweep is worth having;
+    # it is not worth this trade, so the markers stay and the rule goes.
+    "RUF100",
+]
+
+[tool.mypy]
+# Scoped to the shipped package. `scripts/`, `eval/` and the suites are internal tooling whose
+# failure mode is a red build, not a bad install — typing them adds noise without adding a
+# guarantee anybody depends on. Widening this scope is fine; narrowing it needs a reason.
+files = ["kit/secaudit_core", "kit/secaudit_mcp"]
+mypy_path = "kit"
+
+# mypy 2.x refuses to target Python 3.9, so it type-checks against a newer interpreter than the
+# package's advertised floor. That is a real gap and it is covered elsewhere, not ignored:
+# `scripts/check_python_floor.py` scans the package for constructs above 3.9 and is the gate
+# that keeps `requires-python` honest. mypy's job here is type correctness only.
+python_version = "3.10"
+
+# The optional integrations are optional on purpose: no stubs exist for tools that may not be
+# installed, and the engine handles their absence at runtime.
+ignore_missing_imports = true
+
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+[tool.coverage.run]
+# The shipped package only. Coverage of `scripts/` would measure the generators, which are
+# already proven by their own `--check` modes comparing generated output byte for byte.
+source = ["kit/secaudit_core", "kit/secaudit_mcp"]
+branch = true
+omit = ["*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+# Set to the value actually measured, not to a round number below it — the same rule
+# `eval/thresholds.json` states for the detection floors, for the same reason: a floor below
+# what is measured is permission to regress silently. Raise it when coverage improves; lowering
+# it needs a written reason in the pull request, because that edit is the visible part.
+#
+# Measured 89% (statement + branch) on 2026-08-13 over `kit/secaudit_core` and `kit/secaudit_mcp`.
+# The two integration seams that used to be the floor's weak points are no longer excused as
+# "cannot be covered offline": the scanner adapters went 69% -> 84% by spawning real subprocesses
+# against fake executables placed on PATH, and the LLM backends 66% -> 90% by injecting a
+# transport at the one call that would otherwise need the network. That exercise found a real
+# Windows bug — a `.cmd`-shimmed scanner was detected and then unrunnable — which is the argument
+# for covering a seam rather than declaring it uncoverable.
+fail_under = 89
+show_missing = true

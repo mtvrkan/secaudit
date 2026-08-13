@@ -22,8 +22,7 @@ No detector and no taint sink in the pack emits any CWE for these. They are not 
 |---|---|
 | Business-logic flaws (state-machine skips, price/quantity trust) | The rules being broken are the product's, and they are not written down anywhere the analyzer can read. |
 | Race conditions / TOCTOU | Needs an interleaving model. A lexical pass reads one execution, never two at once. |
-| Authentication flow flaws (session fixation, weak reset tokens) | Requires modelling a multi-request flow, which the source-mode scan does not do. |
-| Denial of service via algorithmic complexity (ReDoS) | Detecting a catastrophic backtracking pattern needs automaton analysis of the regex, not a match against it. |
+| Authentication flow flaws (session fixation, weak reset tokens) | Requires modelling a multi-request flow, which the source-mode scan does not do. Note that a *missing* authentication check on a state-changing endpoint (CWE-306) is now reported; a flawed authentication flow that is present is not. |
 
 The LLM enrichment tier can reason about several of these and does. It is not deterministic and it is not a gate: two runs on the same code can disagree, which is why the measured numbers on this repo exclude it entirely.
 
@@ -33,9 +32,10 @@ A CWE is emitted, so these do not look absent in any coverage table. Read what i
 
 | Class | CWEs the engine emits | What is still missing |
 |---|---|---|
-| Broken access control / IDOR | CWE-284 | Whether a handler checks that the caller owns the row it returns is a question about intent, not shape. There is no token sequence that distinguishes a correct lookup from a missing ownership predicate. |
+| Broken access control / IDOR | CWE-284 | Partially covered, and barely: the structural rule reports a handler that has an authenticated principal, looks a row up by a caller-supplied id, and never uses the principal to constrain it. Any call that receives the principal is treated as a check delegated, because counting otherwise reported correct fetch-then-authorize code — so a handler that passes the principal somewhere without checking it is invisible. Measured against the external corpus this finds 1 of 76 labelled cases. |
 | Second-order injection | CWE-89 | The value is stored on one request and executed on another; the two ends are in different files and usually different services. |
 | Cryptographic protocol misuse (nonce reuse, ECB, weak KDF params) | CWE-327 | Partially covered: named weak primitives are detected, parameter-level misuse is not. |
+| Denial of service via algorithmic complexity (ReDoS) | CWE-1333 | Partially covered: catastrophic backtracking is decided from the regex's parse tree (star height above one, repeated groups with overlapping alternatives), for patterns written at the call site or bound to a module-level constant. A pattern built at runtime is not analysed, a regex the criteria pass is not certified safe, and resource-exhaustion denial of service that is not a regex — unbounded reads, unbounded allocation — is not covered at all. |
 | Deserialization gadget chains | CWE-502 | Partially covered: the unsafe call is detected, whether an exploitable gadget exists in the dependency graph is not. |
 
 ## 4. Analysis bounds
@@ -43,7 +43,8 @@ A CWE is emitted, so these do not look absent in any coverage table. Read what i
 The taint tier's own list, printed in every report's limitations appendix:
 
 - Taint analysis follows a value across calls to functions resolved by simple name, and across import edges into other files in the scanned set, to any depth — but only files that were scanned. A chain that passes through an excluded directory, a third-party package, or a language without taint depth stops there. In JavaScript only named declarations and named function/arrow expressions carry a summary — not object-property or class methods — and a namespace import (`const u = require('./util'); u.run(x)`) is not resolved.
-- Function parameters are treated as a weak (MEDIUM-confidence) source because whether they carry untrusted data depends on callers, which are not analyzed.
+- Function parameters are treated as a weak (MEDIUM-confidence) source because whether they carry untrusted data depends on callers, which are not analyzed. Two shapes are excepted and rated HIGH, because the framework is the caller and it binds them from the request: a handler under a routing decorator (`@app.get`, `@router.post`, `@bp.route`), and a Django view, recognised by a first parameter named `request`. A route registered some other way — a `urls.py` entry pointing at an undecorated function whose first parameter is not `request`, a class-based view's `get`/`post` — is not recognised, and its parameters stay a MEDIUM lead.
+- SQL reached through an ORM is only seen at the escape hatches the ORM provides: `.raw()`, `.extra()`, `execute()`/`executemany()`/`exec_driver_sql()` on a receiver named like a connection or session (cursor, conn, connection, session, db, database, engine, pool, tx, trans). A database reached through a receiver this list does not name, or through a call whose receiver is not a plain dotted name (`get_conn().execute(sql)`), is not matched.
 - A validation guard (`if (bad(x)) return/throw`) is assumed to sanitize; an ineffective guard therefore hides its sink from this tier.
 - The JavaScript/TypeScript scanner is a brace-aware statement scanner, not a parser. Flat destructuring of a tainted value (`const { name } = req.query`, including renames, defaults and rest) is followed; a NESTED pattern (`const { a: { b } } = req.body`) is not, and neither are cross-boundary closures, dynamic property access or JSX.
 

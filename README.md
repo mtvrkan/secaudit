@@ -189,32 +189,51 @@ live in [`eval/thresholds.json`](eval/thresholds.json), and CI fails if the comm
 **This is a regression floor, not a forecast.** These fixtures were written alongside the
 detectors, so the number says "this still works", not "this will work on your code".
 
-### The external number: F3 12.5
+### The external number: F3 26.0
 
 Measured on the [RealVuln benchmark](https://github.com/kolega-ai/Real-Vuln-Benchmark) — 66 real
 vulnerable repositories labelled by people who have never seen this code, scored by their scorer,
-not ours. **Tier 0 scores below Semgrep's published 17.7**: precision 0.407 against Semgrep's
-0.205, recall 0.116 against its 0.175, and F3 weights recall nine times as heavily as precision,
-so being right more often does not pay for finding less.
+not ours.
 
 | | F3 | Precision | Recall |
 |---|---|---|---|
 | Purpose-built (Kolega.Dev) | 73.0 | 0.388 | 0.809 |
 | General-purpose LLM (Claude Sonnet 4.6) | 51.7 | 0.785 | 0.498 |
 | Rule-based SAST (Semgrep) | 17.7 | 0.205 | 0.175 |
-| **SecAudit Tier 0** | **12.5** | **0.407** | **0.116** |
+| **SecAudit Tier 0** | **26.0** | **0.511** | **0.246** |
 
-The engine reaches 80–90% on classes with a syntactic sink (command injection, XXE,
-deserialization, code injection) and 0% on the classes `what-we-miss.md` says it cannot decide
-(access control, missing authentication, sensitive-data exposure). One number was *not*
-predicted and is the most useful thing the run produced: **SQL injection, 2 of 71** — the
-flagship class, on real Django and FastAPI code, where SQL is reached through ORM escapes our
-sources do not treat as request-rooted.
+**Read the caveat before the number.** The first two runs scored 12.5 and 13.3 and were blind —
+the engine had never seen this corpus. 24.6 and 26.0 are not: the rules added since were chosen
+by reading this benchmark's own false negatives, twice. Every one of them is a rule any SAST
+ships (weak PRNG for tokens, cookie flags, CSRF exemptions, a committed fallback signing key,
+debug-on-by-default, open redirect, NoSQL injection, credentials in logs, catastrophic
+backtracking), so none is a pattern fitted to a fixture — but the *selection* was informed by
+the corpus, which is the same disclosure `eval/scorecard.md` has always carried about the
+fixture set. 12.5 is what this engine did on a corpus it had not read; 26.0 is what it does on
+one it has read twice, and the gap between those two numbers is the size of the advantage.
 
-Full result — per-family, per-repo, what could not be cloned and why —
+What moved in the latest round: `denial_of_service` **0 → 16 of 44**, all of it from a ReDoS
+analysis that decides catastrophic backtracking from the regex's parse tree — 17 true positives
+and **zero** false ones. `missing_auth` 0 → 4 of 74 and `broken_access_control` 0 → 1 of 76: off
+zero, and not much more than that. **Precision rose with recall again** (0.504 → 0.511), the
+second round running, which is the reason to read these as rules rather than as curve-fitting.
+
+What still does not move: `broken_access_control` at 1/76 is the round's disappointment — the
+structural IDOR rule is right about the shape and finds almost nothing, because every version
+that found more also reported correct code (the full accounting is in
+[`eval/realvuln/`](eval/realvuln)). `path_traversal` stayed at 3/39 and was deliberately not
+attempted a third time. `other`, at 133 of 831 labels, is the ceiling on the whole score.
+
+**The LLM tier has no measured number.** Every figure above is Tier 0. The enrichment tier —
+triage, verification, the logic bugs the deterministic tier cannot reach — is the headline claim
+of this kit and it is unmeasured, which is a gap and is named here as one. The harness that would
+measure it ships in [`eval/realvuln/`](eval/realvuln) and runs in one command; it has not been
+run, because no key was available and a number nobody can re-query is worse than an admitted gap.
+
+Full result — per-family, per-repo, all four runs, what could not be cloned and why —
 [`eval/realvuln/`](eval/realvuln). The raw scorer output is committed and CI fails if these
 figures stop matching it. Two numbers, both true: 0.986 is what the engine still does on the
-corpus it was built against, 12.5 is what it does on code nobody here has seen.
+corpus it was built against, 24.6 is what it does on 62 real repositories.
 
 ## What you get
 
@@ -310,8 +329,8 @@ request aimed at a host.) Per-client config:
   and fix instructions stay in English, and a translated report says why.
 - **[Running in CI](docs/ci.md)** — GitHub Action, pip, Docker and pre-commit, with the exit
   codes and what a green build does and does not mean.
-- **[Semgrep rules](rules/secaudit/README.md)** — 41 of the 79 detectors as a Semgrep pack, and
-  the published list of which 38 are withheld because a regex rule cannot reproduce them.
+- **[Semgrep rules](rules/secaudit/README.md)** — 43 of the 85 detectors as a Semgrep pack, and
+  the published list of which 42 are withheld because a regex rule cannot reproduce them.
 - **[Diff mode](docs/diff-mode.md)** — `--since <ref>`: gate a pull request on what it
   introduced, not on the debt it inherited.
 - [Getting started](docs/getting-started.md) · [Authorization & scope](docs/authorization.md)

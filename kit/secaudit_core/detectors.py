@@ -212,6 +212,53 @@ DETECTORS: list[Detector] = [
     Detector("SEC-PY-DEBUG", "Debug mode enabled", "CWE-489", "A05", S.MEDIUM, C.MEDIUM, (".py",),
              r"(?:DEBUG\s*=\s*True|\.run\([^)]*debug\s*=\s*True)",
              "Disable debug in production; never expose the interactive debugger."),
+    # A settings module that defaults debug ON is the same exposure with a switch in front of
+    # it: `DEBUG = env_bool("DJANGO_DEBUG", True)` ships debug to every deployment that forgot
+    # the variable, which is the deployment that needed it off. The plain `DEBUG = True` above
+    # does not match this shape.
+    Detector("SEC-PY-DEBUG-DEFAULT", "Debug mode defaults to on when the env var is unset",
+             "CWE-16", "A05", S.MEDIUM, C.MEDIUM, (".py",),
+             r"^\s*DEBUG\s*=\s*\w+\([^)]*(?:,\s*(?:True|['\"](?:1|true|yes|on)['\"])\s*\)"
+             r"|[^)]*['\"](?:1|true)['\"]\s*\)\s*==\s*['\"](?:1|true)['\"])",
+             "Default to False and opt in: `DEBUG = os.environ.get('DJANGO_DEBUG') == '1'`."),
+    Detector("SEC-PY-ALLOWED-HOSTS", "ALLOWED_HOSTS accepts any Host header",
+             "CWE-16", "A05", S.MEDIUM, C.MEDIUM, (".py",),
+             r"^\s*ALLOWED_HOSTS\s*=\s*\[\s*['\"]\*['\"]",
+             "List the hostnames you serve. `['*']` enables Host-header injection, cache "
+             "poisoning and password-reset poisoning."),
+    # The literal is the whole finding: a fallback secret ships in the source, so every
+    # deployment that does not set the variable signs its sessions with a key that is public.
+    Detector("SEC-PY-SECRET-KEY-FALLBACK",
+             "Signing key falls back to a literal committed in the source",
+             "CWE-321", "A02", S.HIGH, C.HIGH, (".py",),
+             r"^\s*(?:SECRET_KEY|JWT_SECRET\w*|\w*_SECRET_KEY)\s*=\s*(?:os\.)?(?:environ\.get|getenv)"
+             r"\s*\(\s*[^)]*,\s*['\"][^'\"]{8,}['\"]",
+             "Fail closed when the variable is missing rather than falling back: a committed "
+             "default key is a published key.", mask=True),
+    # Cookie flags. Suppressed when the call already names the flags, so a correct call is not
+    # reported — that suppression is per-file, which is the pack's coarse-grained trade-off.
+    Detector("SEC-PY-COOKIE-FLAGS", "Cookie set without Secure/HttpOnly",
+             "CWE-1004", "A05", S.MEDIUM, C.MEDIUM, (".py",),
+             r"\.set_cookie\s*\((?:[^()]|\([^()]*\))*\)",
+             "Set `httponly=True, secure=True, samesite='Lax'` — without HttpOnly the cookie is "
+             "readable by any script the page ends up running.",
+             suppress_if=r"set_cookie\s*\((?:[^()]|\([^()]*\))*httponly\s*=\s*True"),
+    # Randomness for security material. `random` is a Mersenne Twister: observe enough output
+    # and the rest is predictable, which is exactly the property a token must not have. Bound
+    # to security-shaped names on purpose — `random.choice` picking a demo colour is fine, and
+    # a rule that says otherwise gets muted.
+    Detector("SEC-PY-WEAK-PRNG", "Security material generated with a non-cryptographic PRNG",
+             "CWE-330", "A02", S.HIGH, C.MEDIUM, (".py",),
+             r"^\s*\w*(?:key|token|secret|nonce|otp|code|session|salt|iv|password|passwd|pin|"
+             r"verifier|challenge)\w*\s*=\s*[^=\n]*\brandom\s*\.\s*"
+             r"(?:random|randint|randrange|choice|choices|sample|getrandbits|shuffle|uniform)\s*\(",
+             "Use `secrets` (or `os.urandom`): `secrets.token_urlsafe(32)`."),
+    Detector("SEC-PY-CSRF-EXEMPT", "CSRF protection switched off",
+             "CWE-352", "A01", S.MEDIUM, C.HIGH, (".py",),
+             r"@csrf_exempt\b|WTF_CSRF_ENABLED\s*=\s*False|CSRF_ENABLED\s*=\s*False"
+             r"|\bcsrf\.exempt\b",
+             "Keep CSRF protection on for any state-changing route; use a token, not an "
+             "exemption."),
 
     # ---- Go ----
     Detector("SEC-GO-TLS", "Disabled TLS verification (InsecureSkipVerify)", "CWE-295", "A02",
@@ -440,6 +487,7 @@ CODE_SHAPE_DETECTORS = {
     "SEC-JS-EVAL", "SEC-JS-SSTI", "SEC-JS-RANDOM",
     "SEC-PY-XXE", "SEC-PY-TLS", "SEC-PY-CMDI", "SEC-PY-PICKLE", "SEC-PY-YAML",
     "SEC-PY-OSSYSTEM", "SEC-PY-EVAL", "SEC-PY-MD5", "SEC-PY-DEBUG",
+    "SEC-PY-DEBUG-DEFAULT", "SEC-PY-COOKIE-FLAGS", "SEC-PY-WEAK-PRNG", "SEC-PY-CSRF-EXEMPT",
     "SEC-GO-TLS", "SEC-GO-EXEC",
     # SEC-RS-CMDI is deliberately NOT here. It matches `Command::new("sh")` and `.arg("-c")`
     # — the shell name and the flag are string-literal *contents*, which `code_view` blanks,

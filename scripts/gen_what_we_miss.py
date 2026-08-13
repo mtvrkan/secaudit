@@ -28,7 +28,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "kit"))
 sys.path.insert(0, os.path.join(REPO, "scripts"))
 
-from secaudit_core import compliance, taint                  # noqa: E402
+from secaudit_core import authz, compliance, redos, taint     # noqa: E402
 from secaudit_core.detectors import DETECTORS                # noqa: E402
 
 import gen_language_matrix as matrix                         # noqa: E402
@@ -41,9 +41,12 @@ SCORECARD = os.path.join(REPO, "eval", "scorecard.json")
 # make our coverage look worse, which is the right direction for this file's errors to run.
 CLASSES: list[tuple[str, tuple[str, ...], str]] = [
     ("Broken access control / IDOR", ("CWE-639", "CWE-284", "CWE-863"),
-     "Whether a handler checks that the caller owns the row it returns is a question about "
-     "intent, not shape. There is no token sequence that distinguishes a correct lookup from "
-     "a missing ownership predicate."),
+     "Partially covered, and barely: the structural rule reports a handler that has an "
+     "authenticated principal, looks a row up by a caller-supplied id, and never uses the "
+     "principal to constrain it. Any call that receives the principal is treated as a check "
+     "delegated, because counting otherwise reported correct fetch-then-authorize code — so a "
+     "handler that passes the principal somewhere without checking it is invisible. Measured "
+     "against the external corpus this finds 1 of 76 labelled cases."),
     ("Business-logic flaws (state-machine skips, price/quantity trust)", ("CWE-841", "CWE-840"),
      "The rules being broken are the product's, and they are not written down anywhere the "
      "analyzer can read."),
@@ -57,10 +60,16 @@ CLASSES: list[tuple[str, tuple[str, ...], str]] = [
      "Partially covered: named weak primitives are detected, parameter-level misuse is not."),
     ("Authentication flow flaws (session fixation, weak reset tokens)",
      ("CWE-384", "CWE-640"),
-     "Requires modelling a multi-request flow, which the source-mode scan does not do."),
+     "Requires modelling a multi-request flow, which the source-mode scan does not do. Note "
+     "that a *missing* authentication check on a state-changing endpoint (CWE-306) is now "
+     "reported; a flawed authentication flow that is present is not."),
     ("Denial of service via algorithmic complexity (ReDoS)", ("CWE-1333", "CWE-400"),
-     "Detecting a catastrophic backtracking pattern needs automaton analysis of the regex, "
-     "not a match against it."),
+     "Partially covered: catastrophic backtracking is decided from the regex's parse tree "
+     "(star height above one, repeated groups with overlapping alternatives), for patterns "
+     "written at the call site or bound to a module-level constant. A pattern built at runtime "
+     "is not analysed, a regex the criteria pass is not certified safe, and resource-exhaustion "
+     "denial of service that is not a regex — unbounded reads, unbounded allocation — is not "
+     "covered at all."),
     ("Deserialization gadget chains", ("CWE-502",),
      "Partially covered: the unsafe call is detected, whether an exploitable gadget exists in "
      "the dependency graph is not."),
@@ -73,10 +82,48 @@ def load_scorecard() -> dict:
 
 
 def emitted_cwes() -> set[str]:
+    """Every CWE the deterministic tier can produce.
+
+    The structural analyses have to be in here. They emit CWEs no detector and no taint sink
+    does, and if this function only knew about the pattern pack and the sink catalogs, this page
+    would go on listing access control and ReDoS as classes with no coverage at all — the exact
+    decay it exists to prevent, in the file that promises it does not happen.
+    """
     return ({d.cwe for d in DETECTORS}
             | {s.cwe for s in taint.PY_SINKS.values()}
             | {s.cwe for _, s in taint.JS_SINKS}
-            | {s.cwe for _, s in taint.JS_ASSIGN_SINKS})
+            | {s.cwe for _, s in taint.JS_ASSIGN_SINKS}
+            | structural_cwes())
+
+
+def structural_cwes() -> set[str]:
+    """CWEs the whole-handler analyses emit, read by running them over snippets that trigger
+    each rule rather than by listing the ids here — a list would be one more typed claim, and
+    it would keep saying the right thing for exactly as long as nobody changed a rule."""
+    idor = (
+        "from flask import request\n"
+        "@app.route('/o', methods=['GET'])\n"
+        "@login_required\n"
+        "def o(current_user):\n"
+        "    return Order.query.get(request.args.get('order_id'))\n"
+    )
+    noauth = (
+        "from flask import request\n"
+        "@app.route('/evaluate', methods=['POST'])\n"
+        "def evaluate():\n"
+        "    return str(request.form['expression'])\n"
+    )
+    catastrophic = 'import re\nP = r"((a)+)+"\nre.search(P, x)\n'
+
+    found: set[str] = set()
+    for code in (idor, noauth):
+        found |= {f.cwe for f in authz.analyze_file("probe.py", code)}
+    found |= {f.cwe for f in redos.analyze_file("probe.py", catastrophic)}
+    if not found:
+        raise SystemExit("gen_what_we_miss: the structural probes produced no findings — "
+                         "either a rule changed shape or this page is about to under-report "
+                         "the coverage it is supposed to be honest about")
+    return found
 
 
 def render() -> str:

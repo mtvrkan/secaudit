@@ -6,5 +6,5 @@ Tier 1 (optional, pluggable): an LLM backend enriches the Tier-0 findings — tr
 logic/unknown-vuln discovery, narrative — with the model of your choice (Claude, OpenAI,
 a local Ollama model, or `none`). Claude is the best default; it is not required.
 """
-__all__ = ["schema", "detectors", "engine", "backends", "report"]
+__all__ = ["backends", "detectors", "engine", "report", "schema"]
 __version__ = "1.0.0"

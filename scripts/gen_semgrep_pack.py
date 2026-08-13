@@ -33,7 +33,6 @@ to run SecAudit, which is a real argument rather than a marketing one.
 from __future__ import annotations
 
 import os
-import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -122,8 +121,8 @@ def rule_yaml(detector) -> list[str]:
         f"      secaudit-id: {yaml_single_quoted(detector.id)}",
         f"      secaudit-severity: {yaml_single_quoted(detector.severity.value)}",
         f"      confidence: {yaml_single_quoted(detector.confidence.value.upper())}",
-        f"      category: security",
-        f"      source: 'https://github.com/mtvrkan/secaudit'",
+        "      category: security",
+        "      source: 'https://github.com/mtvrkan/secaudit'",
     ]
     if detector.mask:
         lines.append("      # This rule matches credential material. Semgrep prints the "
@@ -147,7 +146,7 @@ def group_file(group: str, detectors: list) -> str:
 
 def readme(exported: dict, withheld: list) -> str:
     total = sum(len(v) for v in exported.values())
-    rows = [f"| `{g}` | {len(v)} | {', '.join(sorted(set(e for d in v for e in paths_for(d))))} |"
+    rows = [f"| `{g}` | {len(v)} | {', '.join(sorted({e for d in v for e in paths_for(d)}))} |"
             for g, v in sorted(exported.items())]
     held = [f"| `{d.id}` | {reason} |" for d, reason in withheld]
 

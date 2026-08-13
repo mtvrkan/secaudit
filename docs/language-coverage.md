@@ -15,20 +15,20 @@ What depth of analysis each language actually gets. Every number and tier below 
 
 ## Programming languages
 
-| Language | Depth | Detectors | Taint front end | Dependency reachability |
-|---|---|---|---|---|
-| JavaScript | **Taint** | 31 | brace-aware statement scanner, intraprocedural + interprocedural + cross-module | yes |
-| TypeScript | **Taint** | 31 | brace-aware statement scanner, intraprocedural + interprocedural + cross-module | yes |
-| Python | **Taint** | 28 | stdlib `ast` parse, intraprocedural + interprocedural + cross-module | yes |
-| Go | **Rules** | 16 | — | no |
-| Java | **Rules** | 19 | — | no |
-| Kotlin | **Regex** | 3 | — | no |
-| C# | **Rules** | 14 | — | no |
-| PHP | **Rules** | 16 | — | no |
-| Ruby | **Rules** | 15 | — | no |
-| Rust | **Rules** | 3 | — | no |
-| Swift | **Regex** | 1 | — | no |
-| Dart | **Regex** | 1 | — | no |
+| Language | Depth | Detectors | Taint front end | Structural analysis | Dependency reachability |
+|---|---|---|---|---|---|
+| JavaScript | **Taint** | 31 | brace-aware statement scanner, intraprocedural + interprocedural + cross-module | — | yes |
+| TypeScript | **Taint** | 31 | brace-aware statement scanner, intraprocedural + interprocedural + cross-module | — | yes |
+| Python | **Taint** | 34 | stdlib `ast` parse, intraprocedural + interprocedural + cross-module | authorization + ReDoS | yes |
+| Go | **Rules** | 16 | — | — | no |
+| Java | **Rules** | 19 | — | — | no |
+| Kotlin | **Regex** | 3 | — | — | no |
+| C# | **Rules** | 14 | — | — | no |
+| PHP | **Rules** | 16 | — | — | no |
+| Ruby | **Rules** | 15 | — | — | no |
+| Rust | **Rules** | 3 | — | — | no |
+| Swift | **Regex** | 1 | — | — | no |
+| Dart | **Regex** | 1 | — | — | no |
 
 ## Infrastructure and configuration
 
@@ -47,5 +47,5 @@ What depth of analysis each language actually gets. Every number and tier below 
 - **Pattern-only: Go, Java, Kotlin, C#, PHP, Ruby, Rust, Swift, Dart.** Real detectors, real classes, no dataflow. Recall on these is bounded by whether the dangerous call and the untrusted value appear close enough together to match one expression.
 - Every language in the vocabulary has at least one detector.
 - **Dependency reachability** is the import-level index behind the OpenVEX statuses. Where it says no, an advisory for that ecosystem is left `under_investigation` rather than assumed unreachable — see [`kit/secaudit_core/deps.py`](../kit/secaudit_core/deps.py).
-- **Cross-module depth: JavaScript, TypeScript, Python.** A value is followed across import edges to any depth, but only through files that were actually scanned — a chain leaving into an excluded directory, a third-party package, or a language without taint depth stops at that edge. The full bounds list is in [`kit/secaudit_core/taint.py`](../kit/secaudit_core/taint.py) and is printed in every report's limitations appendix.
+- **Cross-module depth: JavaScript, TypeScript, Python.** A value is followed across import edges to any depth, but only through files that were actually scanned — a chain leaving into an excluded directory, a third-party package, or a language without taint depth stops at that edge. The full bounds list is in [`kit/secaudit_core/taint`](../kit/secaudit_core/taint) and is printed in every report's limitations appendix.
 

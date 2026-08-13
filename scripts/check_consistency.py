@@ -239,7 +239,7 @@ def check_21_code_shape_ids_resolve(f: dict) -> list[str]:
     """`CODE_SHAPE_DETECTORS` is an id set held apart from the definitions it modifies, so a
     renamed detector would silently stop being scanned against the blanked view and start
     matching inside string literals again — a precision regression with no error message."""
-    from secaudit_core.detectors import CODE_SHAPE_DETECTORS
+    from secaudit_core.detectors import CODE_SHAPE_DETECTORS               # noqa: PLC0415
     known = set(f["detector_ids"])
     return [f"check 21: CODE_SHAPE_DETECTORS names `{i}`, which is not a detector id"
             for i in sorted(CODE_SHAPE_DETECTORS - known)]
@@ -353,7 +353,7 @@ def check_25_detector_subset_claims_are_derived(f: dict) -> list[str]:
     decay. The fix is the gate, not the correction."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import gen_semgrep_pack as pack                                        # noqa: PLC0415
-    from secaudit_core.detectors import CODE_SHAPE_DETECTORS               # noqa: PLC0415
+    from secaudit_core.detectors import CODE_SHAPE_DETECTORS
 
     total = len(DETECTORS)
     withheld = sum(1 for d in DETECTORS if pack.withheld_reason(d))
@@ -389,15 +389,56 @@ def check_25_detector_subset_claims_are_derived(f: dict) -> list[str]:
     return fails
 
 
-def check_26_every_local_gate_runs_in_ci(f: dict) -> list[str]:
-    """A gate only the local runner knows about is a gate a pull request goes around.
+def check_28_code_shape_has_one_source_of_truth(f: dict) -> list[str]:
+    """`CODE_SHAPE_DETECTORS` must be the only thing that sets `literal=False`.
 
-    `scripts/run_checks.py` and `.github/workflows/validate.yml` are two hand-maintained copies
-    of the same list, and run_checks' own docstring asked for them to be kept in sync by hand.
-    They were not: the advertised-Python-floor check sat in the local runner and in no workflow
-    at all, so the promise `requires-python` makes to pip was enforced by a script that only ran
-    when a contributor remembered to run it. Two lists, one of them authoritative, and nothing
-    comparing them is the same shape of bug as a typed number — so it gets the same treatment.
+    The set is applied in one pass at the bottom of `detectors.py`, which makes it the source
+    of truth — but nothing stopped a detector from passing `literal=False` in its own
+    constructor, and four did. They behaved correctly, so nothing failed: the pack scanned the
+    blanked view for 42 detectors while the set that documents which ones listed 38, and check
+    25 compares the prose against the *set*. A prose number, a set, and a field, with the field
+    silently outvoting the other two — this repository's own declared failure mode, one level
+    down from where it was last looked for.
+    """
+    from secaudit_core.detectors import CODE_SHAPE_DETECTORS  # noqa: PLC0415
+
+    inline = sorted(d.id for d in DETECTORS
+                    if not d.literal and d.id not in CODE_SHAPE_DETECTORS)
+    fails = [f"check 28: `{d}` sets `literal` in its own constructor instead of joining "
+             f"CODE_SHAPE_DETECTORS — two sources for one fact, and the set is the one the "
+             f"docs are checked against" for d in inline]
+
+    stale = sorted(i for i in CODE_SHAPE_DETECTORS if i not in {d.id for d in DETECTORS})
+    fails += [f"check 28: CODE_SHAPE_DETECTORS names `{i}`, which is not a detector any more"
+              for i in stale]
+    return fails
+
+
+# A check script that nothing runs, with the reason it is exempt. An entry here is a decision,
+# which is the point: the alternative to an explicit list is a check that quietly stops covering
+# whatever was added last.
+_NOT_A_GATE = {
+    "kit/tests/test_zz_suite_mains.py":
+        "pytest-only. It has no main() because it IS the pytest wrapper that calls every other "
+        "suite's main(); running it as a script would be circular. Covered by the coverage gate, "
+        "which runs pytest.",
+}
+
+
+def check_26_nothing_runs_outside_the_gate_list(f: dict) -> list[str]:
+    """Every check in this repository must be in the one list, and that list must run in CI.
+
+    The original form of this check compared two hand-maintained copies of the gate list —
+    `scripts/run_checks.py` and the twenty steps of `validate.yml` — because they had already
+    drifted once: the advertised-Python-floor gate lived in the runner and in no workflow at
+    all. The copies are gone; the Linux job calls the runner, like the Windows job always did.
+
+    That leaves the hole the two-copy check could never see, which is the one that matters now:
+    a suite or check script that is in NEITHER list. Nothing about adding
+    `kit/tests/test_something.py` makes anything run it, and a test file nobody runs looks
+    exactly like a test file that passes. So the direction is inverted — the repository is
+    walked, and every check it contains must appear in GATES or be exempt in `_NOT_A_GATE`
+    with a stated reason.
     """
     runner = read(os.path.join(REPO, "scripts", "run_checks.py"))
     workflows_dir = os.path.join(REPO, ".github", "workflows")
@@ -405,13 +446,88 @@ def check_26_every_local_gate_runs_in_ci(f: dict) -> list[str]:
                    for name in sorted(os.listdir(workflows_dir)) if name.endswith(".yml"))
 
     # The script each gate invokes: the first entry of every argv list in GATES.
-    scripts = re.findall(r'\(\s*"[^"]+",\s*\[\s*"([^"]+\.py)"', runner)
-    if not scripts:
+    gated = set(re.findall(r'\(\s*"[^"]+",\s*\[\s*"([^"]+\.py)"', runner))
+    if not gated:
         return ["check 26: could not read the gate list out of scripts/run_checks.py — the "
                 "GATES table changed shape and this check is now blind"]
-    return [f"check 26: `{s}` is a gate in scripts/run_checks.py but runs in no workflow — "
-            f"a gate CI does not run is one a pull request can go around"
-            for s in sorted(set(scripts)) if s not in ci]
+
+    fails = []
+
+    # 1. The runner itself has to be what CI invokes, or the whole list runs nowhere.
+    if "scripts/run_checks.py" not in ci:
+        fails.append("check 26: no workflow runs `scripts/run_checks.py`, so none of the "
+                     f"{len(gated)} gates it lists runs in CI at all")
+
+    # 2. Everything that looks like a check must be in the list.
+    candidates: list[str] = []
+    for directory, prefix in (("kit/tests", "test_"), ("scripts", "check_"), ("tests", "")):
+        full = os.path.join(REPO, *directory.split("/"))
+        if not os.path.isdir(full):
+            continue
+        candidates += [f"{directory}/{name}" for name in sorted(os.listdir(full))
+                       if name.endswith(".py") and name.startswith(prefix)
+                       and name != "conftest.py"]
+
+    for candidate in candidates:
+        if candidate in gated or candidate in _NOT_A_GATE:
+            continue
+        fails.append(f"check 26: `{candidate}` looks like a check but is not a gate in "
+                     f"scripts/run_checks.py — nothing runs it, and a check nobody runs is "
+                     f"indistinguishable from a check that passes. Add it to GATES, or add it "
+                     f"to _NOT_A_GATE with the reason.")
+
+    # 3. An exemption for a file that no longer exists is a stale decision; say so.
+    fails += [f"check 26: `{path}` is exempt in _NOT_A_GATE but does not exist — remove the "
+              f"exemption rather than leaving it to cover a future file by accident"
+              for path in sorted(_NOT_A_GATE)
+              if not os.path.isfile(os.path.join(REPO, *path.split("/")))]
+    return fails
+
+
+def check_29_no_typed_gate_count(f: dict) -> list[str]:
+    """The gate count is a derived number like any other, and it drifted anyway.
+
+    `validate.yml` described the Windows job as running "the same 32 gates" while the runner
+    listed 35. Nothing caught it, because every other derived number in this repository is
+    checked inside a document the generators own, and a YAML *comment* is owned by nobody. That
+    is the whole failure mode this repo exists to argue about: the claim was typed, so it decayed
+    in one direction, and the direction was flattering — a stale count always understates.
+
+    So the count is read out of `GATES` and every prose statement of it, in any workflow, script
+    or document, must agree. Dated snapshot blocks are exempt for the same reason as check 08:
+    a line recording what was true on a date is history, and history does not drift.
+    """
+    runner = read(os.path.join(REPO, "scripts", "run_checks.py"))
+    gates = len(re.findall(r'\(\s*"[^"]+",\s*\[\s*"[^"]+\.py"', runner))
+    if not gates:
+        return ["check 29: could not count the GATES table in scripts/run_checks.py — the table "
+                "changed shape and this check is now blind"]
+
+    # Any "<n> gate(s)" or "<n> checks" in prose. The runner's own f-string prints the derived
+    # value at runtime and is not a typed claim, so digits are what this looks for.
+    pattern = re.compile(r"\b(\d+)\s+(?:gate|check)s?\b", re.I)
+    fails = []
+    for rel in _gate_count_documents():
+        body = _outside_snapshots(read(os.path.join(REPO, *rel.split("/"))))
+        for m in pattern.finditer(body):
+            if int(m.group(1)) != gates:
+                fails.append(f"check 29: {rel} states {m.group(1)} gates; scripts/run_checks.py "
+                             f"lists {gates}. Derive it or delete the number.")
+    return fails
+
+
+def _gate_count_documents() -> list[str]:
+    """Where a gate count can be stated: the workflows, the docs a reader is pointed at, and the
+    contributor guide. Walked rather than listed, so a new workflow is covered the day it lands."""
+    out = []
+    workflows = os.path.join(REPO, ".github", "workflows")
+    if os.path.isdir(workflows):
+        out += [f".github/workflows/{name}" for name in sorted(os.listdir(workflows))
+                if name.endswith(".yml")]
+    out += [rel for rel in ("README.md", "kit/README.md", "CONTRIBUTING.md", "docs/ci.md",
+                            "ROADMAP.md")
+            if os.path.isfile(os.path.join(REPO, *rel.split("/")))]
+    return out
 
 
 def check_27_realvuln_claims_match_the_scorer(f: dict) -> list[str]:
@@ -489,8 +605,10 @@ CHECKS = [
     check_23_readme_matches_scorecard,
     check_24_compliance_mapping_is_complete,
     check_25_detector_subset_claims_are_derived,
-    check_26_every_local_gate_runs_in_ci,
+    check_26_nothing_runs_outside_the_gate_list,
     check_27_realvuln_claims_match_the_scorer,
+    check_28_code_shape_has_one_source_of_truth,
+    check_29_no_typed_gate_count,
 ]
 
 

@@ -80,6 +80,7 @@ CWE_TO_ASVS: dict[str, str] = {
     "CWE-942": "V3",    # Permissive CORS
     "CWE-1004": "V3",   # Cookie without HttpOnly
     "CWE-1275": "V3",   # Cookie with improper SameSite
+    "CWE-352": "V3",    # Cross-site request forgery
 
     # File handling
     "CWE-22": "V5",     # Path traversal
@@ -99,6 +100,8 @@ CWE_TO_ASVS: dict[str, str] = {
     # Cryptography
     "CWE-327": "V11",   # Broken or risky cryptographic algorithm
     "CWE-338": "V11",   # Cryptographically weak PRNG
+    "CWE-330": "V11",   # Use of insufficiently random values
+    "CWE-321": "V11",   # Hard-coded cryptographic key
     "CWE-311": "V11",   # Missing encryption of sensitive data
     "CWE-916": "V11",   # Password hash without sufficient computational effort
 

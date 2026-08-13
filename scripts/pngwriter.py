@@ -129,8 +129,10 @@ class Canvas:
                 base = x * s
                 for row in rows:
                     i = (row + base) * 3
-                    for k in range(s):
-                        r += self._px[i]; g += self._px[i + 1]; b += self._px[i + 2]
+                    for _ in range(s):
+                        r += self._px[i]
+                        g += self._px[i + 1]
+                        b += self._px[i + 2]
                         i += 3
                 o = (y * self.width + x) * 3
                 out[o] = r // area

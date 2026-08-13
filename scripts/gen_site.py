@@ -363,7 +363,7 @@ def build(lang: str, data: dict) -> str:
     with open(TEMPLATE, encoding="utf-8") as f:
         template = f.read()
 
-    missing = sorted({t for t in _TOKEN.findall(template)} - set(values))
+    missing = sorted(set(_TOKEN.findall(template)) - set(values))
     if missing:
         raise SystemExit(f"gen-site: template uses undefined token(s): {missing}")
     unused = sorted(set(values) - set(_TOKEN.findall(template)) - set(data))

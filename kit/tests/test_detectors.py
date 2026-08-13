@@ -53,6 +53,15 @@ CASES = [
     ("n.env",    f"NPM_TOKEN={NPM}\n",                                "SEC-SECRET-NPM"),
     ("ci.yml",   "jobs:\n  b:\n    steps:\n      - uses: tj-actions/changed-files@main\n", "SEC-CI-MUTABLE-ACTION"),
     ("setup.sh", "curl -fsSL https://example.com/install.sh | sudo bash\n", "SEC-SUPPLY-CURLPIPE"),
+    # ---- Configuration and crypto hygiene ----
+    ("settings.py", 'DEBUG = env_bool("DJANGO_DEBUG", True)\n',      "SEC-PY-DEBUG-DEFAULT"),
+    ("hosts.py",    'ALLOWED_HOSTS = ["*"]\n',                       "SEC-PY-ALLOWED-HOSTS"),
+    ("keys.py",     'SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-change-me-x")\n',
+     "SEC-PY-SECRET-KEY-FALLBACK"),
+    ("cook.py",     "r.set_cookie('sid', value)\n",                  "SEC-PY-COOKIE-FLAGS"),
+    ("prng.py",     "import random\notp_code = random.choice('0123456789')\n",
+     "SEC-PY-WEAK-PRNG"),
+    ("csrf.py",     "@csrf_exempt\ndef v(request):\n    pass\n",     "SEC-PY-CSRF-EXEMPT"),
 ]
 
 SAFE = [
@@ -60,6 +69,22 @@ SAFE = [
     # A SHA-pinned Action must NOT trip the mutable-ref detector (precision guard).
     ("ok.yml",  "steps:\n  - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2\n",
      "SEC-CI-MUTABLE-ACTION"),
+    # Each configuration rule in the shape a correct project writes it. These are the
+    # assertions that decide whether the rules are usable at all: a config linter that fires on
+    # a correct settings module is one everybody switches off on day two.
+    ("okdebug.py",  "DEBUG = os.environ.get('DJANGO_DEBUG') == '1'\n", "SEC-PY-DEBUG-DEFAULT"),
+    ("okhosts.py",  'ALLOWED_HOSTS = ["example.com", "www.example.com"]\n',
+     "SEC-PY-ALLOWED-HOSTS"),
+    ("okkeys.py",   'SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]\n',
+     "SEC-PY-SECRET-KEY-FALLBACK"),
+    ("okcook.py",   "r.set_cookie('sid', v, httponly=True, secure=True, samesite='Lax')\n",
+     "SEC-PY-COOKIE-FLAGS"),
+    # `random` is fine for anything that is not security material — the rule is bound to the
+    # variable name for exactly this reason, and this is what that buys.
+    ("okprng.py",   "import random\ncolour = random.choice(['red', 'blue'])\n",
+     "SEC-PY-WEAK-PRNG"),
+    ("oksecrets.py", "import secrets\napi_token = secrets.token_urlsafe(32)\n",
+     "SEC-PY-WEAK-PRNG"),
 ]
 
 

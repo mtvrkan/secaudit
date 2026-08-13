@@ -16,7 +16,8 @@ _SARIF_LEVEL = {"Critical": "error", "High": "error", "Medium": "warning",
 def to_sarif(result: ScanResult) -> str:
     """SARIF 2.1.0 for GitHub code scanning. `security-severity` on each rule drives the
     severity GitHub shows; `level` drives the annotation style."""
-    rules, rule_index = [], {}
+    rules: list[dict] = []
+    rule_index: dict[str, int] = {}
     for f in result.by_severity():
         if f.detector_id in rule_index:
             continue
@@ -129,7 +130,7 @@ def to_cra_pack(result: ScanResult) -> str:
     worse than useless to the person relying on it."""
     from . import compliance, sbom
 
-    register = []
+    register: list[dict] = []
     for f in result.by_severity():
         # `actively_exploited` is not something the deterministic tier can know yet — KEV/EPSS
         # enrichment is a separate, network-bound step. Emitting the field as an explicit null
@@ -205,7 +206,7 @@ def to_openvex(result: ScanResult) -> str:
     Separate from the report on purpose: this is the machine-readable answer to "which of
     these advisories affect the product", which is the question the EU CRA's reporting duty
     (from 2026-09-11) actually asks. Consumers ingest it; humans read the report."""
-    from . import deps, i18n
+    from . import deps
     statements = [deps.vex_statement(f.package, f.detector_id,
                                      deps.Verdict(f.vex_status, f.vex_justification,
                                                   f.triage_note))

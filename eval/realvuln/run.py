@@ -52,16 +52,21 @@ def checkout_path(benchmark: str, repo_id: str) -> str | None:
     return None
 
 
-def scan(target: str) -> dict:
+def scan(target: str, backend: str = "none") -> dict:
     """Run the CLI as a subprocess rather than importing it.
 
     The benchmark measures the tool a user installs, not a function called in-process with
-    tuned arguments — and a crash on one repo must not take the whole run down with it."""
+    tuned arguments — and a crash on one repo must not take the whole run down with it.
+
+    `backend` selects the tier. The default `none` is the deterministic Tier-0 run every
+    published figure describes. Anything else enriches with that LLM backend, which is what
+    `--backend` on this script exists for — see `main` for why no such number is published yet.
+    """
     env = dict(os.environ, PYTHONPATH=KIT + os.pathsep + os.environ.get("PYTHONPATH", ""),
                PYTHONIOENCODING="utf-8")
     proc = subprocess.run(
         [sys.executable, "-m", "secaudit_core.cli", target, "--format", "semgrep",
-         "--no-deps", "--no-scanners"],
+         "--no-deps", "--no-scanners", "--backend", backend],
         capture_output=True, text=True, encoding="utf-8", errors="replace", env=env,
         cwd=REPO, timeout=1800)
     if proc.returncode not in (0, 1):      # 1 is the severity gate, not a failure
@@ -80,7 +85,32 @@ def main() -> int:
     ap.add_argument("--benchmark", required=True,
                     help="path to a Real-Vuln-Benchmark checkout with repos already cloned")
     ap.add_argument("--repo", help="score a single repo id instead of all of them")
+    # A second slug lets two builds of the engine be scored against the SAME clone of the
+    # corpus. Without it, "did this change help?" can only be answered against a number
+    # taken months earlier, when the corpus may have moved underneath it.
+    ap.add_argument("--scanner", default=SCANNER_SLUG,
+                    help="scanner slug the results are written under (default: secaudit)")
+    # The Tier-1 switch. Everything this repository publishes about RealVuln is Tier 0, because
+    # Tier 0 is the part that reproduces: same corpus, same engine, same number, on any machine
+    # with no key. A model run is not that, and the honest way to hold both facts is to make the
+    # measurement one command away and say plainly that it has not been run — rather than either
+    # quietly omitting the tier or quoting a number nobody can reproduce.
+    ap.add_argument("--backend", default="none",
+                    choices=("none", "anthropic", "openai", "ollama"),
+                    help="LLM backend to enrich with (default: none — the Tier-0 run every "
+                         "published figure describes). Anything else measures Tier 1 and needs "
+                         "that backend's key in the environment; use a distinct --scanner slug "
+                         "so it is never mistaken for the reproducible number.")
     args = ap.parse_args()
+
+    if args.backend != "none" and args.scanner == SCANNER_SLUG:
+        print(f"Refusing to write a Tier-1 run under the `{SCANNER_SLUG}` slug: that slug is "
+              f"what `result.json` and every published figure mean, and a model run cannot be "
+              f"reproduced by the next person. Re-run with --scanner {SCANNER_SLUG}-tier1.")
+        return 2
+    if args.backend != "none":
+        print(f"Tier 1 via `{args.backend}` — NOT reproducible. Two runs on the same corpus can "
+              f"disagree, so whatever this scores is a single observation, not a floor.\n")
 
     benchmark = os.path.abspath(args.benchmark)
     repos = [args.repo] if args.repo else repos_in(benchmark)
@@ -96,7 +126,7 @@ def main() -> int:
             skipped.append(repo_id)
             continue
         try:
-            payload = scan(source)
+            payload = scan(source, args.backend)
         except Exception as e:
             failed.append(f"{repo_id}: {e}")
             continue
@@ -104,7 +134,7 @@ def main() -> int:
         for result in payload.get("results", []):
             result["path"] = os.path.relpath(
                 os.path.join(source, result["path"]), source).replace("\\", "/")
-        out_dir = os.path.join(benchmark, "scan-results", repo_id, SCANNER_SLUG)
+        out_dir = os.path.join(benchmark, "scan-results", repo_id, args.scanner)
         os.makedirs(out_dir, exist_ok=True)
         with open(os.path.join(out_dir, "results.json"), "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
@@ -120,8 +150,12 @@ def main() -> int:
     if failed:
         print("FAILED:")
         print("\n".join("  - " + f for f in failed))
-    print(f"\nNow score with the benchmark's own scorer:\n"
-          f"  cd {benchmark} && python3 score.py --scanner {SCANNER_SLUG} --all-repos")
+    # `score.py` takes one repo at a time; `--all-repos` does not exist. This line printed the
+    # flag that does not exist, which is the first thing anyone reproducing the run copies.
+    print(f"\nNow score with the benchmark's own scorer, one repo at a time:\n"
+          f'  cd {benchmark} && for r in repos/*/; do python3 score.py '
+          f'--repo "$(basename "$r")" --scanner {args.scanner}; done\n'
+          f"  python3 dashboard.py --scanners {args.scanner}")
     return 1 if failed else 0
 
 

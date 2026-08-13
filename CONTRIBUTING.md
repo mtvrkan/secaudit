@@ -27,7 +27,7 @@ Every gate CI runs is a script you can run yourself. There is no check that only
 the workflow file:
 
 ```bash
-python3 scripts/run_checks.py          # all 15 gates, same as CI
+python3 scripts/run_checks.py          # every gate, same as CI
 python3 scripts/run_checks.py --fast   # structure + consistency + hook guard (seconds)
 python3 scripts/run_checks.py --list   # what each gate is and how to run it alone
 ```

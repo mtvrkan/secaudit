@@ -159,9 +159,11 @@ def selftest() -> int:
            + " lodash 4.17.15 is vulnerable. AWS access key found hardcoded (masked).")
     covered = sum(1 for _, s in grade(pos, findings) if s)
     if covered != n:
-        print(f"[selftest] FAIL positive: {covered}/{n} covered"); ok = False
+        print(f"[selftest] FAIL positive: {covered}/{n} covered")
+        ok = False
     if not (section_ok(pos, DEP_NEEDLES) and section_ok(pos, SECRET_NEEDLES)):
-        print("[selftest] FAIL positive: dep/secret section not detected"); ok = False
+        print("[selftest] FAIL positive: dep/secret section not detected")
+        ok = False
 
     # Negative: prose with near-miss words (send/qs/evaluation/merged/rendered/execute)
     # but no real finding must score 0 and leave both sections empty.
@@ -169,11 +171,14 @@ def selftest() -> int:
            "rendered the newest execute path successfully.")
     falsely = [vid for vid, s in grade(neg, findings) if s]
     if falsely:
-        print(f"[selftest] FAIL negative: falsely credited {falsely}"); ok = False
+        print(f"[selftest] FAIL negative: falsely credited {falsely}")
+        ok = False
     if section_ok(neg, DEP_NEEDLES):
-        print("[selftest] FAIL negative: dependency section falsely populated"); ok = False
+        print("[selftest] FAIL negative: dependency section falsely populated")
+        ok = False
     if section_ok(neg, SECRET_NEEDLES):
-        print("[selftest] FAIL negative: secret section falsely populated"); ok = False
+        print("[selftest] FAIL negative: secret section falsely populated")
+        ok = False
 
     print("[selftest] PASS — grader gates behave correctly." if ok else "[selftest] FAILED")
     return 0 if ok else 1
@@ -197,7 +202,8 @@ def main() -> int:
         print(f"error: report not found: {args.report}", file=sys.stderr)
         return 2
 
-    report = open(args.report, encoding="utf-8").read()
+    with open(args.report, encoding="utf-8") as fh:
+        report = fh.read()
     findings = load_golden()
     if not findings:
         print("error: could not parse the golden set from expected-findings.md", file=sys.stderr)

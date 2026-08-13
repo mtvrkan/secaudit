@@ -19,6 +19,32 @@ def _has(tool: str) -> bool:
     return shutil.which(tool) is not None
 
 
+def _spawn(argv: list[str], timeout: int) -> subprocess.CompletedProcess:
+    """Run a scanner, resolving argv[0] the way `_has` resolved it.
+
+    On Windows this is what makes a `.cmd`/`.bat`-shimmed scanner work at all — the form npm,
+    scoop and pipx install. `shutil.which` honours PATHEXT and returns `semgrep.cmd`, so `_has`
+    reports the tool present; `CreateProcess`, which `subprocess.run` uses for a plain argument
+    list, does **not** apply PATHEXT when it searches PATH, so it looks for an extensionless
+    `semgrep`, fails to find one, and raises. The adapter would then commit to running a scanner
+    it had just confirmed was installed and file the result under "present but failed" — a real
+    scanner silently downgraded to the built-in pack, with a note blaming the tool.
+
+    Passing the resolved absolute path is the fix; Windows launches a `.bat`/`.cmd` given a full
+    path. The explicit `cmd /c` below is belt-and-braces for interpreters that do not, and costs
+    nothing. The argument list stays a list either way: nothing is joined into a shell string, so
+    there is no interpolation for a path or a scanned filename to escape from.
+    """
+    resolved = shutil.which(argv[0])
+    if resolved is None:
+        raise FileNotFoundError(argv[0])
+    if os.name == "nt" and resolved.lower().endswith((".bat", ".cmd")):
+        argv = ["cmd", "/c", resolved] + argv[1:]
+    else:
+        argv = [resolved] + argv[1:]
+    return subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+
+
 def _num_to_sev(score) -> Severity:
     try:
         s = float(score)
@@ -133,8 +159,7 @@ def run_semgrep(root: str, notes: list[str], tools: list[str]) -> list[Finding]:
     if not _has("semgrep"):
         return []
     try:
-        out = subprocess.run(["semgrep", "--sarif", "--config", "auto", "--quiet", root],
-                             capture_output=True, text=True, timeout=600)
+        out = _spawn(["semgrep", "--sarif", "--config", "auto", "--quiet", root], timeout=600)
         findings = parse_semgrep_sarif(out.stdout)
         tools.append("semgrep")
         return findings
@@ -147,9 +172,8 @@ def run_gitleaks(root: str, notes: list[str], tools: list[str]) -> list[Finding]
     if not _has("gitleaks"):
         return []
     try:
-        out = subprocess.run(["gitleaks", "detect", "--no-banner", "--report-format", "json",
-                             "--report-path", "-", "--source", root],
-                             capture_output=True, text=True, timeout=300)
+        out = _spawn(["gitleaks", "detect", "--no-banner", "--report-format", "json",
+                             "--report-path", "-", "--source", root], timeout=300)
         findings = parse_gitleaks_json(out.stdout or "[]")
         tools.append("gitleaks")
         return findings
@@ -162,8 +186,7 @@ def run_osv(root: str, notes: list[str], tools: list[str]) -> list[Finding]:
     if not _has("osv-scanner"):
         return []
     try:
-        out = subprocess.run(["osv-scanner", "--format", "json", "-r", root],
-                             capture_output=True, text=True, timeout=300)
+        out = _spawn(["osv-scanner", "--format", "json", "-r", root], timeout=300)
         findings = parse_osv_json(out.stdout or "{}")
         tools.append("osv-scanner")
         return findings

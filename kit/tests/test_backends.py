@@ -11,9 +11,10 @@ import sys
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, KIT)
 
-from secaudit_core import backends                     # noqa: E402
-from secaudit_core.backends import get_backend, NoneBackend, AnthropicBackend, _HTTPBackend  # noqa: E402
-from secaudit_core.schema import (Finding, ScanResult, Severity, Confidence, Verdict)  # noqa: E402
+from secaudit_core.backends import (get_backend, NoneBackend, AnthropicBackend,  # noqa: E402
+                                    _HTTPBackend)
+from secaudit_core.schema import (Finding, ScanResult, Severity,  # noqa: E402
+                                  Confidence, Verdict)
 
 CANNED = """Here is my analysis:
 ```json

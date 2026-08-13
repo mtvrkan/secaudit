@@ -25,7 +25,7 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "kit"))
 
-from secaudit_core import deps, taint                        # noqa: E402
+from secaudit_core import authz, deps, redos, taint          # noqa: E402
 from secaudit_core.detectors import DETECTORS                # noqa: E402
 
 OUT = os.path.join(REPO, "docs", "language-coverage.md")
@@ -58,6 +58,13 @@ INFRA: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 TIERS = {"taint": "**Taint**", "rules": "**Rules**", "regex": "**Regex**", "none": "none"}
+
+
+# Where the taint engine lives, asked of the module rather than remembered: it moved from
+# a file to a package once already.
+_TAINT_SOURCE = os.path.relpath(
+    os.path.dirname(taint.__file__) if getattr(taint, "__path__", None) else taint.__file__,
+    REPO).replace("\\", "/")
 
 
 def detector_count(exts: tuple[str, ...]) -> int:
@@ -95,6 +102,22 @@ def taint_note(name: str) -> str:
     return f"{spec['frontend']}, {' + '.join(scope)}"
 
 
+def structural_note(name: str) -> str:
+    """Which whole-handler analyses claim this language — asked of the modules, not listed here.
+
+    The taint columns describe how a *value* travels. These two decide something a value-flow
+    engine cannot: whether the handler that used a value knew who was calling, and whether a
+    regular expression can be made to backtrack forever. A language can have full taint depth
+    and neither of these, so it needs its own column rather than a footnote on the taint one.
+    """
+    claims = []
+    if name in authz.AUTHZ_LANGS:
+        claims.append("authorization")
+    if name in redos.REDOS_LANGS:
+        claims.append("ReDoS")
+    return " + ".join(claims) if claims else "—"
+
+
 def dependency_reachable(exts: tuple[str, ...]) -> bool:
     """Whether the import index — which is what turns a CVE into `affected` vs `not_affected` —
     can read this language at all."""
@@ -108,7 +131,8 @@ def render() -> str:
         tier = tier_for(exts)
         rows.append(
             f"| {name} | {TIERS[tier]} | {detector_count(exts)} | "
-            f"{taint_note(name)} | {'yes' if dependency_reachable(exts) else 'no'} |")
+            f"{taint_note(name)} | {structural_note(name)} | "
+            f"{'yes' if dependency_reachable(exts) else 'no'} |")
 
     infra_rows = [f"| {name} | {TIERS[tier_for(exts)]} | "
                   f"{detector_count(exts)} |" for name, exts in INFRA]
@@ -143,8 +167,9 @@ def render() -> str:
         "",
         "## Programming languages",
         "",
-        "| Language | Depth | Detectors | Taint front end | Dependency reachability |",
-        "|---|---|---|---|---|",
+        "| Language | Depth | Detectors | Taint front end | Structural analysis | "
+        "Dependency reachability |",
+        "|---|---|---|---|---|---|",
         *rows,
         "",
         "## Infrastructure and configuration",
@@ -172,7 +197,10 @@ def render() -> str:
         "followed across import edges to any depth, but only through files that were actually "
         "scanned — a chain leaving into an excluded directory, a third-party package, or a "
         "language without taint depth stops at that edge. The full bounds list is in "
-        "[`kit/secaudit_core/taint.py`](../kit/secaudit_core/taint.py) and is printed in every "
+        # Derived from the module itself. This link was typed, and it broke silently the
+        # day `taint.py` became `taint/` — caught by the dangling-link check, one gate
+        # later than it should have been.
+        f"[`{_TAINT_SOURCE}`](../{_TAINT_SOURCE}) and is printed in every "
         "report's limitations appendix.",
         "",
     ]) + "\n"

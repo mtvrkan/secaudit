@@ -68,7 +68,7 @@ def read_lockfile_versions(root: str) -> dict[str, str]:
 
 def _component(name: str, declared: str, resolved: str | None, scope: str) -> dict:
     version = resolved or ""
-    component = {
+    component: dict[str, object] = {
         "type": "library",
         "bom-ref": _purl(name, version),
         "name": name,

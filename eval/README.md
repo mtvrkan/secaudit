@@ -38,9 +38,35 @@ counted and shown but not scored as false positives, because the ground truth la
 was planted and an unlabelled hit may be a real finding. Folding them in either direction
 would be inventing data.
 
-**Tier 1 is excluded.** LLM triage and logic-bug discovery are not reproducible, so they do not
-belong in a regression gate. What the LLM tier adds is demonstrated separately and
-deterministically by `kit/tests/test_enrich_e2e.py`, which replays a captured model response.
+**Tier 1 is excluded from the scorecard, and measured separately.** LLM triage and logic-bug
+discovery are not reproducible, so they do not belong in a regression floor — but "not in the
+gate" was being read as "not measured at all", and *"the LLM tier reaches what Tier 0 cannot"*
+sat beside two measured claims as an unmeasured one.
+
+```bash
+python3 eval/harness.py --tier1 replay      # deterministic; runs in the gate list
+python3 eval/harness.py --tier1 claude      # a live model; not reproducible, never committed
+```
+
+`--tier1 replay` pushes a captured model response through the real enrichment path — prompt,
+parse, triage merge, added findings — so it measures **the pipeline, not the model**. It never
+writes the scorecard: that file is the Tier-0 floor, and folding a second tier into it would
+make one number mean two things. It refuses to combine with `--check` or `--gate` for the same
+reason. What it does gate on is the one deterministic thing: that enrichment still produces
+*something*, because zero added findings is a broken pipeline rather than a worse score.
+
+The recording is replayed over `vulnerable-app` only. It is one model's answer about one
+corpus, and replaying it onto the negative control injects a finding about a line that is the
+*safe* implementation there — a false positive manufactured by the measurement rather than
+produced by the product.
+
+**What it currently reports, which is worth stating because it is not flattering:** Tier 1 adds
+exactly one finding, at the right location — inside the `V3` IDOR block that Tier 0 is the one
+labelled miss on — and it does **not** score as a recovery, because it reports `CWE-284`
+(improper access control) where the label accepts `CWE-639`. Under the label rules below, that
+is not a case for widening the label: `CWE-284` is a *parent* of `CWE-639`, and the admissible
+direction is a more specific child. So the claim is true at the finding level and false at the
+scoring level, and the harness now prints which.
 
 ## Changing a label
 

@@ -63,7 +63,7 @@ def fbeta(precision: float, recall: float, beta: float) -> float:
 
 
 class Tally:
-    __slots__ = ("tp", "fn", "fp")
+    __slots__ = ("fn", "fp", "tp")
 
     def __init__(self) -> None:
         self.tp = self.fn = self.fp = 0
@@ -167,25 +167,44 @@ def score(results: list[dict], labels: list[dict]) -> dict:
         "misses": misses,
         "trap_hits": trap_hits,
         "unlabelled_results": len(unlabelled),
-        "labelled_vulnerabilities": sum(1 for l in labels if l["is_vulnerable"]),
-        "false_positive_traps": sum(1 for l in labels if not l["is_vulnerable"]),
+        "labelled_vulnerabilities": sum(1 for label in labels if label["is_vulnerable"]),
+        "false_positive_traps": sum(1 for label in labels if not label["is_vulnerable"]),
         "total_results": len(results),
     }
 
 
 # --------------------------------------------------------------------------- running
 
-def scan_fixtures() -> list[dict]:
+def scan_fixtures(tier1: str = "") -> list[dict]:
     """Run the engine over both fixture corpora and return Semgrep-shaped results.
 
     Dependency scanning is off: `npm audit` needs a network and a registry, and a score that
-    changes with the weather is not a regression gate."""
+    changes with the weather is not a regression gate.
+
+    `tier1` names a backend to enrich with, and is empty for the Tier-0 scorecard. Read what
+    that number means before quoting it — `tier1_bound()` below states it, and the only value
+    this repository scores with is `replay`.
+    """
     from secaudit_core import engine, report
+
+    backend = None
+    if tier1:
+        from secaudit_core.backends import ReplayBackend, get_backend
+        backend = (ReplayBackend(os.path.join(REPO, "kit", "tests", "fixtures",
+                                              "llm-response.json"))
+                   if tier1 == "replay" else get_backend(tier1))
 
     results: list[dict] = []
     for corpus in ("vulnerable-app", "secure-app"):
         root = os.path.join(REPO, "tests", "fixtures", corpus)
         scan = engine.scan(root, run_deps=False, use_scanners=False)
+        # Replay is a recording of one model answering about ONE corpus. Replaying it over the
+        # negative control injects a finding about `vulnerable-app/server.js:24` into
+        # `secure-app`, where the same line is the safe implementation — a false positive
+        # manufactured by the measurement rather than produced by the product. A live backend
+        # gets both corpora, because a live backend is actually looking at what it is given.
+        if backend is not None and (tier1 != "replay" or corpus == "vulnerable-app"):
+            scan = backend.enrich(scan)
         payload = json.loads(report.to_semgrep_json(scan))
         for r in payload["results"]:
             r["path"] = f"{corpus}/{r['path']}"
@@ -193,11 +212,35 @@ def scan_fixtures() -> list[dict]:
     return results
 
 
+def tier1_bound(tier1: str) -> str:
+    """What a Tier-1 number is and is not, stated wherever one is printed.
+
+    Tier 1 had no number at all, on the correct grounds that a model is not reproducible and
+    therefore does not belong in a regression gate. That reasoning covers the *gate*; it does
+    not justify publishing nothing, and "the LLM tier reaches what Tier 0 cannot" was an
+    unmeasured claim sitting beside two measured ones.
+
+    `replay` closes that honestly. A captured model response runs through the real enrichment
+    path — prompt, parse, triage merge, added findings — so the number is deterministic and
+    gateable, and it measures THE PIPELINE, not the model. It answers "does the tier still add
+    what it added when this response was recorded", which is a regression question. It cannot
+    answer "how good is the model", and no run of it should be quoted as if it did.
+    """
+    if tier1 == "replay":
+        return ("Tier 1 via ReplayBackend — a captured model response through the real "
+                "enrichment path. Deterministic, and a measurement of the PIPELINE, not of any "
+                "model: it shows what the tier still does with an answer it was once given. "
+                "A live-model figure needs a key and is not reproducible; see docs/methodology.md.")
+    return (f"Tier 1 via the `{tier1}` backend — a live model. NOT reproducible: rerunning it "
+            f"can produce a different number with no code change, which is why no threshold in "
+            f"eval/thresholds.json applies to it and why this figure is not committed.")
+
+
 def labels_for(results: list[dict], all_labels: list[dict]) -> list[dict]:
     """Scope labels to the corpus a result set covers, so scoring one corpus does not count
     the other's labels as misses."""
     corpora = {r["path"].split("/")[0] for r in results if "/" in r["path"]}
-    scoped = [l for l in all_labels if l.get("corpus", "") in corpora] if corpora else all_labels
+    scoped = [label for label in all_labels if label.get("corpus", "") in corpora] if corpora else all_labels
     return scoped or all_labels
 
 
@@ -307,13 +350,23 @@ def main(argv: list[str]) -> int:
     gt_path = flag("--ground-truth") or GROUND_TRUTH
     ground_truth = load(gt_path)
 
+    # `--tier1 <backend>` scores the LLM tier as well as the deterministic one. It never
+    # touches the committed scorecard: that file is the Tier-0 regression floor, and folding a
+    # second tier into it would make one number mean two things. `--tier1 replay` is
+    # deterministic and is what the gate list runs; anything else is a live model.
+    tier1 = flag("--tier1") or ""
+    if tier1 and ("--check" in argv or "--gate" in argv):
+        print("--tier1 does not combine with --check or --gate: the committed scorecard and "
+              "the thresholds are Tier-0 only, on purpose.")
+        return 2
+
     results_path = flag("--results")
     if results_path:
         payload = load(results_path)
         results = payload.get("results", payload if isinstance(payload, list) else [])
         labels = ground_truth["findings"]
     else:
-        results = scan_fixtures()
+        results = scan_fixtures(tier1)
         labels = qualify(labels_for(results, ground_truth["findings"]))
 
     data = score(results, labels)
@@ -381,6 +434,58 @@ def main(argv: list[str]) -> int:
             return 1
         print(f"EVAL GATE PASSED — recall {o['recall']:.1%}, F3 {o['f3']:.3f}, "
               f"{o['fp']} trap false positive(s).")
+        return 0
+
+    if tier1:
+        # Printed, never written. The scorecard on disk is the Tier-0 floor; a Tier-1 figure
+        # that overwrote it would turn a reproducible number into one that depends on which
+        # backend the last person happened to run.
+        o = data["overall"]
+        base = load(SCORECARD_JSON).get("overall", {}) if os.path.exists(SCORECARD_JSON) else {}
+        print(f"Tier 0 + Tier 1 (`{tier1}`) on the fixture corpus\n")
+        print(f"  recall     {o['recall']:.1%}"
+              + (f"   (Tier 0 alone: {base['recall']:.1%})" if base else ""))
+        print(f"  precision  {o['precision']:.1%}"
+              + (f"   (Tier 0 alone: {base['precision']:.1%})" if base else ""))
+        print(f"  F3         {o['f3']:.3f}"
+              + (f"   (Tier 0 alone: {base['f3']:.3f})" if base else ""))
+        print(f"  trap FPs   {o['fp']}"
+              + (f"   (Tier 0 alone: {base['fp']})" if base else ""))
+
+        # The delta is the point, and "no change" is a result worth printing loudly rather
+        # than leaving someone to infer from two identical percentages.
+        tier0_results = scan_fixtures()
+        added = [r for r in results if r not in tier0_results]
+        credited = [r for r in added if any(matches(r, label) for label in labels)]
+        print(f"\n  Tier 1 added {len(added)} finding(s), of which {len(credited)} scored as a "
+              f"true positive.")
+        for r in added:
+            hit = "counted" if r in credited else "NOT counted"
+            near = [label for label in labels
+                    if same_file(r["path"], f"{label.get('corpus', '')}/{label['file']}")
+                    and label["location"]["start_line"] <= r["start"]["line"]
+                    <= label["location"]["end_line"]]
+            why = ""
+            if hit.startswith("NOT") and near:
+                why = (f" — lands inside {near[0]['id']} but reports "
+                       f"{sorted(result_cwes(r)) or 'no CWE'}, and that label accepts "
+                       f"{near[0].get('acceptable_cwes') or [near[0]['primary_cwe']]}")
+            elif hit.startswith("NOT"):
+                why = " — no labelled vulnerability at that location"
+            print(f"    {hit}: {r['path']}:{r['start']['line']} {r['check_id']}{why}")
+
+        print("\n" + tier1_bound(tier1))
+
+        # The one thing this mode can gate on. Everything above is a measurement with no
+        # threshold — but "Tier 1 added nothing" is not a worse score, it is the enrichment
+        # path being broken, and with `replay` that is deterministic enough to fail a build.
+        # Only for replay: a live model legitimately returns nothing sometimes, and a gate that
+        # fires on that would be a flaky build, which is worse than no gate.
+        if tier1 == "replay" and not added:
+            print("\nFAIL — the replayed response produced no added finding at all. The "
+                  "enrichment path (prompt → parse → merge) is broken, not merely scoring "
+                  "worse; see kit/tests/test_enrich_e2e.py.")
+            return 1
         return 0
 
     with open(SCORECARD_MD, "w", encoding="utf-8") as f:

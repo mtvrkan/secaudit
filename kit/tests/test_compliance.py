@@ -20,8 +20,6 @@ REPO = os.path.dirname(KIT)
 sys.path.insert(0, KIT)
 
 from secaudit_core import compliance, engine, report, sbom      # noqa: E402
-from secaudit_core.schema import (Confidence, Finding, ScanResult,   # noqa: E402
-                                  Severity, Verdict)
 
 VULN = os.path.join(REPO, "tests", "fixtures", "vulnerable-app")
 

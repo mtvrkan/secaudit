@@ -216,7 +216,7 @@ The current pack cannot survive an honest external benchmark. Rebuild the floor.
 
 **Done (2026-08-12):**
 
-- ✅ **Taint engine** (`secaudit_core/taint.py`) — Python via `ast`, JS/TS via a brace-aware
+- ✅ **Taint engine** (`secaudit_core/taint/`) — Python via `ast`, JS/TS via a brace-aware
   statement scanner. Propagation, block scope, sanitizers, validate-then-exit guards, and
   per-argument taint so a bound query parameter is not mistaken for injection. 13 paths on
   the vulnerable corpus covering 11 golden classes; 0 high-confidence paths on the negative
@@ -224,7 +224,7 @@ The current pack cannot survive an honest external benchmark. Rebuild the floor.
 - ✅ **Confidence is earned** — request-rooted paths are HIGH, parameter-rooted paths are
   MEDIUM and drop a severity rung, because whether a parameter carries untrusted data is
   caller knowledge the analysis does not have.
-- ✅ **Code-shape rules stop matching inside literals and comments** — 38 of 79 detectors now
+- ✅ **Code-shape rules stop matching inside literals and comments** — 42 of 85 detectors now
   scan a blanked view. Found by the dogfood gate on the kit's own new sink catalog. This is
   the exact weakness behind rule-based SAST's 17.7 F3 on RealVuln.
 - ✅ **Reachability + VEX for dependency CVEs** (`secaudit_core/deps.py`) — import-level
@@ -247,7 +247,7 @@ The current pack cannot survive an honest external benchmark. Rebuild the floor.
   whether those symbols are called. It converts `affected` from "reachable enough to take
   seriously" into a real claim.
 - ✅ **Semgrep rule pack** — [`rules/secaudit/`](rules/secaudit/), generated from the
-  detector table with a `--check` gate. 41 of 79 detectors exported; the other 38 are
+  detector table with a `--check` gate. 43 of 85 detectors exported; the other 42 are
   withheld with published reasons, because `pattern-regex` cannot reproduce a blanked
   code view or a file-level suppression and a noisier rule under the same name would
   invalidate the precision numbers this project publishes. Equivalence is measured
@@ -282,20 +282,32 @@ Make the claims falsifiable, then publish them.
 - ✅ **Semgrep JSON output** — the interchange format external benchmarks and SAST tooling
   ingest.
 - ✅ **RealVuln runner** (`eval/realvuln/`) — reproduction steps and an honest reading guide.
-- ✅ **RealVuln, run and published: F3 12.5** on 62 of 66 repositories (four are gone from
-  GitHub), Tier 0, scored by the benchmark's own scorer. That is **below** rule-based SAST's
-  published 17.7 — roughly twice the precision (0.407 vs 0.205) and two thirds the recall
-  (0.116 vs 0.175), and F3 weights recall 9x. The full result, including every class where
-  recall is zero, is in [`eval/realvuln/README.md`](eval/realvuln/README.md); the scorer's raw
-  output is committed as `result.json` and consistency check 27 fails the build if any stated
-  figure stops matching it. The most actionable finding: **SQL injection 2/71** — the flagship
-  class, missed on real Django/FastAPI code that reaches SQL through ORM escapes.
+- ✅ **RealVuln, run and published: F3 26.0** on 62 of 66 repositories (four are gone from
+  GitHub), Tier 0, scored by the benchmark's own scorer. **Above** rule-based SAST's published
+  17.7 on both metrics — precision (0.511 vs 0.205) and recall (0.246 vs 0.175) — and far below a
+  general-purpose LLM (51.7) and the purpose-built system (73.0). Full result in
+  [`eval/realvuln/README.md`](eval/realvuln/README.md); the scorer's raw output is committed as
+  `result.json` and consistency check 27 fails the build if any stated figure stops matching it.
+- ⚠️ **The number is no longer blind, and that is disclosed everywhere it appears.** 12.5 and
+  13.3 were measured on a corpus the engine had never seen. 24.6 and then 26.0 were measured
+  after its false negatives were read and the missing rules implemented — twice. Every rule
+  added is one any SAST ships, so nothing is fitted to a fixture, but the selection was
+  corpus-informed in both rounds and the advantage compounds. The honest successor is a
+  benchmark this repository has not read.
+- ✅ **Four runs, one corpus, one variable.** 12.5 → 13.3 → 24.6 → 26.0, each re-scored on the
+  same clone; the previous engine is re-run on it every round and has reproduced its committed
+  figures digit for digit each time, so every delta is the engine and not corpus drift. The
+  ground-truth digest is recomputed per round and has not moved (`sha256:af5901bf…`).
+  `eval/realvuln/run.py --scanner` and `eval/realvuln/collect_result.py` exist for that.
 
 **Remaining:**
 
-- **Close the gap RealVuln measured.** G1 below was written from Semgrep's 17.7; it now has
-  our own number to beat, and the per-family table says where: ORM-mediated SQL injection
-  first, then the sources and sinks behind `xss` (1/98) and `path_traversal` (3/39).
+- **The classes that are still zero are not a pattern problem.** `broken_access_control`
+  (0/76), `missing_auth` (0/74), `denial_of_service` (0/44) and the bulk of `other` (131/831)
+  need to know what the application intends. That is the business-logic pass (G-series below),
+  not more catalog entries. `path_traversal` stayed at 3/39 across nine added filesystem sinks
+  in two rounds, which says its misses are about which values are believed attacker-controlled.
+
 - ✅ **Fixture expansion** — 61 planted flaws across 15 languages, each with a paired
   safe twin implementing the same feature. Ten languages had detectors and no fixtures
   before this; one of those detectors (`SEC-RS-CMDI`) turned out to have never been able

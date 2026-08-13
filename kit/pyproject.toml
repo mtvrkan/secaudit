@@ -36,7 +36,12 @@ secaudit = "secaudit_core.cli:main"
 secaudit-mcp = "secaudit_mcp.server:main"
 
 [tool.setuptools]
-packages = ["secaudit_core", "secaudit_mcp"]
+# Every subpackage, listed explicitly rather than by `find:` so the wheel contents are
+# readable here. `secaudit_core.taint` is a package (it was one 2,000-line module until
+# it was split); with the old two-entry list the wheel would have installed a
+# `secaudit_core` whose import of `.taint` fails — a break that no test in a source
+# checkout can see, because a checkout has the directory either way.
+packages = ["secaudit_core", "secaudit_core.taint", "secaudit_mcp"]
 
 # The locale bundles are data the renderer reads at runtime, so they must travel in the wheel.
 # Without this they exist only in a checkout and `--lang tr` silently renders English on every

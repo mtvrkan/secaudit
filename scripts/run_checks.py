@@ -5,11 +5,16 @@
     python3 scripts/run_checks.py --fast     # skip the eval suites (structure + consistency only)
     python3 scripts/run_checks.py --list     # show the gates without running them
 
-The point is that a contributor can reproduce a red build locally. Every gate here is also a
-step in `.github/workflows/validate.yml`, and that is now checked rather than promised: check 26
-in `scripts/check_consistency.py` fails the build if a gate in this list runs in no workflow.
-It exists because this docstring used to ask for the two to be kept in sync by hand and they
-were not — the advertised-Python-floor gate lived here and nowhere in CI.
+The point is that a contributor can reproduce a red build locally — and that CI runs exactly
+this, on both platforms. It used to be one of two hand-maintained copies of the same list, the
+other being twenty steps in `.github/workflows/validate.yml`, and they had drifted: the
+advertised-Python-floor gate lived here and in no workflow at all. The workflow now calls this
+script instead of restating it, so there is one list.
+
+Check 26 in `scripts/check_consistency.py` holds that shape from both ends: a workflow that
+stops calling this runner fails the build, and so does a check script anywhere in the repository
+that is missing from GATES below. A test file nobody runs looks exactly like a test file that
+passes.
 
 Exit code is the number of failed gates (0 = all green), so a shell can branch on it.
 """
@@ -37,12 +42,20 @@ GATES: list[tuple[str, list[str], bool]] = [
                                    "--min", "20"], False),
     ("Tier-0 recall / precision", ["kit/tests/test_engine.py"], False),
     ("taint tier (reachability)",  ["kit/tests/test_taint.py"], False),
+    ("authorization analysis (IDOR + missing auth)", ["kit/tests/test_authz.py"], False),
+    ("ReDoS analysis (catastrophic backtracking)", ["kit/tests/test_redos.py"], False),
     ("dependency reachability / VEX", ["kit/tests/test_deps.py"], False),
     ("compliance mapping / SBOM / CRA", ["kit/tests/test_compliance.py"], False),
     ("eval ground truth is current", ["eval/build_ground_truth.py", "--check"], True),
     ("eval scorecard is current",     ["eval/harness.py", "--check"], False),
     ("eval regression gate",          ["eval/harness.py", "--gate"], False),
+    # Tier 1 has no threshold — a model is not reproducible, so it does not belong in a
+    # regression floor. What IS gateable is that the enrichment path still runs at all,
+    # which the replayed response makes deterministic.
+    ("Tier-1 replay measurement",     ["eval/harness.py", "--tier1", "replay"], False),
     ("scanner adapters",          ["kit/tests/test_scanners.py"], False),
+    ("integration seams (subprocess + LLM transport)",
+                                  ["kit/tests/test_integration_seams.py"], False),
     ("detector pack",             ["kit/tests/test_detectors.py"], False),
     ("enrichment plumbing",       ["kit/tests/test_backends.py"], False),
     ("report renderers (SARIF + HTML)", ["kit/tests/test_report.py"], False),
@@ -57,6 +70,11 @@ GATES: list[tuple[str, list[str], bool]] = [
     ("verified patch suggestion (refusals)", ["kit/tests/test_patch.py"], False),
     ("i18n bundles (complete + consistent)", ["kit/tests/test_i18n.py"], False),
     ("live-LLM smoke (skips without a key)", ["kit/tests/test_live_llm.py"], False),
+    ("packaging (manifest, entry points, zero deps)", ["scripts/check_packaging.py"], True),
+    # ruff and mypy are the only gates that need a tool this repository does not ship, so they
+    # SKIP when it is absent rather than failing a fresh clone. CI passes `--require`, which
+    # turns that skip back into a failure — see the script's docstring.
+    ("lint + type check", ["scripts/check_quality.py", "--lint", "--types"], True),
 ]
 
 
