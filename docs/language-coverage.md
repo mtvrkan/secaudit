@@ -19,7 +19,7 @@ What depth of analysis each language actually gets. Every number and tier below 
 |---|---|---|---|---|---|
 | JavaScript | **Taint** | 31 | brace-aware statement scanner, intraprocedural + interprocedural + cross-module | authorization + rate limit + upload + mass assignment | yes |
 | TypeScript | **Taint** | 31 | brace-aware statement scanner, intraprocedural + interprocedural + cross-module | authorization + rate limit + upload + mass assignment | yes |
-| Python | **Taint** | 34 | stdlib `ast` parse, intraprocedural + interprocedural + cross-module | authorization + rate limit + upload + mass assignment + ReDoS | yes |
+| Python | **Taint** | 34 | stdlib `ast` parse, intraprocedural + interprocedural + cross-module | authorization + rate limit + upload + mass assignment + handler map (Tier-1 business logic) + ReDoS | yes |
 | Go | **Rules** | 16 | — | — | no |
 | Java | **Rules** | 19 | — | — | no |
 | Kotlin | **Regex** | 3 | — | — | no |

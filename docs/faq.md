@@ -38,6 +38,19 @@ matching credential patterns — `.env*`, `*.pem`, `*.key`, `*.p12`, `id_rsa`, `
 `*.tfstate` and the rest of the list in `secaudit_core/llmcontext.py` — are withheld from every
 backend, the local one included, and the report says how many were withheld.
 
+One of those four calls is the **business-logic pass**. It carries a deterministic handler map —
+what each mounted handler establishes about its caller, which identifiers the request chose,
+which state fields it writes without checking, which prices it takes from the body — and asks the
+model to adjudicate that shortlist rather than to search your repository. It reports four things
+and nothing else: missing ownership, missing authorization, a workflow step skipped, a value the
+client chose being trusted. Anything it cannot tie to a handler it was shown is refused, and the
+report counts the refusals.
+
+**It has no measured precision or recall.** Every benchmark figure this project publishes is
+Tier 0, measured without a model; the business-logic pass is gated offline against a recorded
+reply, which proves the merge behaves and proves nothing about how often it is right. Treat its
+findings as leads to check, which is why they are filed as `plausible` and never above High.
+
 The dependency tools do reach the network without a backend, but they send package *names* to
 an advisory database, never your code. External scanners (semgrep/trivy/etc.) run locally.
 SecAudit adds no telemetry in any mode.

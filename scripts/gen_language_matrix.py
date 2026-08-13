@@ -118,6 +118,11 @@ def structural_note(name: str) -> str:
         # same shape of bug as the matrix claiming "single file" for months after the taint
         # engine went cross-module, because the scope was a literal in this generator.
         claims.append(" + ".join(spec["analyses"]))
+        if spec.get("logic_map"):
+            # Deliberately marked as Tier 1: this column otherwise reads as deterministic
+            # coverage, and the business-logic pass is a model call whose recall nobody has
+            # measured. A language listed here has a handler map, not a result.
+            claims.append("handler map (Tier-1 business logic)")
     if name in redos.REDOS_LANGS:
         claims.append("ReDoS")
     return " + ".join(claims) if claims else "—"

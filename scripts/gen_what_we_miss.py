@@ -46,10 +46,17 @@ CLASSES: list[tuple[str, tuple[str, ...], str]] = [
      "principal to constrain it. Any call that receives the principal is treated as a check "
      "delegated, because counting otherwise reported correct fetch-then-authorize code — so a "
      "handler that passes the principal somewhere without checking it is invisible. Measured "
-     "against the external corpus this finds 1 of 76 labelled cases."),
+     "against the external corpus this finds 1 of 76 labelled cases. Tier 1's business-logic "
+     "pass adjudicates the same handlers and refuses to restate what the rule already found, "
+     "but it is unmeasured and the 1-of-76 above is still the only number there is."),
     ("Business-logic flaws (state-machine skips, price/quantity trust)", ("CWE-841", "CWE-840"),
      "The rules being broken are the product's, and they are not written down anywhere the "
-     "analyzer can read."),
+     "analyzer can read. Tier 1 now asks about them: `--backend` sends a deterministic handler "
+     "map — who the handler thinks its caller is, which identifiers the request chose, which "
+     "state fields it writes without checking, which prices it takes from the body — and a "
+     "model adjudicates that shortlist. This class stays listed here because that pass is a "
+     "model call with NO measured recall or precision, and an unmeasured tier is not coverage. "
+     "Nothing on this page or in the benchmark figures depends on it."),
     ("Race conditions / TOCTOU", ("CWE-362", "CWE-367"),
      "Needs an interleaving model. A lexical pass reads one execution, never two at once."),
     ("Second-order injection", ("CWE-89",),

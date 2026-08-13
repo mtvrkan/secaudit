@@ -252,10 +252,25 @@ The current pack cannot survive an honest external benchmark. Rebuild the floor.
   code view or a file-level suppression and a noisier rule under the same name would
   invalidate the precision numbers this project publishes. Equivalence is measured
   (`kit/tests/test_semgrep_pack.py`), not asserted.
-- **Business-logic pass.** The documented #1 market gap. A structured prompt track over
-  route→handler→authz maps: missing ownership checks, IDOR, state-machine skips, price/quantity
-  trust, race windows on writes. Deterministic scaffolding (extract the route table, extract the
-  authz calls), model reasoning over the extract.
+- ✅ **Business-logic pass** — shipped 2026-08-13, in the shape this plan specified: deterministic
+  scaffolding plus model reasoning over the extract, never over the repository.
+  `secaudit_core/structural/handlermap.py` extracts per handler what authorization evidence it
+  carries, which identifiers the caller chose, which data operations the principal did or did not
+  narrow, which state fields are written versus checked, and which money-shaped values come from
+  the request body; `backends.LOGIC_CLASSES` accepts exactly four verdicts over that shortlist —
+  missing ownership (CWE-639), missing authorization (CWE-862), workflow skip (CWE-841), trusted
+  client value (CWE-602). Four refusals bound it, each counted in the report: an undefined class,
+  an unshown file, a line outside every handler span, and a weakness Tier 0 already reported in
+  that handler. The reserved model call is taken from inside the four-call ceiling rather than
+  added to it.
+  **Three things it does not claim.** The map emits no finding and is not in `_RULES`, so Tier 0
+  is byte-identical and every figure on this page is unchanged and still Tier 0. The pass itself
+  has **no measured precision or recall** — it is gated offline against a recorded reply, which
+  proves the merge and the refusals and proves nothing about detection — so
+  [`docs/what-we-miss.md`](docs/what-we-miss.md) still lists these classes as gaps. And
+  `race_window` (CWE-367) was deliberately left out: whether a read-then-write is exploitable
+  depends on transaction isolation the extract does not carry, and a guess in a channel whose
+  only defence is narrowness is what would sink it.
 - ✅ **Language coverage matrix**, published and generated: [`docs/language-coverage.md`](docs/language-coverage.md),
   derived from the taint dispatch table, the detector pack's extension tuples and the lexical
   models `code_view` knows. Generating it exposed its first gap immediately — Rust had zero

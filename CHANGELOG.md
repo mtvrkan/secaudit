@@ -6,6 +6,41 @@ All notable changes to SecAudit are documented here. This project follows
 ## [Unreleased]
 
 ### Added
+- **The business-logic pass — the gap the roadmap has called #1 since it was written.** Four
+  classes no pattern can decide are now asked of a model over a deterministic extract rather than
+  over the repository: missing ownership (CWE-639), missing authorization (CWE-862), workflow
+  skips (CWE-841) and trusted client values (CWE-602). `structural/handlermap.py` extracts what
+  each mounted handler knows about its caller, which identifiers the request chose, which state
+  fields it writes and whether it checked the state it came from, and which money-shaped values
+  it took from the body; the model adjudicates that shortlist instead of hunting. The map emits
+  no finding and is not in `_RULES`, so **Tier 0 is byte-identical and the published RealVuln
+  figure is untouched** — deliberately, because a number that moved would need a re-measurement
+  this change is not entitled to.
+  Four refusals defend it and each one is counted in the report rather than dropped: a class
+  outside the table (no fallback CWE), a file the model was not shown, a line outside every
+  handler span, and a weakness Tier 0 already reported in that handler. The reserved model call
+  comes out of the existing four-call ceiling, not on top of it, and the breadth that costs on a
+  large repository is stated in the scan's own coverage note.
+  **The tier remains unmeasured**, and `docs/what-we-miss.md` still lists these classes as gaps
+  for exactly that reason. [2026-08-13]
+- `--backend replay` is now a CLI choice, which is how the Tier-1 path can be exercised
+  end-to-end with no API key. [2026-08-13]
+
+### Fixed
+- **A discovered flaw was counted once per model call.** Nothing deduplicated the `extra`
+  channel, so a repository-wide logic bug visible from more than one context chunk was merged up
+  to four times and inflated the report's own finding count. [2026-08-13]
+- **Every model-reported flaw was filed as CWE-284**, whatever it actually described — a
+  compliance section naming a weakness nobody found is worse than one that omits it. The logic
+  channel maps each class to its own weakness and drops anything outside the table. [2026-08-13]
+- Consistency check 24 could not see the business-logic weaknesses at all: it keys on what the
+  engine emits, and its notion of "emits" was the detector pack plus the taint sinks. A class
+  added without an ASVS chapter now fails the build, which is what the check exists to do.
+  [2026-08-13]
+- `kit/README.md` advertised a default model two versions stale (`claude-opus-4-8` against the
+  engine's `claude-opus-5`). Nothing gated it. [2026-08-13]
+
+### Added
 - **The four structural analyses now answer for JavaScript and TypeScript too.** Missing
   authentication, IDOR, unbounded credential testing, unrestricted upload and mass assignment
   were Python-only, which meant the project's single largest detection gain — the rate-limit rule
