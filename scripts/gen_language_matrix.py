@@ -111,8 +111,13 @@ def structural_note(name: str) -> str:
     and neither of these, so it needs its own column rather than a footnote on the taint one.
     """
     claims = []
-    if name in structural.LANGS:
-        claims.append("authorization + rate limit + upload + mass assignment")
+    spec = structural.LANGS.get(name)
+    if spec:
+        # Read out of the engine, not written here. This sentence used to be a literal, which
+        # was correct only for as long as exactly one language had structural analysis — the
+        # same shape of bug as the matrix claiming "single file" for months after the taint
+        # engine went cross-module, because the scope was a literal in this generator.
+        claims.append(" + ".join(spec["analyses"]))
     if name in redos.REDOS_LANGS:
         claims.append("ReDoS")
     return " + ".join(claims) if claims else "—"

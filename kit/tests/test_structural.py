@@ -333,11 +333,25 @@ def test_non_production_sources_are_out_of_scope() -> None:
           "the same code in production source produced nothing — the scope guard is too wide")
 
 
-def test_unparseable_and_non_python_files_say_nothing() -> None:
+def test_unparseable_and_unclaimed_languages_say_nothing() -> None:
     check(structural.analyze_file("app/main.py", "def broken(:\n") == [],
           "a file that does not parse produced findings")
-    check(structural.analyze_file("app/main.js", "app.post('/x', h)") == [],
-          "a non-Python file was analysed")
+    check(structural.analyze_file("app/main.go", "func main() {}\n") == [],
+          "a language with no structural front end was analysed")
+
+    # JavaScript is no longer unclaimed — `structural/js.py` answers the same four questions for
+    # it. What must stay true is that the PYTHON rules never see a `.js` file. They are the path
+    # the published RealVuln figure comes out of, and handing them a language they cannot parse
+    # is a silent no-op today and a wrong answer the first time someone widens their extension
+    # check. The dispatch keeps them apart; this asserts the dispatch.
+    handler = "app.post('/admin/x', (req, res) => { db.user.create({ data: req.body }); });"
+    for rule in (ratelimit, upload, massassign):
+        name = rule.__name__.rsplit(".", 1)[-1]
+        check(rule.analyze_file("app/main.js", handler) == [],
+              f"the Python {name} rule analysed a .js file")
+    ids = {f.detector_id for f in structural.analyze_file("app/main.js", handler)}
+    check(bool(ids) and all("JS" in i for i in ids),
+          f"a .js file must be answered by the JavaScript rules only; got {sorted(ids)}")
     # Python 2 does not parse under a Python 3 `ast`, and the corpus contains such files. The
     # rules say nothing rather than guessing; `limitations()` owns the disclosure.
     check(structural.analyze_file("app/legacy.py", 'print "hello"\n') == [],
@@ -377,7 +391,7 @@ def main() -> int:
     test_named_fields_are_not_mass_assignment()
     test_a_declared_schema_is_the_allowlist()
     test_non_production_sources_are_out_of_scope()
-    test_unparseable_and_non_python_files_say_nothing()
+    test_unparseable_and_unclaimed_languages_say_nothing()
     test_every_rule_contributes_its_own_limitations()
 
     if fails:

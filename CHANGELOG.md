@@ -5,7 +5,44 @@ All notable changes to SecAudit are documented here. This project follows
 
 ## [Unreleased]
 
+### Added
+- **The four structural analyses now answer for JavaScript and TypeScript too.** Missing
+  authentication, IDOR, unbounded credential testing, unrestricted upload and mass assignment
+  were Python-only, which meant the project's single largest detection gain — the rate-limit rule
+  at 85 true positives — did nothing on any Node, Express, NestJS or Next.js codebase, where most
+  of the target audience is. `secaudit_core/structural/js.py` recognises a route by a mount
+  carrying a **string literal path** (`app.post('/x', …)`), a NestJS method decorator, or a
+  Next.js App Router / Pages API export, and reads the whole mount call as the handler — because
+  middleware is exactly where this ecosystem puts its auth and its limiters.
+  **It does not share a call path with the Python rules.** Those produce the published RealVuln
+  figure, and threading a second, parserless front end through them would put every JavaScript
+  mistake inside the measured path; the benchmark was re-run afterwards and returned
+  530 TP / 448 FP / 1232 FN, F3 31.5, identical to the committed result. The JavaScript side has
+  no external number and says so in its own `limitations()`: RealVuln v1 is Python-only, so what
+  is asserted is a regression floor — the shapes in `kit/tests/test_structural_js.py` are found,
+  and the shipped secure fixture stays silent. [2026-08-13]
+- The language-coverage matrix now reads which analyses a language actually gets out of the
+  engine instead of a sentence written into the generator. That sentence was correct only while
+  exactly one language had structural analysis, and it is the same shape of bug as the matrix
+  claiming "single file" for months after the taint engine went cross-module. [2026-08-13]
+
 ### Fixed
+- **A mass-assignment exemption that was both dead and wrong.** The JavaScript rule excused any
+  handler containing `const { … } = req.body`, on the reasoning that destructuring to named
+  fields is the idiomatic allowlist. It decided nothing in the case it was written for — a
+  handler that destructures and then writes the named fields never matches the wholesale-write
+  pattern at all — and in the one case it did decide, it silenced a real finding: pulling two
+  fields out and then passing the whole body to `create()` is mass assignment, not a fix. Same
+  shape as a limiter anywhere in a file counting as protection everywhere in it. Found by
+  mutation: removing the exemption changed no test, which is what a branch that decides nothing
+  looks like. [2026-08-13]
+- **String literals were being read out of the blanked view, twice.** Routes are found on
+  `code_view`, where string contents are blanked so a mount written inside a comment or a
+  template literal is not a mount — but the route path and the Next.js `req.method === 'DELETE'`
+  branch both live *inside* literals, so both arrived empty. Every path-dependent rule silently
+  switched off: login stopped looking public, auth endpoints stopped naming an auth action, and
+  every Pages API handler read as a GET. The view decides whether a construct is code; anything
+  read out of a literal now comes from the source. [2026-08-13]
 - **Three flags were accepted and then ignored.** All three failed the same way — no output, no
   message, exit 0 — which is the one failure mode this tool refuses everywhere else (it is why a
   URL target is turned away instead of scanned as a path, and why an unknown `--only` group is an

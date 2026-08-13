@@ -21,7 +21,12 @@ AnyFunc = Union[ast.FunctionDef, ast.AsyncFunctionDef]
 # because the scope was a literal in the generator rather than a fact in the engine.
 LANGS: dict[str, dict] = {
     "Python": {"exts": (".py",), "frontend": "stdlib `ast` parse",
-               "resolves": "module-local helper calls and references"},
+               "resolves": "module-local helper calls and references",
+               # Which analyses this language actually gets. Read by the language-matrix
+               # generator instead of the sentence it used to hard-code: the moment a second
+               # language claimed a different subset, a typed claim there would have been wrong
+               # for whichever one it was not describing.
+               "analyses": ("authorization", "rate limit", "upload", "mass assignment")},
 }
 EXTS: tuple[str, ...] = tuple(ext for spec in LANGS.values() for ext in spec["exts"])
 

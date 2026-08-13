@@ -23,12 +23,20 @@ Every rule follows the same two disciplines, learned the expensive way on the ex
 from __future__ import annotations
 
 from ..schema import Finding
-from . import authz, massassign, ratelimit, upload
-from .routes import EXTS, LANGS, is_production_source
+from . import authz, js, massassign, ratelimit, upload
+from .routes import EXTS as PY_EXTS, LANGS as PY_LANGS, is_production_source
 
 __all__ = ["EXTS", "LANGS", "analyze_file", "analyze_files", "limitations"]
 
 _RULES = (authz, ratelimit, upload, massassign)
+
+# Python and JavaScript do not share a call path, only a vocabulary. The Python rules are written
+# against `ast` nodes and produce the published RealVuln figure; threading a second, parserless
+# front end through them would put every JavaScript mistake inside that measured path. `js.py`
+# answers the same four questions separately and says in its own `limitations()` that it is the
+# unmeasured half.
+LANGS: dict[str, dict] = {**PY_LANGS, **js.JS_LANGS}
+EXTS: tuple[str, ...] = PY_EXTS + js.JS_EXTS
 
 
 def analyze_file(rel: str, text: str) -> list[Finding]:
@@ -36,6 +44,8 @@ def analyze_file(rel: str, text: str) -> list[Finding]:
     # here reports something a deployed handler fails to do, and a test module is not one.
     if not is_production_source(rel):
         return []
+    if rel.lower().endswith(js.JS_EXTS):
+        return js.analyze_file(rel, text)
     return [f for rule in _RULES for f in rule.analyze_file(rel, text)]
 
 
@@ -56,4 +66,5 @@ def limitations() -> list[str]:
            f"than assumed unprotected."]
     for rule in _RULES:
         out.extend(rule.limitations())
+    out.extend(js.limitations())
     return out

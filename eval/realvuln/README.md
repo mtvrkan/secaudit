@@ -89,7 +89,11 @@ those two were measured the way ours no longer is.
 
 Three things this does *not* say. It is not a measurement of the LLM tier, which is the tier
 meant to reach the classes below that Tier 0 structurally cannot. It is not a measurement of the
-JavaScript engine — the corpus is Python-only. And it is not a claim about your repository: the
+JavaScript engine — the corpus is Python-only, and that gap widened when the structural analyses
+gained a JavaScript/TypeScript front end: the four questions are now asked of both languages and
+only one of the two answers has ever been scored by someone else. The JavaScript rules are
+asserted against the shapes in `kit/tests/test_structural_js.py` and against the shipped secure
+fixture, which is a regression floor and not a score. And it is not a claim about your repository: the
 half of this corpus labelled `other`, `broken_access_control` and `missing_auth` is still where
 most of the misses are, and no pattern added here touches them.
 

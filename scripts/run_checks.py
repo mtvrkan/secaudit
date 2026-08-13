@@ -46,6 +46,8 @@ GATES: list[tuple[str, list[str], bool]] = [
     ("ReDoS analysis (catastrophic backtracking)", ["kit/tests/test_redos.py"], False),
     ("structural analyses (rate limit, upload, mass assignment)",
                                   ["kit/tests/test_structural.py"], False),
+    ("structural analyses on JS/TS (the unmeasured half)",
+                                  ["kit/tests/test_structural_js.py"], False),
     ("dependency reachability / VEX", ["kit/tests/test_deps.py"], False),
     ("compliance mapping / SBOM / CRA", ["kit/tests/test_compliance.py"], False),
     ("eval ground truth is current", ["eval/build_ground_truth.py", "--check"], True),
