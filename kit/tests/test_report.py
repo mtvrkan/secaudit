@@ -73,6 +73,102 @@ def check_html(res, fails: list[str]) -> str:
     return doc
 
 
+def check_semgrep_json(res, fails: list[str]) -> dict:
+    """The Semgrep-JSON renderer, which is the one the external number is computed through.
+
+    RealVuln's scorer reads this shape and nothing else, so a silent change here does not break
+    a test — it moves the published F3 and looks like a detection regression. That is the worst
+    failure mode a renderer can have, and it was the only renderer with no test.
+    """
+    doc = json.loads(report.to_semgrep_json(res))
+
+    if doc.get("errors") != [] or "paths" not in doc:
+        fails.append("semgrep JSON must carry the `errors` and `paths` keys the scorer reads")
+    scanned = doc.get("paths", {}).get("scanned", [])
+    if scanned != sorted({f.file for f in res.findings}):
+        fails.append("semgrep JSON `paths.scanned` must be the deduplicated, sorted file set")
+
+    results = doc.get("results", [])
+    if len(results) != len(res.findings):
+        fails.append(f"semgrep JSON emitted {len(results)} results for {len(res.findings)} "
+                     f"findings — the scorer counts rows, so a dropped row is a lost TP")
+
+    by_id = {f.detector_id for f in res.findings}
+    for r in results:
+        if r.get("check_id") not in by_id:
+            fails.append(f"semgrep result check_id {r.get('check_id')!r} is not a detector id")
+        start, end = r.get("start", {}), r.get("end", {})
+        if start.get("line", 0) < 1 or end.get("line", 0) < 1:
+            fails.append(f"semgrep result {r.get('check_id')} has a line below 1 — a 0 line is "
+                         f"unscoreable and silently drops the finding")
+        extra = r.get("extra", {})
+        if extra.get("severity") not in ("ERROR", "WARNING", "INFO"):
+            fails.append(f"bad semgrep severity {extra.get('severity')!r}")
+        for key in ("cwe", "owasp", "confidence"):
+            if key not in extra.get("metadata", {}):
+                fails.append(f"semgrep metadata for {r.get('check_id')} is missing {key}")
+
+    # Severity mapping, stated here independently rather than read from the renderer's own
+    # table. Reading `report._SEMGREP_SEVERITY` looked like the tighter test and is in fact no
+    # test at all: it moves with the bug, and a mutation run proved it — flipping Medium to
+    # ERROR passed. What this asserts is the meaning the consumer acts on: ERROR is the level a
+    # CI gate blocks a merge on, so a Medium promoted into it turns advisory findings into
+    # build breaks, and a High demoted out of it lets a real one through unnoticed.
+    expect_level = {"Critical": "ERROR", "High": "ERROR", "Medium": "WARNING",
+                    "Low": "INFO", "Informational": "INFO"}
+    for finding in res.findings:
+        row = next((r for r in results if r["check_id"] == finding.detector_id
+                    and r["path"] == finding.file and r["start"]["line"] == max(1, finding.line)),
+                   None)
+        if row is None:
+            fails.append(f"semgrep JSON lost {finding.detector_id} at {finding.file}:{finding.line}")
+        elif row["extra"]["severity"] != expect_level[finding.severity.value]:
+            fails.append(f"{finding.severity.value} mapped to {row['extra']['severity']}, "
+                         f"expected {expect_level[finding.severity.value]}")
+    # Every severity the schema defines must be exercised by the fixture corpus or stated here,
+    # or a mapping could rot in a severity nothing produces.
+    for sev in Severity:
+        if sev.value not in expect_level:
+            fails.append(f"severity {sev.value} has no expected Semgrep level in this test")
+        elif report._SEMGREP_SEVERITY.get(sev.value) != expect_level[sev.value]:
+            fails.append(f"renderer maps {sev.value} to "
+                         f"{report._SEMGREP_SEVERITY.get(sev.value)!r}, "
+                         f"expected {expect_level[sev.value]!r}")
+
+    # The optional metadata blocks, and the line floor. A finding on line 0 (a file-level flaw:
+    # a missing header, a whole-file misconfiguration) must land on line 1, because the scorer
+    # matches on line numbers and 0 matches nothing.
+    rich = ScanResult(target="t", backend="none")
+    rich.findings.append(Finding(
+        detector_id="D1", title="t", severity=Severity.CRITICAL, confidence=Confidence.HIGH,
+        cwe="CWE-89", owasp="A03", file="a.py", line=0, evidence="e", fix="f",
+        taint_path="L1: req.args (request) -> L2: sink", vex_status="affected",
+        vex_justification="reachable", exploitation="KEV"))
+    one = json.loads(report.to_semgrep_json(rich))["results"][0]
+    if one["start"]["line"] != 1 or one["end"]["line"] != 1:
+        fails.append("a line-0 finding must be clamped to line 1, not emitted as 0")
+    meta = one["extra"]["metadata"]
+    for key, want in (("taint_path", "L1: req.args (request) -> L2: sink"),
+                      ("vex_status", "affected"), ("vex_justification", "reachable"),
+                      ("exploitation", "KEV")):
+        if meta.get(key) != want:
+            fails.append(f"semgrep metadata dropped {key} (got {meta.get(key)!r})")
+
+    # ...and they must be ABSENT rather than null when unset — a scorer reading `vex_status`
+    # as present-but-empty is a different claim from "not assessed".
+    plain = ScanResult(target="t", backend="none")
+    plain.findings.append(Finding(
+        detector_id="D2", title="t", severity=Severity.LOW, confidence=Confidence.MEDIUM,
+        cwe="CWE-1", owasp="A01", file="b.py", line=4, evidence="e", fix="f"))
+    bare = json.loads(report.to_semgrep_json(plain))["results"][0]["extra"]["metadata"]
+    for key in ("taint_path", "vex_status", "vex_justification", "exploitation"):
+        if key in bare:
+            fails.append(f"unset {key} must be omitted from semgrep metadata, not emitted empty")
+    if bare.get("confidence") != "MEDIUM":
+        fails.append("semgrep metadata confidence must be the upper-cased confidence value")
+    return doc
+
+
 def main() -> int:
     fails: list[str] = []
     res = engine.scan(VULN, run_deps=False, use_scanners=False)
@@ -113,6 +209,7 @@ def main() -> int:
             fails.append("Critical finding must map to SARIF level 'error'")
 
     html = check_html(res, fails)
+    sg = check_semgrep_json(res, fails)
 
     if fails:
         print("REPORT TESTS FAILED:")
@@ -120,7 +217,8 @@ def main() -> int:
         return 1
     print(f"REPORT TESTS PASSED — valid SARIF 2.1.0 doc, {len(rules)} rules / "
           f"{len(results)} results; HTML report {len(html):,} bytes, self-contained, "
-          f"well-formed, escaping verified against hostile input.")
+          f"well-formed, escaping verified against hostile input; Semgrep JSON "
+          f"{len(sg['results'])} results, the shape the external score is computed from.")
     return 0
 
 
