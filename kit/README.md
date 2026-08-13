@@ -44,7 +44,7 @@ OPENAI_API_KEY=…     python -m secaudit_core.cli /path/to/repo --backend opena
 ```
 
 `--backend`, `--format {md,json,sarif}`, `--min {low,medium,high,critical}`, `--no-deps`, `-o FILE`.
-Pick the model with `SECAUDIT_MODEL` (default `claude-opus-4-8` / `gpt-4o` / `qwen2.5-coder`).
+Pick the model with `SECAUDIT_MODEL` (default `claude-opus-5` / `gpt-4o` / `qwen2.5-coder`).
 
 ## What the deterministic tier actually catches — measured, not claimed
 
