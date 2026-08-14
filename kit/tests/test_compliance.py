@@ -54,6 +54,60 @@ def test_asvs_mapping() -> None:
           "compliance report is worse than an absent one")
 
 
+def test_pci_mapping() -> None:
+    """The mapping, and — more importantly — the refusals.
+
+    Every assertion about what PCI is NOT allowed to say is here rather than in the docs,
+    because the docs are not what a report renders from.
+    """
+    check(compliance.PCI_VERSION == "4.0.1", "the stated PCI DSS version drifted")
+
+    for cwe, req in compliance.CWE_TO_PCI.items():
+        if req not in compliance.PCI_REQUIREMENTS:
+            fails.append(f"{cwe} maps to PCI `{req}`, whose text is not in PCI_REQUIREMENTS — "
+                         f"this project only states requirement ids it has read")
+        if not cwe.startswith("CWE-"):
+            fails.append(f"malformed CWE key `{cwe}` in CWE_TO_PCI")
+
+    check(compliance.pci_for("CWE-798")[0] == "8.6.2",
+          "a hard-coded credential is the literal subject of 8.6.2")
+    check(compliance.pci_for("CWE-89")[0] == "6.2.4",
+          "injection is one of the classes 6.2.4 enumerates in its own text")
+    check(compliance.pci_for("CWE-1395")[0] == "6.3.1",
+          "a vulnerable third-party component is what 6.3.1 requires you to find and rank")
+    check(compliance.pci_for("CWE-99999") is None,
+          "an unknown CWE must return None, never a default requirement")
+
+    # The refusals. Each of these has a requirement that LOOKS applicable, and asserting it
+    # would be claiming a scope decision that belongs to a QSA.
+    for cwe in ("CWE-311", "CWE-532", "CWE-209", "CWE-16"):
+        check(compliance.pci_for(cwe) is None,
+              f"{cwe} must not be given a PCI requirement: whether it is one depends on "
+              f"whether the data is account data or the component is in the CDE, and a source "
+              f"scan establishes neither")
+        check(cwe in compliance.PCI_NOT_ASSERTABLE and compliance.PCI_NOT_ASSERTABLE[cwe],
+              f"{cwe} is unmapped but carries no stated reason — an unmapped CWE has to be a "
+              f"decision on the record, not an omission")
+
+    overlap = set(compliance.CWE_TO_PCI) & set(compliance.PCI_NOT_ASSERTABLE)
+    check(not overlap, f"a CWE cannot be both mapped and refused: {sorted(overlap)}")
+
+    note = compliance.pci_scope_note()
+    for phrase in ("not a crosswalk published by the PCI SSC", "QSA", "PAN"):
+        check(phrase in note, f"the PCI scope note must say `{phrase}` — it is the caveat that "
+                              f"travels with every requirement id this tool prints")
+
+    # SOC 2 and ISO 27001 are refused, and the refusal has to be visible in the module rather
+    # than only in a roadmap nobody reads at report time.
+    source = open(compliance.__file__, encoding="utf-8").read()
+    for standard in ("SOC 2", "ISO"):
+        check(standard in source,
+              f"{standard} must be named in compliance.py with the reason it is not mapped")
+    check(not any(name in dir(compliance) for name in ("CWE_TO_SOC2", "CWE_TO_ISO27001")),
+          "a SOC 2 / ISO 27001 mapping appeared — their control texts are paywalled, so it "
+          "cannot have been checked against a source and must not ship")
+
+
 def test_cra_mapping() -> None:
     check(compliance.CRA_REPORTING_STARTS == "2026-09-11",
           "the CRA vulnerability-handling application date drifted")
@@ -173,6 +227,7 @@ def test_cra_pack() -> None:
 
 def main() -> int:
     test_asvs_mapping()
+    test_pci_mapping()
     test_cra_mapping()
     test_sbom()
     test_cra_pack()

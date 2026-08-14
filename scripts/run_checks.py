@@ -72,6 +72,7 @@ GATES: list[tuple[str, list[str], bool]] = [
     ("advertised Python floor",    ["scripts/check_python_floor.py"], False),
     ("semgrep rule pack (equivalence + freshness)", ["kit/tests/test_semgrep_pack.py"], False),
     ("exploitation (KEV/EPSS) + SPDX", ["kit/tests/test_exploitation.py"], False),
+    ("continuous mode (--watch, CRA trigger)", ["kit/tests/test_monitor.py"], False),
     ("verified patch suggestion (refusals)", ["kit/tests/test_patch.py"], False),
     ("i18n bundles (complete + consistent)", ["kit/tests/test_i18n.py"], False),
     ("live-LLM smoke (skips without a key)", ["kit/tests/test_live_llm.py"], False),

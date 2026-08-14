@@ -149,8 +149,15 @@ def _module_has_limiter(tree: ast.AST) -> bool:
 
 
 def _limiter_evidence(func: AnyFunc, decorators: list[str],
-                      functions: dict[str, AnyFunc], seen: frozenset[str] = frozenset()) -> bool:
-    """Whether anything in or reachable from this handler limits attempts."""
+                      functions: dict[str, AnyFunc], seen: set[str] | None = None) -> bool:
+    """Whether anything in or reachable from this handler limits attempts.
+
+    `seen` accumulates across the traversal, not down each branch — this is a reachability
+    question, and a per-path visited set enumerates paths rather than nodes, which is
+    exponential. See `structural/js.py:_resolved` for the measurement that found it.
+    """
+    if seen is None:
+        seen = set()
     if any(any(m in d.lower() for m in (*_LIMITER_MARKERS, *_ATTEMPT_MARKERS))
            for d in decorators):
         return True
@@ -165,8 +172,9 @@ def _limiter_evidence(func: AnyFunc, decorators: list[str],
         callee = functions.get(name)
         if callee is None or name in seen or callee is func:
             continue
+        seen.add(name)
         if _limiter_evidence(callee, [_decorator_name(d) for d in callee.decorator_list],
-                             functions, seen | {name}):
+                             functions, seen):
             return True
     return False
 

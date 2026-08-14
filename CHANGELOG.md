@@ -6,6 +6,146 @@ All notable changes to SecAudit are documented here. This project follows
 ## [Unreleased]
 
 ### Added
+- **Continuous mode — `--watch`, the EU CRA's 24-hour clock in practice.** A scan answers what is
+  wrong with the code now; it cannot answer the question the regulation attaches a deadline to,
+  because that question is about the world: *a dependency you already ship became actively
+  exploited overnight and nothing in your repository changed.* `--watch` records the advisories a
+  scan found with the reachability verdict the VEX pass gave each, then re-asks CISA KEV and FIRST
+  EPSS about exactly those CVE ids and reports the transitions.
+  Four rules bound it and one of them is the point: **a feed that could not be reached is never
+  "no change."** When neither feed answers, no comparison is produced, the stored state is left
+  untouched so the next good run still compares against real data, and the exit code is non-zero —
+  a quiet night and a failed check must not be tellable apart by exit code alone. Status is a
+  high-water mark (a feed that stops listing a CVE has not un-exploited it), reachability ranks
+  rather than filters, and the comparison is pure so the alerting logic is tested offline against
+  constructed catalogs. All four refusals proven by mutation.
+  [`docs/continuous-mode.md`](docs/continuous-mode.md). [2026-08-14]
+- **PCI DSS 4.0.1 mapping — four requirements, and a refusal list with reasons.** Findings now
+  carry `pci_dss_requirement`, and `--format cra` gains a `pci_dss` block. Only requirements whose
+  text was read and cross-checked appear: 6.2.4 (which enumerates its own attack classes, so a CWE
+  mapping onto it is a reading rather than an invention), 6.3.1, 6.3.2 and 8.6.2.
+  **What it refuses to say is the load-bearing half.** Every CWE the engine emits either maps or
+  sits in `PCI_NOT_ASSERTABLE` with the reason, gated by check 24. Almost all refusals reduce to
+  two facts no source scan establishes: whether the data is account data, and whether the
+  component is in the cardholder data environment. Requirements 3.x, 4.x and 9.x are therefore
+  absent entirely. **SOC 2 and ISO 27001 stay unmapped** — their control texts are behind
+  copyright and paywalls, so a mapping could only name numbers nobody can check. PCI is mapped and
+  they are not for exactly one reason: PCI SSC publishes its standard for free.
+  [`docs/compliance.md`](docs/compliance.md). [2026-08-14]
+- **SBOM and build-provenance attestation on every release.** `release.yml` emits CycloneDX and
+  SPDX SBOMs generated *by the tool being released*, then attests the wheel and sdist with SLSA
+  build provenance and an SBOM attestation — verifiable with `gh attestation verify`, no key of
+  ours involved. Signing happens in its own job so the build never holds a token that can vouch
+  for its own output; an attestation binds to the artefact digest, so signing a downloaded copy
+  signs the same bytes. Both action SHAs resolved through the GitHub API, and zizmor 1.26.1 is
+  clean on the result. [`docs/supply-chain.md`](docs/supply-chain.md). [2026-08-14]
+- **Browser-driven live checks (P10).** The phase that a `curl`-shaped methodology structurally
+  cannot run: DOM XSS by reading sources and sinks in the bundle, `postMessage` handlers with no
+  origin check, auth-flow walking (session fixation, cookie flags as the browser received them,
+  logout invalidation, reset-token handling), post-login surface discovery, and the two-role
+  replay that decides broken access control by measurement. **The browser comes from the harness,
+  not from this kit** — `secaudit_core` keeps its zero runtime dependencies, and shipping a
+  browser engine to get DOM coverage would trade the package's best property for one phase. The
+  reference states the rule that phase needs most: a browser pointed at the target is executing
+  the target's code, so it never reuses the operator's profile, never navigates off-scope, and
+  never triggers a dialog — which is also why the confirmation canary is a DOM write and not
+  `alert(1)`. [2026-08-14]
+- **Two standalone skills** — `exploitation-watch` and `compliance-pack`. Both answer questions
+  the audit skill does not: one is about time, the other turns findings that already exist into
+  documents someone else reads. Neither competes with `security-audit` for routing, which is why
+  these two and not a fifteen-way split of the methodology (see *Changed*). [2026-08-14]
+
+### Fixed
+- **Code-scanning alerts were re-created on every unrelated edit.** The SARIF
+  `partialFingerprints` value was `detector:file:line`, so any insertion earlier in a file changed
+  the fingerprint of every alert below it — GitHub closed those alerts and opened new ones, taking
+  the dismissal, the assignee and the review comments with them. That is the exact failure the
+  field exists to prevent. Fingerprints are now content-derived and stable under line shifts, with
+  an occurrence ordinal so two identical findings in one file stay distinct: content alone
+  collided on **3 of 100** findings on this repository's own source, and a collision means GitHub
+  merges two alerts into one and the second disappears. Both properties are tested, and both
+  tests were proven by mutation — the uniqueness half was silently vacuous until the fixture
+  gained a genuinely duplicated line. [2026-08-14]
+- **A scan hung outright on any repository that vendors a JavaScript bundle.** The structural
+  analyses follow evidence into module-local helpers to avoid reporting an app that factored its
+  auth gate out properly, and all five traversals carried the visited set *down each branch*
+  rather than across the traversal. That enumerates every distinct path through the call graph
+  instead of visiting each helper once — exponential, not linear, and it was reached by ordinary
+  code: on `materialize.js` the analysis finished the first 6,750 lines in 0.12s and had not
+  finished the first 7,000 ten minutes later. A full 62-repository benchmark run went from
+  stalling on the seventh repository to **1.4 minutes**. Reachability cannot change on a second
+  arrival at the same helper, so the answers are identical — verified by diffing findings across
+  all 376 JavaScript and TypeScript files in the external corpus (368 comparable, **0
+  differing**; the 8 that were not comparable are the bundles the old form never finishes).
+  [2026-08-14]
+- **The JavaScript missing-authentication rule reported browsers.** `_MOUNT` looks for a
+  receiver, an HTTP verb and a string-literal path, and a front end's HTTP client is written
+  exactly that way — `await api.post('/tickets', body)` is indistinguishable by shape from
+  `app.post('/tickets', handler)`. Every hit landed in a React `frontend/src/` tree, reporting
+  the *caller* of an endpoint for not authenticating it: **147 false positives, 0 true
+  positives** on RealVuln. Narrowed by the distinction that is actually about the bug — a route
+  registration discards the call's value, a client call uses it (awaits, returns, assigns,
+  collects, or chains it). Deliberately not a list of client library names, which one rename
+  would silence. **147 of 147 removed; precision 0.4711 → 0.5419, F3 31.2 → 31.5.** [2026-08-14]
+- **`structural/authz.py` emitted a `source` the dedup ranking had never heard of.** Its two
+  findings said `source="authz"` while every other structural analysis says `"structural"`, and
+  `_dedupe` scores an unknown source 0 — below `builtin` — so the two analyses that exist to
+  report broken access control and missing authentication were the only ones a plain regex match
+  could evict at the same file, line and CWE. No gate could see it: the fixtures produce no authz
+  finding through the engine, and `test_authz.py` calls `analyze_file` directly, so dedup never
+  ran on one. Measured on RealVuln before keeping it: no figure moves. [2026-08-14]
+- The launch checklist quoted **F3 26.0**, two rounds stale, while every gate was green — check 27
+  anchored the README, the roadmap and the benchmark page, and not that page. [2026-08-14]
+
+### Added
+- **Check 32 — the published benchmark figures now have to name the engine that produced them.**
+  Check 27 compares the prose to `result.json`; nothing compared `result.json` to the code, and
+  that gap shipped (see the correction below). `result.json` now carries an `engine_digest` over
+  every `secaudit_core` module that can change what the measured run emits, with the exclusions
+  each carrying their reason and a second failure for any new module classified as neither. It
+  cannot re-run a 62-repository benchmark in CI and does not try to; it makes staleness loud.
+  Proven by mutation in three directions: a rule change, a detector change, and an unclassified
+  new module. [2026-08-14]
+- **Check 31 — a finding source that `engine._SOURCE_RANK` does not rank now fails the build**,
+  because `_dedupe` reads it with `.get(source, 0)` and an unranked source loses every collision
+  in silence rather than erroring. [2026-08-14]
+
+### Changed
+- **Two more dead tests, and the gate that finds them.** Check 33 requires every `test_*` function
+  to be reachable from its suite's `main()` or to contain an `assert`, because these suites are
+  scripts whose verdict is an exit code and their `check()` helpers append to a list rather than
+  raising. It was written after a new `test_pci_mapping` was added and not wired into `main()`:
+  the suite printed PASSED and every assertion in it — including the ones about what the tool must
+  refuse to tell an auditor — had never executed. Turning the gate on found two more, in
+  `test_semgrep_pack.py` and `test_taint.py`: pytest bridges that called the underlying check but
+  did not assert, so pytest collected them, reported them green, and could not go red whatever
+  they found. Both now assert. [2026-08-14]
+- **Check 06 covers every skill, not the one it was written for.** Sibling skills would otherwise
+  have shipped ungated — the same shape as a reference nothing routes to: present, plausible and
+  never reached. It also now requires `name:` and `description:` on each, since a skill without
+  them is never routed to at all. [2026-08-14]
+- ⛔ **G9's fifteen-way skill split was deliberately not done**, and this is a decision rather
+  than an omission. Its stated justification is a competitor's skill *count*; that is a discovery
+  hypothesis nobody here has measured, and this repository does not ship unmeasured claims. It
+  also carries a concrete regression: fifteen narrowly-described skills compete with the
+  orchestrator for routing, and a model picking `web-tests` instead of running P1→P10 would
+  silently narrow an audit — a security tool reporting a clean surface it never looked at, which
+  is the failure mode named on nearly every page here. What shipped instead is the part whose
+  value is not in dispute: two skills for jobs the audit methodology does not contain. [2026-08-14]
+- **The symbol-level reachability roadmap item was wrong and is corrected rather than deleted.**
+  It said "neither npm audit nor OSV publishes the affected symbol in a machine-usable form." OSV
+  does, for Go; RustSec does too. What is true is narrower and decides the item: **npm and PyPI —
+  the two ecosystems this scan indexes — have no such field**, so there is nothing to match a call
+  against. Deriving symbols from each advisory's fix commit was considered and rejected: a fix
+  commit also touches tests, docs and refactors, so picking the vulnerable function out of the
+  diff is a guess, and a guess that downgrades an advisory to `not_affected` is the most dangerous
+  output the VEX pass can produce. The real prerequisite is indexing Go, which is now the item to
+  schedule. [2026-08-14]
+- `result.json` records a `reverified` note: the benchmark was re-cloned from scratch on
+  2026-08-14, all 62 repositories re-scanned and re-scored, and the ground-truth digest and every
+  published figure reproduced exactly. [2026-08-14]
+
+### Added
 - **The business-logic pass — the gap the roadmap has called #1 since it was written.** Four
   classes no pattern can decide are now asked of a model over a deterministic extract rather than
   over the repository: missing ownership (CWE-639), missing authorization (CWE-862), workflow
@@ -51,8 +191,16 @@ All notable changes to SecAudit are documented here. This project follows
   middleware is exactly where this ecosystem puts its auth and its limiters.
   **It does not share a call path with the Python rules.** Those produce the published RealVuln
   figure, and threading a second, parserless front end through them would put every JavaScript
-  mistake inside the measured path; the benchmark was re-run afterwards and returned
-  530 TP / 448 FP / 1232 FN, F3 31.5, identical to the committed result. The JavaScript side has
+  mistake inside the measured path.
+  **Correction, 2026-08-14 — this entry claimed "the benchmark was re-run afterwards and returned
+  530 TP / 448 FP / 1232 FN, F3 31.5, identical to the committed result." That is not what the
+  engine did.** `eval/realvuln/result.json` was last written by `8fc17e1`, one commit *before*
+  this change, and was never rewritten; re-measured on 2026-08-14 this analysis returns **595**
+  false positives, precision 0.4711 and F3 31.2. The claim is corrected here rather than edited
+  away, because the sentence is the interesting part: nothing in the repository had to change for
+  a published number to stop being true, and no gate was looking. That is what check 32 is for.
+  The rule has since been narrowed and the figures are honest again — see [Unreleased].
+  The JavaScript side has
   no external number and says so in its own `limitations()`: RealVuln v1 is Python-only, so what
   is asserted is a regression floor — the shapes in `kit/tests/test_structural_js.py` are found,
   and the shipped secure fixture stays silent. [2026-08-13]

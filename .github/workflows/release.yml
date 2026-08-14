@@ -78,13 +78,54 @@ jobs:
           echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
             | /tmp/smoke/bin/secaudit-mcp | head -c 200
 
+      # Dogfooded: the SBOM shipped with the release is produced by the tool being released.
+      # It is a short document, because the package genuinely has no runtime dependencies — that
+      # is the claim `assert_no_runtime_deps.py` enforces two steps up, and this is the same fact
+      # in the format a consumer's tooling reads.
+      - name: Generate the release SBOM with the tool itself
+        run: |
+          set -euo pipefail
+          /tmp/smoke/bin/secaudit kit --format cyclonedx -o dist/sbom.cdx.json
+          /tmp/smoke/bin/secaudit kit --format spdx      -o dist/sbom.spdx.json
+          python3 -c "import json,sys; [json.load(open(p)) for p in sys.argv[1:]]" \
+            dist/sbom.cdx.json dist/sbom.spdx.json
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist
           path: dist/
 
-  publish:
+  # Attestation runs in its own job so the build never holds a token that can sign anything.
+  # Same reasoning that moved `pages: write` out of site.yml's build job: the step that compiles
+  # untrusted-ish input and the step that vouches for the output should not share a credential.
+  # An attestation binds to the artefact's digest, so signing a downloaded copy is signing the
+  # same bytes — the separation costs nothing.
+  attest:
     needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write          # OIDC — the signing identity is the workflow, not a stored key
+      attestations: write      # write the attestation to the repository's attestation store
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+
+      # SLSA build provenance: what built these files, from which commit, with which workflow.
+      # SHAs resolved through the GitHub API, per the note in the build job — never typed.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "dist/*.whl, dist/*.tar.gz"
+
+      - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: "dist/*.whl, dist/*.tar.gz"
+          sbom-path: dist/sbom.cdx.json
+
+  publish:
+    needs: [build, attest]
     runs-on: ubuntu-latest
     # Naming an environment here does NOT by itself require anyone's approval — GitHub creates
     # a missing environment on first use with no protection rules, and the job publishes

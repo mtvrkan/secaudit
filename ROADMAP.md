@@ -241,11 +241,17 @@ The current pack cannot survive an honest external benchmark. Rebuild the floor.
   the file it actually lives in. Remaining: JS helpers defined as object properties or class
   methods (no delimitable body, so no summary); `await`/promise chains; a helper in a file
   outside the scanned set.
-- **Symbol-level dependency reachability.** Import-level is where the current VEX pass stops,
-  because neither npm audit nor OSV publishes the affected symbol in a machine-usable form.
-  Closing this means resolving advisory → fixed-version diff → changed symbols, then checking
-  whether those symbols are called. It converts `affected` from "reachable enough to take
-  seriously" into a real claim.
+- ⛔ **Symbol-level dependency reachability — blocked on data, not on analysis, and the earlier
+  framing of this item was wrong.** It said "neither npm audit nor OSV publishes the affected
+  symbol in a machine-usable form." OSV *does*, for some ecosystems: Go advisories carry
+  `affected[].ecosystem_specific.imports[].symbols` and RustSec carries affected function lists.
+  What is true is narrower and decides the item: **the two ecosystems this dependency scan
+  indexes — npm and PyPI — have no such field**, so there is nothing to match a call against.
+  The fallback of deriving symbols from each advisory's fix commit was considered and rejected on
+  2026-08-14: a fix commit also touches tests, docs and refactors, so picking the vulnerable
+  function out of the diff is a guess, and a guess that downgrades an advisory to `not_affected`
+  is the most dangerous output the VEX pass can produce. This unblocks when the scan indexes Go —
+  which is the real prerequisite and now the item to schedule instead of this one.
 - ✅ **Semgrep rule pack** — [`rules/secaudit/`](rules/secaudit/), generated from the
   detector table with a `--check` gate. 43 of 85 detectors exported; the other 42 are
   withheld with published reasons, because `pattern-regex` cannot reproduce a blanked

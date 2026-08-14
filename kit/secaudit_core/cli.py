@@ -11,10 +11,13 @@ above --min-severity is reported (so it doubles as a CI gate)."""
 from __future__ import annotations
 
 import argparse
+import datetime
+import json
 import os
 import sys
 
-from . import detectors, diff, engine, gitref, i18n, patch, report, sbom, spdx
+from . import (detectors, diff, engine, exploitation, gitref, i18n, monitor, patch, report,
+               sbom, spdx)
 from .backends import get_backend
 from .schema import ScanResult
 
@@ -81,6 +84,16 @@ def main(argv: list[str] | None = None) -> int:
                          "Tier 0 that reaches the network; only CVE ids are sent, never "
                          "anything about your code. An unreachable feed reports `unknown`, "
                          "never a clean bill")
+    ap.add_argument("--watch", metavar="STATE",
+                    help="continuous mode: keep asking the exploitation feeds about the "
+                         "advisories this project already ships, and report the ones that BECAME "
+                         "actively exploited since the last run — the EU CRA's 24-hour trigger, "
+                         "which fires when the world changes and your repository does not. STATE "
+                         "is a JSON file this command creates on first use and updates after "
+                         "each successful run; put it in cron or a scheduled workflow. Implies "
+                         "--exploitation. Exit code is non-zero when something newly became "
+                         "exploited AND when a feed could not be read, because a quiet night and "
+                         "a failed check must not be tellable apart by exit code alone")
     ap.add_argument("--suggest-patches", metavar="DIR",
                     help="write a verified patch per High/Critical finding into DIR. Needs "
                          "--backend. Nothing is ever applied: each patch is applied to a "
@@ -142,10 +155,24 @@ def main(argv: list[str] | None = None) -> int:
                   f"Available: {listing}", file=sys.stderr)
             return 2
 
+    if args.watch and args.since:
+        print("--watch and --since answer different questions and cannot be combined: --since "
+              "diffs this code against an older tree, --watch diffs the world against the last "
+              "run. Run them as two commands.", file=sys.stderr)
+        return 2
+    if args.watch and args.no_deps:
+        # The watch list is built from dependency advisories, so this combination would record
+        # an empty baseline and then report "nothing became exploited" forever.
+        print("--watch needs the dependency scan it watches; drop --no-deps.", file=sys.stderr)
+        return 2
+
     result = engine.scan(args.target, run_deps=not args.no_deps,
                          use_scanners=not args.no_scanners, use_taint=not args.no_taint,
-                         only=only, check_exploitation=args.exploitation)
+                         only=only, check_exploitation=args.exploitation or bool(args.watch))
     result = get_backend(args.backend).enrich(result)
+
+    if args.watch:
+        return _run_watch(args, result)
 
     if args.since:
         return _run_diff(args, result, only)
@@ -168,6 +195,48 @@ def main(argv: list[str] | None = None) -> int:
         if any(f.severity.rank >= threshold for f in result.findings):
             return 1
     return 0
+
+
+def _run_watch(args, result: ScanResult) -> int:
+    """`--watch STATE`. Diff the world against the last run; see `monitor` for the design rules.
+
+    The clock lives here rather than in `monitor`, so the comparison stays pure and testable.
+    """
+    today = datetime.date.today().isoformat()
+    try:
+        state = monitor.load(args.watch)
+    except (OSError, ValueError, json.JSONDecodeError) as e:
+        print(f"--watch {args.watch}: {e}", file=sys.stderr)
+        return 2
+
+    if state is None:
+        state = monitor.watchlist_from(result.findings, args.target, today)
+        monitor.save(args.watch, state)
+        watched = len(state["watched"])
+        exploited = sum(1 for w in state["watched"] if w["exploitation"] == "exploited")
+        _emit(monitor.to_markdown(monitor.Report(
+            target=args.target, watched_total=watched, unchanged=watched)),
+            args.output, f"baseline written to {args.watch}: {watched} advisory(ies) watched")
+        # A first run establishes the baseline and has nothing to compare against, so it is not
+        # an alert — except when the baseline itself already contains exploited advisories,
+        # which is news the moment it is written rather than at the next run.
+        if exploited:
+            print(f"{exploited} advisory(ies) are ALREADY confirmed exploited in the wild at "
+                  f"baseline — these start the CRA clock now, not at the next run.",
+                  file=sys.stderr)
+            return 1
+        return 0
+
+    # Only the ids already being watched are looked up — same privacy bound as --exploitation.
+    catalog = exploitation.fetch([w["cve"] for w in state.get("watched", [])])
+    watch_report = monitor.compare(state, catalog)
+    monitor.save(args.watch, monitor.advance(state, watch_report, today))
+
+    _emit(monitor.to_markdown(watch_report), args.output,
+          f"{len(watch_report.triggered)} newly exploited, "
+          f"{watch_report.watched_total} watched")
+    _write_summary(args.summary, monitor.to_markdown(watch_report), "md", args.output)
+    return 1 if watch_report.alerting else 0
 
 
 def _suggest_patches(args, result, only) -> None:

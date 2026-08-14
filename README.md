@@ -23,6 +23,22 @@ you have them, and Claude's analysis when you don't.
 > assert authorization. It will never produce weaponized exploits, malware, DoS payloads,
 > or unauthorized-access tooling. See [Ethics & Legal](#ethics--legal).
 
+**Türkçe:** [README.tr.md](README.tr.md)
+
+## 15 seconds
+
+```bash
+# In Claude Code — the plugin, with the live-target track and the authorization gate:
+/plugin marketplace add mtvrkan/secaudit && /plugin install secaudit
+/secaudit .
+
+# Or without Claude Code at all — the same engine, no LLM, no network, no dependencies:
+pip install secaudit-kit && secaudit .
+```
+
+Both run the deterministic tier. The number below is what that tier scores on someone else's
+benchmark; everything after it is what the rest of the kit adds.
+
 ## Why SecAudit?
 
 Most "security scanners" give you a wall of raw findings with no context. SecAudit uses
@@ -361,6 +377,14 @@ request aimed at a host.) Per-client config:
   the published list of which 42 are withheld because a regex rule cannot reproduce them.
 - **[Diff mode](docs/diff-mode.md)** — `--since <ref>`: gate a pull request on what it
   introduced, not on the debt it inherited.
+- **[Continuous mode](docs/continuous-mode.md)** — `--watch`: the CRA 24-hour clock in practice.
+  Diffs *the world* against the last run and tells you when a dependency you already ship becomes
+  actively exploited. A run where a feed could not be read reports that it established nothing,
+  rather than reporting no change.
+- **[Compliance mapping](docs/compliance.md)** — what the ASVS, CRA and PCI DSS mappings claim,
+  and the two standards that are refused by name with the reason.
+- **[Verifying what you installed](docs/supply-chain.md)** — build provenance and SBOM
+  attestation on every release, and how to check them without trusting us.
 - [Getting started](docs/getting-started.md) · [Authorization & scope](docs/authorization.md)
 - [Live URL mode](docs/live-url-mode.md) · [Source-code mode](docs/source-code-mode.md) ·
   [MCP server](docs/mcp.md)

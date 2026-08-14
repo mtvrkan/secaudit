@@ -279,7 +279,7 @@ def _principal_names_in_scope(func: AnyFunc) -> set[str]:
 
 
 def _auth_evidence(func: AnyFunc, decorators: list[str],
-                   functions: dict[str, AnyFunc], seen: frozenset[str] = frozenset(),
+                   functions: dict[str, AnyFunc], seen: set[str] | None = None,
                    ) -> bool:
     """Whether anything in or reachable from this handler establishes who the caller is.
 
@@ -287,7 +287,14 @@ def _auth_evidence(func: AnyFunc, decorators: list[str],
     handlers carry no auth decorator and call a helper that compares a header to an environment
     token. Depth is bounded by `seen`; recursion through a cycle returns False rather than
     hanging, and an unresolved call is treated as evidence — see `_calls_unresolved`.
+
+    `seen` accumulates across the traversal rather than down each branch. Both forms terminate,
+    so the per-path one looked correct and was only wrong about cost: it enumerates every
+    distinct path through the call graph instead of visiting each helper once, and reachability
+    cannot change on a second arrival. See `structural/js.py:_resolved` for the measurement.
     """
+    if seen is None:
+        seen = set()
     if _has_auth_decorator(decorators):
         return True
 
@@ -337,8 +344,9 @@ def _auth_evidence(func: AnyFunc, decorators: list[str],
         callee = functions.get(name)
         if callee is None or name in seen or callee is func:
             continue
+        seen.add(name)
         if _auth_evidence(callee, [_decorator_name(d) for d in callee.decorator_list],
-                          functions, seen | {name}):
+                          functions, seen):
             return True
     return False
 

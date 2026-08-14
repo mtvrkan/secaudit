@@ -142,8 +142,15 @@ def test_withheld_detectors_stay_withheld() -> None:
 
 def test_exported_patterns_match_identically() -> None:
     """pytest's view of the comparison below. The count it returns is for `main`'s summary
-    line; a test function that returns a value is one pytest cannot read a verdict from."""
+    line; a test function that returns a value is one pytest cannot read a verdict from.
+
+    It asserts rather than only calling: without this the function was collected by pytest,
+    reported as passed, and could not go red whatever the comparison found — the failures land
+    in `fails`, which only `main` reads. That is the same vacuous-pytest shape this repository
+    fixed once already, left behind in the wrapper that exists to prevent it."""
+    before = len(fails)
     compare_exported_patterns()
+    assert fails[before:] == [], "\n".join(fails[before:])
 
 
 def compare_exported_patterns() -> int:

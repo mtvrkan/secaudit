@@ -180,6 +180,70 @@ def check_semgrep_json(res, fails: list[str]) -> dict:
     return doc
 
 
+def check_alert_tracking_survives_a_line_shift(fails: list[str]) -> None:
+    """A code-scanning alert must keep its identity when the code above it moves.
+
+    This is the half of "SARIF works" that a shape assertion cannot see. GitHub tracks an alert
+    by `partialFingerprints`; if the fingerprint moves, the old alert is closed and a new one
+    opened, and the dismissal, the assignee and the review comments go with it. The fingerprint
+    used to be `detector:file:line`, so *any* insertion earlier in the file reset every alert
+    below it — the exact failure the field exists to prevent.
+
+    Tested by scanning the same file twice with a blank line prepended, which is the smallest
+    edit that moves every line and changes no finding.
+    """
+    import tempfile   # noqa: PLC0415
+
+    # The last two lines are byte-identical on purpose. Content-only fingerprints collide on
+    # them, GitHub merges the two alerts into one, and the second finding silently disappears
+    # from the UI — so the fixture has to contain the case, or the uniqueness half of this
+    # check is decoration. It found a real collision: 3 of 100 on this repository's own source.
+    source = ("const express = require('express');\n"
+              "app.get('/a', (req, res) => { db.query('SELECT * FROM t WHERE id=' + req.query.id); });\n"
+              "app.get('/b', (req, res) => { res.send(eval(req.query.x)); });\n"
+              "function one() {\n"
+              "  res.send(eval(req.query.x));\n"
+              "}\n"
+              "function two() {\n"
+              "  res.send(eval(req.query.x));\n"
+              "}\n")
+
+    def fingerprints(text: str) -> list[str]:
+        # A LIST, not a set or a dict: collisions are the second thing being tested here, and a
+        # container keyed on the fingerprint silently deduplicates exactly the bug. (It did —
+        # this check passed against a deliberately colliding fixture until the container changed.)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "server.js")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            res = engine.scan(tmp, run_deps=False, use_scanners=False)
+            doc = json.loads(report.to_sarif(res))
+            out = []
+            for r in doc["runs"][0]["results"]:
+                fp = r.get("partialFingerprints", {}).get("secauditId")
+                if fp is None:
+                    fails.append("every SARIF result must carry a partialFingerprint — without "
+                                 "one GitHub falls back to location and every edit re-creates "
+                                 "the alert")
+                    continue
+                out.append(fp)
+            return out
+
+    before = fingerprints(source)
+    after = fingerprints("\n// a comment added at the top\n" + source)
+
+    if not before:
+        fails.append("the fingerprint fixture produced no findings — it is not testing anything")
+        return
+    lost = set(before) - set(after)
+    if lost:
+        fails.append(f"{len(lost)} alert fingerprint(s) changed when a line was inserted above "
+                     f"them; GitHub would close those alerts and open new ones, losing every "
+                     f"dismissal. Fingerprints must not encode position.")
+    if len(set(before)) != len(before):
+        fails.append("two findings share a fingerprint — GitHub would merge them into one alert")
+
+
 def main() -> int:
     fails: list[str] = []
     res = engine.scan(VULN, run_deps=False, use_scanners=False)
@@ -218,6 +282,8 @@ def main() -> int:
         cr = next(r for r in results if r["ruleId"] == crit[0].detector_id)
         if cr["level"] != "error":
             fails.append("Critical finding must map to SARIF level 'error'")
+
+    check_alert_tracking_survives_a_line_shift(fails)
 
     html = check_html(res, fails)
     sg = check_semgrep_json(res, fails)

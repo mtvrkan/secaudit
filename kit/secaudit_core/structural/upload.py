@@ -99,8 +99,15 @@ def _write_calls(func: AnyFunc) -> list[ast.Call]:
 
 
 def _validates(func: AnyFunc, functions: dict[str, AnyFunc],
-               seen: frozenset[str] = frozenset()) -> bool:
-    """Whether anything in or reachable from the handler narrows what file is acceptable."""
+               seen: set[str] | None = None) -> bool:
+    """Whether anything in or reachable from the handler narrows what file is acceptable.
+
+    `seen` accumulates across the traversal, not down each branch — this is a reachability
+    question, and a per-path visited set enumerates paths rather than nodes, which is
+    exponential. See `structural/js.py:_resolved` for the measurement that found it.
+    """
+    if seen is None:
+        seen = set()
     if any(any(m in n for m in _VALIDATION_MARKERS) for n in _names_in(func)):
         return True
     for node in ast.walk(func):
@@ -112,7 +119,8 @@ def _validates(func: AnyFunc, functions: dict[str, AnyFunc],
         callee = functions.get(name)
         if callee is None or name in seen or callee is func:
             continue
-        if _validates(callee, functions, seen | {name}):
+        seen.add(name)
+        if _validates(callee, functions, seen):
             return True
     return False
 

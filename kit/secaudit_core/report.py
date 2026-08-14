@@ -1,6 +1,7 @@
 """Render a ScanResult as Markdown or JSON."""
 from __future__ import annotations
 
+import hashlib
 import json
 
 from . import i18n
@@ -11,6 +12,35 @@ _SARIF_SCORE = {"Critical": "9.0", "High": "7.5", "Medium": "5.0",
                 "Low": "3.0", "Informational": "1.0"}
 _SARIF_LEVEL = {"Critical": "error", "High": "error", "Medium": "warning",
                 "Low": "note", "Informational": "note"}
+
+
+def _fingerprints(findings: list) -> dict[int, str]:
+    """A stable identity per finding, for GitHub code scanning's alert tracking.
+
+    Two properties are needed and they pull against each other. The fingerprint must **survive a
+    line shift**, or an edit anywhere above an alert closes it and opens a new one, taking the
+    dismissal and the review comments with it. And it must be **unique**, or code scanning merges
+    two findings into one alert and the second disappears from the UI.
+
+    Content alone gives the first and not the second: on this repository's own source, hashing
+    (detector, file, CWE, evidence) collided on 3 of 100 findings — the same literal matched on
+    two lines. So identical-content findings are additionally ordered by line and numbered. The
+    ordinal is what keeps them distinct, and ordering by line is what keeps it stable: inserting
+    a line above shifts every line and changes no relative order. Inserting a *new identical
+    finding* between two others does renumber the ones after it, which is the residual case and
+    is rarer than the edit this exists to survive.
+    """
+    keyed: dict[str, list] = {}
+    for f in findings:
+        evidence = " ".join((f.evidence or "").split())
+        keyed.setdefault(f"{f.detector_id}\n{f.file}\n{f.cwe}\n{evidence}", []).append(f)
+
+    out: dict[int, str] = {}
+    for seed, group in keyed.items():
+        for ordinal, f in enumerate(sorted(group, key=lambda g: g.line)):
+            digest = hashlib.sha256(f"{seed}\n#{ordinal}".encode()).hexdigest()
+            out[id(f)] = digest[:32]
+    return out
 
 
 def to_sarif(result: ScanResult) -> str:
@@ -31,6 +61,7 @@ def to_sarif(result: ScanResult) -> str:
                           "security-severity": _SARIF_SCORE.get(f.severity.value, "5.0")},
         })
     results = []
+    fingerprint = _fingerprints(result.findings)
     for f in result.by_severity():
         # GitHub code scanning shows the message inline on the diff, where the reachability
         # path is the difference between "a reviewer dismisses this" and "a reviewer fixes it".
@@ -43,7 +74,14 @@ def to_sarif(result: ScanResult) -> str:
             "locations": [{"physicalLocation": {
                 "artifactLocation": {"uri": f.file},
                 "region": {"startLine": max(1, f.line)}}}],
-            "partialFingerprints": {"secauditId": f"{f.detector_id}:{f.file}:{f.line}"},
+            # Deliberately NOT keyed on the line number, which is what this used to be
+            # (`detector:file:line`). A fingerprint exists so GitHub can recognise the same
+            # alert after the code moves; one containing the line changes whenever anything
+            # above it does, so code scanning closed the alert and opened a new one on every
+            # unrelated edit — losing the dismissal, the assignee and the comments with it.
+            # Keyed on the matched evidence instead: stable under line shifts, and distinct
+            # between two hits of one rule in one file.
+            "partialFingerprints": {"secauditId": fingerprint[id(f)]},
         })
     doc = {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
@@ -144,6 +182,10 @@ def to_cra_pack(result: ScanResult) -> str:
             "cwe": f.cwe,
             "owasp": f.owasp,
             "asvs_chapter": (compliance.asvs_for(f.cwe) or (None, None))[0],
+            # `null` here means this project refuses to name a requirement for this weakness,
+            # not that none applies — `compliance.PCI_NOT_ASSERTABLE` carries the reason per
+            # CWE, and `pci_scope_note()` states the two limits that produce most of them.
+            "pci_dss_requirement": (compliance.pci_for(f.cwe) or (None, None))[0],
             "location": f"{f.file}:{f.line}",
             "component": f.package or None,
             "vex_status": f.vex_status or None,
@@ -187,6 +229,18 @@ def to_cra_pack(result: ScanResult) -> str:
                     "single run is evidence of one review, not of a programme.",
         },
         "limitations": result.notes,
+        # Carried alongside the CRA pack because a register that names PCI requirement ids and
+        # not their bounds is the half of the mapping that gets quoted.
+        "pci_dss": {
+            "version": compliance.PCI_VERSION,
+            "requirements_referenced": {
+                req: compliance.PCI_REQUIREMENTS[req]
+                for req in sorted({entry["pci_dss_requirement"] for entry in register
+                                   if entry["pci_dss_requirement"]})
+            },
+            "scope_note": compliance.pci_scope_note(),
+            "not_asserted": compliance.PCI_NOT_ASSERTABLE,
+        },
         "disclaimer": (
             "This pack is INPUT to a compliance process, not evidence of compliance. It "
             "contains no conformity assessment, no risk assessment under Article 13, and no "

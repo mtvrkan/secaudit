@@ -95,7 +95,15 @@ def _spreads_request(node: ast.AST, request_names: set[str]) -> bool:
 
 
 def _has_allowlist(func: AnyFunc, functions: dict[str, AnyFunc],
-                   seen: frozenset[str] = frozenset()) -> bool:
+                   seen: set[str] | None = None) -> bool:
+    # `seen` accumulates across the whole traversal rather than down each branch. This asks
+    # whether an allowlist is reachable, and arriving at a helper a second time cannot change
+    # that answer — but a per-path visited set enumerates every distinct path through the call
+    # graph, which is exponential rather than linear. See `structural/js.py:_resolved` for the
+    # measurement that found this: the same shape there took one file from 0.12s to over ten
+    # minutes for 250 more lines of input.
+    if seen is None:
+        seen = set()
     if any(any(m in n for m in _ALLOWLIST_MARKERS) for n in _names_in(func)):
         return True
     for arg in list(func.args.args) + list(func.args.kwonlyargs):
@@ -111,7 +119,8 @@ def _has_allowlist(func: AnyFunc, functions: dict[str, AnyFunc],
         callee = functions.get(name)
         if callee is None or name in seen or callee is func:
             continue
-        if _has_allowlist(callee, functions, seen | {name}):
+        seen.add(name)
+        if _has_allowlist(callee, functions, seen):
             return True
     return False
 

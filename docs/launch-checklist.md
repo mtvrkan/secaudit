@@ -72,7 +72,7 @@ python3 dashboard.py --scanners secaudit-tier1
 It needs an API key and real spend across 62 repositories. The result belongs on
 `eval/realvuln/README.md` labelled as a single observation — a model run cannot be a floor, and
 the comparison it invites is with the published general-purpose-LLM baseline (F3 51.7), not with
-the 26.0 the deterministic tier scores.
+the 31.5 the deterministic tier scores.
 
 ## What is deliberately not on this list
 

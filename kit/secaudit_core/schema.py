@@ -43,7 +43,11 @@ class Finding:
     line: int
     evidence: str
     fix: str
-    source: str = "builtin"                 # builtin | taint | semgrep | npm-audit | osv | llm
+    # Which analysis produced this. `engine._SOURCE_RANK` is the registry — it names every legal
+    # value and orders them, and check 31 fails the build on a value that is not in it. This
+    # comment used to list them and had gone three sources stale, which is why it now points at
+    # the map instead of copying it.
+    source: str = "builtin"
     verdict: Verdict = Verdict.UNVERIFIED
     triage_note: str = ""                   # filled by the LLM tier
     maps_to: str = ""                       # golden-set id (eval bookkeeping only)

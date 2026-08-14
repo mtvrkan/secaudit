@@ -849,8 +849,14 @@ def test_sensitive_data_in_logs() -> None:
 
 def test_corpora() -> None:
     """pytest's view of the corpus floor below. The counts it returns feed `main`'s summary
-    line; returning them from a `test_`-named function makes the verdict unreadable."""
+    line; returning them from a `test_`-named function makes the verdict unreadable.
+
+    It asserts rather than only calling: without this the function was collected by pytest,
+    reported as passed, and could not go red whatever the floor did — the failures land in
+    `fails`, which only `main` reads."""
+    before = len(fails)
     corpora_counts()
+    assert fails[before:] == [], "\n".join(fails[before:])
 
 
 def corpora_counts() -> tuple[int, int]:

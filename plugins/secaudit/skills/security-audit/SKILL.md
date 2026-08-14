@@ -118,6 +118,7 @@ tool invocations.
 | P7 Infra / cloud / IaC | IaC/containers/cloud config | `references/infra-cloud.md` |
 | P8 Mobile (if applicable) | Android/iOS/Flutter app | `references/mobile.md` |
 | P9 AI/LLM security (if applicable) | app calls an LLM / is an agent / uses MCP | `references/llm-ai-security.md` |
+| P10 Browser-driven | live target that renders client-side, or any auth flow | `references/browser-driven.md` |
 
 Cross-cutting references (load when relevant, once per session):
 - `references/tooling.md` — every scanner: detect, install, safe invocation, parse output.
@@ -129,9 +130,19 @@ Cross-cutting references (load when relevant, once per session):
 - `references/severity-cvss.md` — how to rate severity (CVSS-aligned) and prioritize.
 - `references/report-template.md` — the exact finding + final-report format.
 
+**When P10 is not optional.** If P2 finds that the target's HTML carries no content — an empty
+root element and a bundle — then P4 and P5 are testing a shell, and reporting a small attack
+surface from it would be reporting the wrong thing. Run P10 or state in the report that the
+application's real surface was not examined. Same when the engagement includes credentials: the
+post-login surface and the access-control checks between two roles are the highest-value part of
+a live audit and neither is reachable without a session. If the session has no browser tooling,
+say so once and continue — never let an absent capability read as an absent finding.
+
 **Typical routes:**
 - *Only a URL* → P1 → P2 → P3 → (gate) → P4 → P5 → P7. State passive-only limits if
-  no authorization/source.
+  no authorization/source. Add P10 when the surface is client-rendered.
+- *URL + test accounts* → the above, then P10 for auth-flow walking, post-login surface
+  discovery, and the two-role replay that decides broken access control.
 - *Only source code* → P6 + P3 + P7 (+ P8/P9 if applicable). No live requests needed.
 - *URL + source* → run both tracks **in parallel**, not sequentially: dispatch the source
   track (P3/P6/P7) to a background subagent while the foreground does live recon +

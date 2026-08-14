@@ -101,7 +101,7 @@ def _judge(route: Route, rel: str, lines: list[str],
                     f"caller supplied. Constrain the query by the principal — e.g. add "
                     f"`user_id={sorted(principals)[0]}.id` to the filter — or compare "
                     f"ownership and reject with 403 before returning.",
-                source="authz", verdict=Verdict.UNVERIFIED)]
+                source="structural", verdict=Verdict.UNVERIFIED)]
 
     # ---- Missing authentication: a state-changing handler with no authorization at all.
     # The bar is that the handler *acts on what the caller sent*, not that it reaches a
@@ -123,7 +123,7 @@ def _judge(route: Route, rel: str, lines: list[str],
                 f"reaches persistent state, but nothing in it — no decorator, no principal, no "
                 f"gate helper, no 401/403 — establishes who is calling. Require an "
                 f"authenticated identity before the write.",
-            source="authz", verdict=Verdict.UNVERIFIED)]
+            source="structural", verdict=Verdict.UNVERIFIED)]
 
     return []
 

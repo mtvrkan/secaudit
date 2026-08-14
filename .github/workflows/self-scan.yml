@@ -1,0 +1,65 @@
+name: Self-scan (SARIF to code scanning)
+
+# SecAudit scanning SecAudit, with the result uploaded to GitHub code scanning.
+#
+# Two jobs in one. It is the dogfood run — a security tool that will not point itself at its own
+# source is making a claim it has not tested — and it is the only thing that proves the SARIF
+# renderer's output is actually *accepted*. `kit/tests/test_report.py` asserts the document's
+# shape and now also that alert fingerprints survive a line shift, but neither of those is
+# evidence that GitHub's ingest agrees: that endpoint validates against its own schema, enforces
+# its own limits, and rejects documents that look fine locally. Until this workflow runs green,
+# "SARIF works" is a claim about a JSON file, not about code scanning.
+#
+# Separate from validate.yml on purpose. validate.yml is called as a reusable workflow by
+# release.yml, and permissions on a reusable workflow are inherited from the caller — folding
+# `security-events: write` into it would hand that scope to the release pipeline, which has no
+# business writing security events.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # The engine changes more often than the code it is pointed at here, so a weekly run catches
+    # a regression in the renderer even when nobody touched the repository.
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write     # the only scope that can write to code scanning
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      # Runs the code in the checkout rather than an installed copy, so a pull request is scanned
+      # by the engine it is proposing rather than by the last released one.
+      - name: Scan this repository with itself
+        env:
+          PYTHONPATH: kit
+        run: |
+          set -euo pipefail
+          python3 -m secaudit_core.cli . --format sarif -o secaudit.sarif --no-deps
+          python3 -c "import json; d=json.load(open('secaudit.sarif')); \
+            n=len(d['runs'][0]['results']); print(f'{n} result(s)'); \
+            assert d['version']=='2.1.0'; assert n, 'a self-scan with zero results means the \
+            scan did not run, not that the code is clean'"
+
+      - uses: github/codeql-action/upload-sarif@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef # codeql-bundle-v2.26.3
+        with:
+          sarif_file: secaudit.sarif
+          # Its own category, so these alerts sit beside CodeQL's rather than replacing them —
+          # code scanning keys a run on (tool, category), and two uploads sharing one key means
+          # the second closes the first's alerts.
+          category: secaudit-self-scan

@@ -22,9 +22,26 @@ in the report:
 Honest bounds, same discipline as the taint tier:
 
   * Reachability here is **import-level, not symbol-level**. We can say "your code loads this
-    package"; we cannot say "your code calls the specific vulnerable function", because npm
-    audit and OSV do not publish the affected symbol in a machine-usable form. An ``affected``
+    package"; we cannot say "your code calls the specific vulnerable function". An ``affected``
     result therefore means "reachable enough to take seriously", not "proven exploitable".
+
+    The reason is worth stating precisely, because an earlier version of this paragraph said
+    "npm audit and OSV do not publish the affected symbol in a machine-usable form" and that is
+    **too broad — OSV does, for some ecosystems.** Go advisories carry
+    ``affected[].ecosystem_specific.imports[].symbols``, and RustSec carries affected function
+    lists. Neither ecosystem is one this dependency scan reads: the import index covers
+    JavaScript/TypeScript and Python, and for *those two* the statement holds — npm audit,
+    GHSA and PyPI advisories do not carry an affected-symbol field, so there is nothing to
+    match a call against.
+
+    That makes symbol-level reachability blocked on a **data** gap for the ecosystems scanned
+    here, not on analysis we have not written, and it is the reason no partial version ships.
+    The alternative — deriving symbols by fetching each advisory's fix commit and diffing it —
+    was considered and rejected: a fix commit also touches tests, docs and refactors, so which
+    changed function is *the vulnerable one* would be a guess, and a guess that downgrades an
+    advisory to ``not_affected`` is the single most dangerous output this module can produce.
+    It becomes implementable the day this scan indexes an ecosystem whose advisories publish
+    symbols — Go first — and not before.
   * The import index covers JavaScript/TypeScript and Python. In any other language every
     advisory stays ``under_investigation`` — never silently ``not_affected``.
   * Dynamic loading (``require(name)`` with a variable, ``importlib.import_module``) is

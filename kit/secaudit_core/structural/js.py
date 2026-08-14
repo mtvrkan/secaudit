@@ -251,21 +251,38 @@ def _text(lines: list[str], start: int, end: int) -> str:
 
 
 def _resolved(body: str, lines: list[str], functions: dict[str, tuple[int, int]],
-              pattern: re.Pattern[str], seen: frozenset[str] = frozenset()) -> bool:
+              pattern: re.Pattern[str]) -> bool:
     """Whether `pattern` matches the handler, or anything module-local it names.
 
     Bare references are followed, not only calls: `app.post('/x', requireAuth, handler)` never
     calls `requireAuth`, and `@UseGuards(AuthGuard)` never calls the guard either. Following only
     call sites would report every route in both idioms.
+
+    A helper is marked visited **globally, not per path**. The question this answers is
+    reachability — does anything this handler can reach match the pattern — and a second arrival
+    at a helper already visited cannot change that answer. Carrying the visited set down each
+    branch instead, which is what this did, enumerates every distinct path through the call graph,
+    and that is exponential in a file whose helpers reference each other freely. It was not a
+    theoretical cost: on `materialize.js` (366 KB, 10k lines) the analysis ran in 0.12s over the
+    first 6,750 lines and had not finished ten minutes later over the first 7,000, so a Tier-0
+    scan of any repository vendoring a bundle that size hung instead of completing. Iterative
+    rather than recursive for the same reason — the node-visiting form is bounded by the number
+    of helpers, which is exactly the depth that would overflow the stack.
     """
     if pattern.search(body):
         return True
-    for name in set(_IDENT.findall(body)):
-        span = functions.get(name)
-        if span is None or name in seen:
-            continue
-        if _resolved(_text(lines, *span), lines, functions, pattern, seen | {name}):
-            return True
+    seen: set[str] = set()
+    pending = [body]
+    while pending:
+        for name in set(_IDENT.findall(pending.pop())):
+            span = functions.get(name)
+            if span is None or name in seen:
+                continue
+            seen.add(name)
+            text = _text(lines, *span)
+            if pattern.search(text):
+                return True
+            pending.append(text)
     return False
 
 
@@ -298,6 +315,48 @@ def _decorator_block_start(lines: list[str], lineno: int) -> int:
     return start
 
 
+# A call whose RESULT is used is not a route registration. `app.post('/x', handler)` is a
+# statement and its return value is discarded; `await api.post('/x', body)` is an expression whose
+# value is the response. These are the contexts that consume a value.
+_CONSUMING_WORDS = frozenset({"await", "return", "yield", "typeof", "void"})
+_CONSUMING_CHARS = "=(,[?:&|+>"
+
+
+def _value_is_consumed(lines: list[str], lineno: int, start: int, end: int) -> bool:
+    """Whether this call's value is used, which is what separates a client call from a mount.
+
+    `_MOUNT` looks for a receiver, an HTTP verb and a string-literal path, and a browser's HTTP
+    client is written exactly that way: `api.post('/tickets', body)` is indistinguishable from
+    `app.post('/tickets', handler)` by shape alone. It cost 147 false positives and zero true
+    positives on RealVuln — every one of them in a React `frontend/src/` tree, where the rule
+    reported the *caller* of an endpoint for not authenticating it.
+
+    The distinction that is actually about the bug is what happens to the return value. Express,
+    Fastify, Koa and Hono all discard it; a client call's value is the response, so it is
+    awaited, returned, assigned, collected into an array, or chained. Deliberately not a list of
+    client library names — `axios` and `api` were the two receivers in the corpus, and a rule
+    that names them is one rename away from silence.
+    """
+    before = lines[lineno - 1][:start].rstrip()
+    if not before:
+        # The call opens the line, so the expression it belongs to — if any — ends the previous
+        # one. `export const createReply = (id, data) =>\n  api.post(...)` is the same client
+        # call as the single-line form and has to read the same way; a mount never continues a
+        # dangling operator, because there is nothing for it to continue.
+        probe = lineno - 1
+        while probe > 0 and not lines[probe - 1].strip():
+            probe -= 1
+        before = lines[probe - 1].rstrip() if probe > 0 else ""
+    if before:
+        word = re.search(r"[A-Za-z_$][\w$]*$", before)
+        if word and word.group(0) in _CONSUMING_WORDS:
+            return True
+        if before[-1] in _CONSUMING_CHARS:
+            return True
+    tail = lines[end - 1].rstrip()
+    return tail.endswith((",", "]")) or ").then(" in tail or ").catch(" in tail
+
+
 def _routes(lines: list[str], raw: list[str], rel: str) -> list[_Route]:
     """Every mounted handler in the file."""
     found: list[_Route] = []
@@ -310,6 +369,8 @@ def _routes(lines: list[str], raw: list[str], rel: str) -> list[_Route]:
             if paren == -1:
                 continue
             end = _block_end(lines, lineno, paren, "(", ")")
+            if _value_is_consumed(lines, lineno, m.start(), end):
+                continue
             path = _literal_at(raw, lineno, _MOUNT, 4)
             # The handler and its middleware, as written after the path. Identifier arguments
             # are names this rule can resolve; an inline function is not one, and falls back to

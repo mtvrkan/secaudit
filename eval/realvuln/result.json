@@ -4,9 +4,12 @@
  "benchmark_version": "2.0.0",
  "ground_truth_content_hash": "sha256:af5901bffc94380b50f31909655c12edfe0762e82162051d8b1238c66698593f",
  "ground_truth_hash_note": "Recomputing this on Windows gives a different digest for an IDENTICAL corpus: compute_gt_hash.py hashes raw file bytes and joins paths with os.sep, so a CRLF checkout and backslash separators each change it. Normalise line endings to LF and use forward slashes and the digest above reproduces exactly. Stated because the first reading looks like the ground truth moved, which would invalidate the comparison below.",
+ "engine_digest": "sha256:c998739f48d7805d1266c313e445a7efc1b98692b1e5aaf3bd15d63285844143",
+ "engine_digest_note": "sha256 over every secaudit_core module that can change what the measured run emits (the exclusions, each with its reason, are in scripts/check_consistency.py). Check 32 recomputes it and fails the build when it moves, because the figures below then describe an engine that no longer exists. That is not hypothetical: the JavaScript structural analysis landed one commit after these figures were written and was never re-measured, and for four commits the published precision of 0.5419 described an engine that actually returned 0.4711.",
  "scanner": "secaudit",
  "tier": "Tier 0 only (--no-deps --no-scanners, no LLM)",
  "run_date": "2026-08-13",
+ "reverified": "2026-08-14 — re-cloned the benchmark from scratch, re-ran all 62 repositories and re-scored them. The ground-truth digest reproduced exactly and so did every figure below: 530 TP / 448 FP / 1232 FN, precision 0.5419, recall 0.3008, F3 31.5, F2 33.0. Two engine changes were measured against this run and neither moved a figure: the structural analyses' helper traversal was made node-visiting instead of path-enumerating (a cost fix — it was exponential, and a scan hung outright on any repository vendoring a JavaScript bundle), and structural/authz.py stopped emitting an unranked `source`. One did move a figure and is the reason this field exists: the JavaScript missing-authentication rule was matching browser HTTP-client calls (`await api.post('/tickets', body)`) as if they were route mounts, worth +147 false positives and 0 true positives; narrowing it to calls whose value is discarded returned the figures to the line above. Re-measured a final time after the rest of that day's work — a stable SARIF alert fingerprint, continuous mode, the PCI mapping — and every figure reproduced again, which is what the digest above now pins.",
  "repos_scored": 62,
  "repos_total": 66,
  "repos_missing": [

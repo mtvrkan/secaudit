@@ -17,10 +17,19 @@ Two mappings ship, both at a granularity we can actually defend:
   clause numbers are fixed by the regulation and can be quoted. Vulnerability-handling
   obligations under Annex I Part II start applying **2026-09-11**.
 
-Deliberately NOT mapped: PCI DSS, SOC 2, ISO 27001. Each is a real ask and each needs a source
-we can cite per control. Shipping a plausible guess for a standard an auditor will check is
-worse than shipping nothing, and "we did not map this yet" is a sentence a security tool is
-allowed to say. Tracked in ROADMAP.md.
+* **PCI DSS 4.0.1**, at **requirement** level, and only across four requirements whose text was
+  read and cross-checked. PCI SSC publishes no CWE→requirement crosswalk, so each row is this
+  project's reading of the requirement's own wording — which is defensible for 6.2.4 precisely
+  because that requirement enumerates its attack classes itself. Weaknesses whose applicable
+  requirement depends on whether the data is account data, or on whether the component is in
+  the cardholder data environment, are refused by name in `PCI_NOT_ASSERTABLE` rather than
+  guessed.
+
+Deliberately NOT mapped: SOC 2 and ISO 27001. Not for lack of effort — the AICPA Trust Services
+Criteria and ISO/IEC 27001 Annex A control texts are both behind copyright/paywall, so a mapping
+could only name control *numbers* whose text this project cannot quote and no reader could check.
+PCI is mapped and these are not for exactly one reason: PCI SSC publishes its standard for free.
+When a citable source exists, map; when it does not, say so.
 
 The mapping is keyed on CWE, so it is complete by construction over what the engine emits:
 `scripts/check_consistency.py` check 24 fails the build if a detector or taint sink introduces
@@ -150,6 +159,112 @@ def asvs_for(cwe: str) -> tuple[str, str] | None:
     """(chapter id, chapter title) for a CWE, or None when it is not mapped."""
     chapter = CWE_TO_ASVS.get(cwe)
     return (chapter, ASVS_CHAPTERS[chapter]) if chapter else None
+
+
+# --------------------------------------------------------------------------- PCI DSS 4.0.1
+
+PCI_VERSION = "4.0.1"
+
+# Only requirements whose text was read and cross-checked appear here, and only ones a *source
+# scanner* can speak to at all. The list is short on purpose: PCI SSC publishes no CWE→requirement
+# crosswalk, so every row below is this project's reading of the requirement's own wording, and a
+# short defensible mapping beats a long plausible one — the same call already made for ASVS.
+PCI_REQUIREMENTS: dict[str, str] = {
+    "6.2.4": "Software engineering techniques prevent or mitigate common software attacks in "
+             "bespoke and custom software. The requirement enumerates the classes itself — "
+             "injection, XSS, CSRF, broken authentication and session management, insecure "
+             "cryptographic implementations, insecure deserialization, business-logic abuse and "
+             "attacks on access-control mechanisms — which is why a CWE mapping onto it is a "
+             "reading rather than an invention.",
+    "6.3.1": "New security vulnerabilities are identified from industry-recognised sources and "
+             "risk-ranked, for bespoke, custom AND third-party software.",
+    "6.3.2": "An inventory of bespoke and custom software and of the third-party components "
+             "incorporated into it is maintained, so known component vulnerabilities can be "
+             "found. This is the requirement an SBOM answers.",
+    "8.6.2": "Passwords/passphrases for application and system accounts that can be used for "
+             "interactive login are not hard-coded in scripts, configuration/property files, or "
+             "bespoke and custom source code.",
+}
+
+CWE_TO_PCI: dict[str, str] = {
+    # 6.2.4 — the requirement lists these attack classes in its own text.
+    "CWE-89": "6.2.4", "CWE-78": "6.2.4", "CWE-79": "6.2.4", "CWE-94": "6.2.4",
+    "CWE-95": "6.2.4", "CWE-1336": "6.2.4", "CWE-611": "6.2.4", "CWE-943": "6.2.4",
+    "CWE-502": "6.2.4", "CWE-352": "6.2.4", "CWE-20": "6.2.4", "CWE-915": "6.2.4",
+    "CWE-1321": "6.2.4", "CWE-918": "6.2.4", "CWE-400": "6.2.4", "CWE-601": "6.2.4",
+    "CWE-942": "6.2.4", "CWE-1004": "6.2.4", "CWE-1275": "6.2.4", "CWE-22": "6.2.4",
+    "CWE-434": "6.2.4", "CWE-287": "6.2.4", "CWE-384": "6.2.4", "CWE-347": "6.2.4",
+    "CWE-639": "6.2.4", "CWE-284": "6.2.4", "CWE-732": "6.2.4", "CWE-862": "6.2.4",
+    "CWE-841": "6.2.4", "CWE-602": "6.2.4", "CWE-306": "6.2.4",
+    # ...including "insecure cryptographic implementations", which is about how the software
+    # uses cryptography. It is NOT a claim about protecting stored or transmitted account data —
+    # that is Requirements 3 and 4, and see PCI_NOT_ASSERTABLE for why those are not here.
+    "CWE-327": "6.2.4", "CWE-338": "6.2.4", "CWE-330": "6.2.4", "CWE-916": "6.2.4",
+    "CWE-295": "6.2.4", "CWE-319": "6.2.4", "CWE-749": "6.2.4", "CWE-758": "6.2.4",
+    "CWE-704": "6.2.4",
+
+    # 8.6.2 — a credential written into source or config is the literal subject of this one.
+    "CWE-798": "8.6.2", "CWE-321": "8.6.2",
+
+    # 6.3.1 — a vulnerability in a third-party component, which is what this requires you to
+    # find and rank. The SBOM that makes it findable is 6.3.2, reported per scan rather than
+    # per finding.
+    "CWE-1395": "6.3.1", "CWE-1104": "6.3.1", "CWE-1357": "6.3.1", "CWE-494": "6.3.1",
+}
+
+# Weaknesses this tool refuses to attach a PCI requirement to, each with the reason. Every one is
+# a case where the requirement that *would* apply depends on a fact about the data or the
+# environment that no source scan establishes. Naming a requirement anyway would assert a scoping
+# decision belonging to a QSA, and being confidently wrong to an assessor costs more than being
+# silent — the same reason PCI is mapped at all rather than SOC 2.
+PCI_NOT_ASSERTABLE: dict[str, str] = {
+    "CWE-311": "Missing encryption becomes Requirement 3 (protect stored account data) only if "
+               "what is unencrypted IS account data. A scanner sees a field, not a PAN.",
+    "CWE-209": "An error message leaks PCI-relevant data only when the data is account data; "
+               "otherwise it is a hygiene finding with no requirement attached.",
+    "CWE-532": "Same as CWE-209, for logs. Requirement 3.3.1 forbids storing sensitive "
+               "authentication data after authorization — whether this log line does that is "
+               "a question about the value, not about the call.",
+    "CWE-16": "Configuration weaknesses map to Requirement 2 only for system components in "
+              "scope, and scope is a QSA's decision about the cardholder data environment.",
+    "CWE-250": "As CWE-16 — Requirement 7/2 applicability follows from scope, not from code.",
+    "CWE-489": "Debug code in a non-CDE service is not a PCI finding. Scope again.",
+    "CWE-552": "Exposure matters under PCI when what is exposed is account data. Unknown here.",
+    "CWE-668": "As CWE-552.",
+    "CWE-Other": "Placeholder emitted when a third-party scanner reports no CWE.",
+}
+
+
+def pci_for(cwe: str) -> tuple[str, str] | None:
+    """(requirement id, requirement text) for a CWE, or None when deliberately not asserted."""
+    requirement = CWE_TO_PCI.get(cwe)
+    return (requirement, PCI_REQUIREMENTS[requirement]) if requirement else None
+
+
+def pci_scope_note() -> str:
+    """Printed wherever a PCI requirement id appears. It is the caveat, not decoration."""
+    return (
+        f"PCI DSS v{PCI_VERSION} requirement ids below are this project's reading of the "
+        f"requirement text, not a crosswalk published by the PCI SSC — no such crosswalk exists. "
+        f"They are input to a conversation with your QSA and are not evidence of compliance. "
+        f"Two limits matter more than the mapping: whether a component is in scope at all is a "
+        f"cardholder-data-environment decision no source scan makes, and requirements about "
+        f"account data itself (3.x storage, 4.x transmission, 9.x physical) are deliberately "
+        f"unmapped because a scanner cannot tell whether a value is a PAN."
+    )
+
+
+# Deliberately NOT mapped, and this is a decision rather than a gap:
+#
+# * **SOC 2** — the Trust Services Criteria are AICPA copyright and not publicly redistributable.
+#   A mapping would be to criterion *numbers* whose text this project cannot quote or verify, so
+#   nobody could check it, which is precisely the shape of a compliance claim that fails an audit
+#   loudly.
+# * **ISO/IEC 27001** — Annex A control text sits behind ISO's paywall, same problem.
+#
+# PCI DSS is mapped and these are not for one reason: PCI SSC publishes the standard for free, so
+# the requirement text above could be read and cross-checked. When a citable source exists, map;
+# when it does not, say so. That asymmetry is the rule, not an accident of effort.
 
 
 # --------------------------------------------------------------------------- EU CRA

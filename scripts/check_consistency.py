@@ -19,6 +19,7 @@ existing check; append the next free number.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -161,13 +162,43 @@ def check_05_measured_claim_present(f: dict) -> list[str]:
 
 def check_06_every_reference_is_routed(f: dict) -> list[str]:
     """A reference file no phase or cross-cutting list points at is unreachable — it will never
-    be loaded, so it is documentation pretending to be behavior."""
-    skill = read(os.path.join(SKILL_DIR, "SKILL.md"))
-    routed = set(re.findall(r"references/([a-z0-9-]+\.md)", skill))
-    present = set(md_files(REFS))
-    orphans = sorted(present - routed)
-    return [f"check 06: `references/{name}` is shipped but never routed from SKILL.md"
-            for name in orphans]
+    be loaded, so it is documentation pretending to be behavior.
+
+    Iterates every skill rather than the one it used to hard-code. Sibling skills were added on
+    2026-08-14 (`exploitation-watch`, `compliance-pack`) and a check that knows about one skill
+    would have let their content ship ungated — which is the same shape as a reference nothing
+    routes to: present, plausible, and never reached.
+    """
+    fails = []
+    for skill_dir in _skill_dirs():
+        name = os.path.basename(skill_dir)
+        skill_md = os.path.join(skill_dir, "SKILL.md")
+        if not os.path.isfile(skill_md):
+            fails.append(f"check 06: skills/{name}/ has no SKILL.md")
+            continue
+        skill = read(skill_md)
+        # A skill is routed by its frontmatter. Without both fields it is invisible to the
+        # model's own routing, which makes shipping it the same as not shipping it.
+        for field in ("name:", "description:"):
+            if field not in skill[:1200]:
+                fails.append(f"check 06: skills/{name}/SKILL.md has no `{field}` in its "
+                             f"frontmatter — a skill without one is never routed to")
+        refs = os.path.join(skill_dir, "references")
+        if not os.path.isdir(refs):
+            continue
+        routed = set(re.findall(r"references/([a-z0-9-]+\.md)", skill))
+        for orphan in sorted(set(md_files(refs)) - routed):
+            fails.append(f"check 06: skills/{name}/references/{orphan} is shipped but never "
+                         f"routed from its SKILL.md")
+    return fails
+
+
+def _skill_dirs() -> list[str]:
+    root = os.path.join(PLUGIN, "skills")
+    if not os.path.isdir(root):
+        return []
+    return sorted(os.path.join(root, n) for n in os.listdir(root)
+                  if os.path.isdir(os.path.join(root, n)))
 
 
 def check_07_changelog_has_unreleased(f: dict) -> list[str]:
@@ -329,6 +360,22 @@ def check_24_compliance_mapping_is_complete(f: dict) -> list[str]:
              for cwe in sorted(emitted - set(CWE_TO_ASVS) - set(UNMAPPED_CWES))]
     fails += [f"check 24: CWE_TO_ASVS maps `{cwe}` to `{chapter}`, which is not an ASVS chapter"
               for cwe, chapter in sorted(CWE_TO_ASVS.items()) if chapter not in ASVS_CHAPTERS]
+
+    # PCI DSS, same rule and the same reason. The refusal list carries weight here that it does
+    # not carry for ASVS: an unmapped CWE must be a stated decision about what a source scan can
+    # assert to an assessor, never a row somebody forgot.
+    from secaudit_core.compliance import CWE_TO_PCI, PCI_NOT_ASSERTABLE, PCI_REQUIREMENTS
+    fails += [f"check 24: `{cwe}` is emitted by the engine but has no PCI DSS requirement "
+              f"(add it to CWE_TO_PCI, or to PCI_NOT_ASSERTABLE with the reason a source scan "
+              f"cannot assert one)"
+              for cwe in sorted(emitted - set(CWE_TO_PCI) - set(PCI_NOT_ASSERTABLE))]
+    fails += [f"check 24: CWE_TO_PCI maps `{cwe}` to `{req}`, which is not in PCI_REQUIREMENTS — "
+              f"every requirement id this project states is one whose text was read, and an id "
+              f"that is not in that table has not been"
+              for cwe, req in sorted(CWE_TO_PCI.items()) if req not in PCI_REQUIREMENTS]
+    overlap = sorted(set(CWE_TO_PCI) & set(PCI_NOT_ASSERTABLE))
+    fails += [f"check 24: `{cwe}` is both mapped to a PCI requirement and listed as not "
+              f"assertable — one of the two is wrong" for cwe in overlap]
     return fails
 
 
@@ -613,6 +660,25 @@ def check_27_realvuln_claims_match_the_scorer(f: dict) -> list[str]:
          f3, 1),
         (os.path.join("eval", "realvuln", "README.md"), "the Tier-1 comparison caveat",
          r"not\s+with\s+the\s+([\d.]+)\s+above", f3, 1),
+        # docs/launch-checklist.md was outside this list until 2026-08-14 and had kept 26.0
+        # through two rounds — a page whose whole job is to be the thing you work through at
+        # launch, quoting a figure two runs old, with every gate green. Prose is only gated
+        # where it is anchored, so a page naming the current result must be named here.
+        (os.path.join("docs", "launch-checklist.md"), "the deterministic-tier comparison",
+         r"not\s+with\s+the\s+([\d.]+)\s+the\s+deterministic\s+tier\s+scores", f3, 1),
+        # The Turkish README states the same three figures. A translated page is the one nobody
+        # re-reads when a number moves, so it is anchored from the day it is added rather than
+        # after it has already drifted — which is what happened to the launch checklist.
+        # Anchored from `RealVuln` forward, not on the first `F3 **N**` in the file: the row
+        # above it states the OWN-corpus F3 (0.986), and an anchor that cannot tell the two
+        # apart either fails on correct prose or gets loosened until it proves nothing. Same
+        # trap check 27 already documents for the English README.
+        ("README.tr.md", "the Turkish README's RealVuln row",
+         r"RealVuln.*?\|.*?\|\s*F3\s+\*\*([\d.]+)\*\*", f3, 1),
+        ("README.tr.md", "the Turkish README's precision",
+         r"RealVuln.*?F3\s+\*\*[\d.]+\*\*,\s*precision\s+\*\*([\d.]+)\*\*", prec, 3),
+        ("README.tr.md", "the Turkish README's recall",
+         r"RealVuln.*?precision\s+\*\*[\d.]+\*\*,\s*recall\s+\*\*([\d.]+)\*\*", rec, 3),
     ]
 
     fails = []
@@ -833,6 +899,209 @@ def check_30_version_headings_have_tags(f: dict) -> list[str]:
             for v in claimed if f"v{v}" not in tags]
 
 
+def check_31_every_finding_source_is_ranked(f: dict) -> list[str]:
+    """Every `source=` a Finding is constructed with must have a rank in `engine._SOURCE_RANK`.
+
+    `_dedupe` resolves a collision at one (file, line, cwe) by keeping only the findings whose
+    source ranks highest, and it reads that rank with `.get(f.source, 0)`. A source the map has
+    never heard of therefore does not error and does not rank last on purpose — it ranks below
+    `builtin`, the weakest evidence in the engine, and loses every group it collides with, in
+    silence.
+
+    That is not hypothetical. `structural/authz.py` shipped emitting `source="authz"` while every
+    other structural analysis emits `source="structural"`, so the two analyses that exist to
+    report broken access control and missing authentication were the only ones a plain regex
+    match could evict. No gate could see it: the fixtures produce zero authz findings through the
+    engine, and `test_authz.py` calls `analyze_file` directly, so dedup never ran on one.
+
+    A rank is a deliberate ordering decision, so the fix is not a default — it is that adding a
+    source without ranking it fails the build.
+
+    Its bound, stated rather than left to be discovered: it reads string literals. Every producer
+    in the package writes one today, and a source assembled from a variable would pass this check
+    unseen. If that ever changes, this check has to change with it.
+    """
+    from secaudit_core.engine import _SOURCE_RANK  # noqa: PLC0415
+
+    core = os.path.join(KIT, "secaudit_core")
+    emitted: dict[str, list[str]] = {}
+    for dirpath, dirnames, filenames in os.walk(core):
+        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        for name in sorted(filenames):
+            if not name.endswith(".py"):
+                continue
+            path = os.path.join(dirpath, name)
+            for src in set(re.findall(r"""source=["']([\w-]+)["']""", read(path))):
+                emitted.setdefault(src, []).append(os.path.relpath(path, REPO))
+
+    return [f"check 31: {', '.join(sorted(where))} constructs findings with "
+            f"`source=\"{src}\"`, which `engine._SOURCE_RANK` does not rank — dedup would score "
+            f"it 0 and drop it behind every other source at the same file/line/CWE"
+            for src, where in sorted(emitted.items()) if src not in _SOURCE_RANK]
+
+
+# Modules that cannot change which findings the published run emits, each with the reason. The
+# published command is `--format semgrep --no-deps --no-scanners --backend none`, so anything
+# reachable only through another flag is out. Every other file under `secaudit_core` is hashed,
+# and check 32's second half fails if a new one appears in neither list — the alternative to an
+# explicit list is a digest that quietly stops covering whatever was added last.
+_NOT_IN_MEASURED_PATH = {
+    "backends.py": "the LLM tier; the published run passes `--backend none`",
+    "llmcontext.py": "builds the Tier-1 prompt, which that run never sends",
+    "patch.py": "only runs under `--suggest-patches`",
+    "diff.py": "only runs under `--since`",
+    "gitref.py": "only runs under `--since`",
+    "compliance.py": "reached only by `--format cra`",
+    "sbom.py": "reached only by `--format cyclonedx`",
+    "spdx.py": "reached only by `--format spdx`",
+    "exploitation.py": "reached only by `--exploitation`",
+    "scanners.py": "the published run passes `--no-scanners`",
+    "i18n.py": "translates report chrome; the semgrep renderer emits finding fields, not chrome",
+    "monitor.py": "reached only by `--watch`, which diffs exploitation feeds rather than code",
+}
+
+
+def _engine_digest() -> tuple[str, list[str]]:
+    """sha256 over every module that can change what the measured run emits."""
+    core = os.path.join(KIT, "secaudit_core")
+    hashed, unlisted = [], []
+    for dirpath, dirnames, filenames in os.walk(core):
+        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        for name in sorted(filenames):
+            if not name.endswith(".py"):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, name), core).replace("\\", "/")
+            if rel in _NOT_IN_MEASURED_PATH:
+                continue
+            if os.path.dirname(rel) == "" and rel not in _MEASURED_TOP_LEVEL:
+                unlisted.append(rel)
+            hashed.append(rel)
+    h = hashlib.sha256()
+    for rel in sorted(hashed):
+        h.update(rel.encode("utf-8"))
+        h.update(b"\n")
+        # Normalised to LF: a CRLF checkout is not a different engine, and the benchmark's own
+        # ground-truth digest already taught this repository that lesson on Windows.
+        with open(os.path.join(core, rel.replace("/", os.sep)), "rb") as fh:
+            h.update(fh.read().replace(b"\r\n", b"\n"))
+    return "sha256:" + h.hexdigest(), unlisted
+
+
+# The top-level modules that DO shape the measured run. Subpackages (`structural/`, `taint/`) are
+# in wholesale — every file in them exists to decide a finding.
+_MEASURED_TOP_LEVEL = {"__init__.py", "cli.py", "deps.py", "detectors.py", "engine.py",
+                       "redos.py", "report.py", "schema.py"}
+
+
+def check_32_result_json_matches_the_engine_that_produced_it(f: dict) -> list[str]:
+    """`eval/realvuln/result.json` must record the engine it was measured with.
+
+    Check 27 gates the prose against `result.json`. Nothing gated `result.json` against the
+    *code*, and that gap is not hypothetical — it shipped. The JavaScript structural analysis
+    landed in `c96c914`, one commit after `8fc17e1` wrote the 31.5 figures, and `result.json` was
+    never rewritten. The published precision described an engine that no longer existed: measured
+    on 2026-08-14 the shipped engine returned 595 false positives where the committed file said
+    448, and every gate was green the whole time, because every gate was comparing prose to a file
+    rather than either to the engine.
+
+    A digest cannot re-run a 62-repository benchmark in CI, and it does not try to. What it does
+    is make the staleness *loud*: change anything that decides a finding and the build says the
+    published number no longer describes this code, which is the sentence nobody wrote for four
+    commits.
+    """
+    path = os.path.join(REPO, "eval", "realvuln", "result.json")
+    if not os.path.isfile(path):
+        return []                                    # check 27 already fails on a missing file
+    with open(path, encoding="utf-8") as fh:
+        result = json.load(fh)
+
+    digest, unlisted = _engine_digest()
+    fails = [f"check 32: `secaudit_core/{rel}` is in neither the measured set nor "
+             f"`_NOT_IN_MEASURED_PATH` — decide which, with a reason, so the engine digest "
+             f"cannot silently stop covering it" for rel in sorted(unlisted)]
+
+    recorded = result.get("engine_digest")
+    if not recorded:
+        fails.append("check 32: eval/realvuln/result.json has no `engine_digest`, so nothing "
+                     "ties the published RealVuln figures to the code that produced them. "
+                     f"Re-run the benchmark and record: {digest}")
+    elif recorded != digest:
+        fails.append(
+            f"check 32: eval/realvuln/result.json was measured with engine {recorded}, and the "
+            f"engine in this tree is {digest}. Something that decides a finding has changed since "
+            f"the published figures were measured, so they no longer describe this code. Re-run "
+            f"`eval/realvuln/run.py` (see eval/realvuln/README.md), then update the figures and "
+            f"this digest together — never the digest alone.")
+    return fails
+
+
+# Suites that legitimately have no `main()` of their own, with the reason.
+_MAIN_LESS_SUITES = {
+    "kit/tests/test_zz_suite_mains.py":
+        "It IS the pytest wrapper that calls every other suite's main(); having one of its own "
+        "would be circular. Already exempted from the gate list for the same reason.",
+}
+
+
+def check_33_every_test_function_is_actually_called(f: dict) -> list[str]:
+    """A `test_*` function a suite's `main()` never calls is dead, and it is dead invisibly.
+
+    Every suite here is a script whose verdict is `main()`'s exit code, and `main()` calls its
+    tests by name. That is a deliberate design — it is what makes the suites runnable without
+    pytest — but it has one failure mode, and this repository has now hit it twice. The first
+    time, `pytest kit/tests` reported 75 passed with the flagship JS SQL-injection sink deleted,
+    because the collected `test_*` functions were never run by the collector in a way that could
+    fail. This is the other half of the same shape: on 2026-08-14 a `test_pci_mapping` was added
+    to `test_compliance.py` and not added to its `main()`. The suite printed PASSED, the gate was
+    green, and every assertion in it — including the ones about what the tool must refuse to tell
+    an auditor — had never executed. It was found by mutation, not by the suite.
+
+    So: a test function must be reachable from the `main()` of the file that defines it, **or**
+    contain an `assert` so pytest can fail on it. Either route ends in a red build; a function
+    with neither is collected, reported as passed, and proves nothing. Checked by reading the
+    source rather than by importing, because importing a suite runs it.
+
+    Its bound: a function called only from another dead function still counts as called. Closing
+    that would mean building a call graph over a test file, and the shape this has actually
+    caught twice is a name that appears exactly once.
+    """
+    fails = []
+    for directory in (os.path.join(KIT, "tests"), os.path.join(REPO, "tests")):
+        if not os.path.isdir(directory):
+            continue
+        for name in sorted(os.listdir(directory)):
+            if not (name.startswith("test_") and name.endswith(".py")):
+                continue
+            rel = os.path.relpath(os.path.join(directory, name), REPO).replace("\\", "/")
+            if rel in _MAIN_LESS_SUITES:
+                continue
+            source = read(os.path.join(directory, name))
+            defined = set(re.findall(r"^def (test_\w+)", source, re.M))
+            if not defined:
+                continue
+            # A wrapper that asserts can go red under pytest, which is a real verdict route and
+            # the pattern `test_engine.py` deliberately uses. Bodies are sliced from one `def`
+            # at column 0 to the next, so an `assert` in a neighbouring function is not credited.
+            bodies = dict(zip(re.findall(r"^def (\w+)", source, re.M),
+                              re.split(r"^def \w+", source, flags=re.M)[1:]))
+            asserting = {n for n in defined if re.search(r"^\s+assert\b", bodies.get(n, ""),
+                                                         re.M)}
+            defined -= asserting
+            main_body = re.search(r"^def main\(.*?(?=^\S|\Z)", source, re.M | re.S)
+            if not main_body:
+                fails.append(f"check 33: {rel} defines {len(defined)} test function(s) and has "
+                             f"no `main()` — nothing runs them")
+                continue
+            called = set(re.findall(r"\b(test_\w+)\s*\(", main_body.group(0)))
+            # A loop over `globals()` picking up every test_ name counts as calling all of them.
+            if re.search(r"globals\(\)|getmembers|vars\(\)", main_body.group(0)):
+                continue
+            for orphan in sorted(defined - called):
+                fails.append(f"check 33: {rel} defines `{orphan}` but its `main()` never calls "
+                             f"it — the suite reports PASSED without running those assertions")
+    return fails
+
+
 CHECKS = [
     check_01_detector_ids_unique,
     check_02_detector_regexes_compile,
@@ -854,6 +1123,9 @@ CHECKS = [
     check_28_code_shape_has_one_source_of_truth,
     check_29_no_typed_gate_count,
     check_30_version_headings_have_tags,
+    check_31_every_finding_source_is_ranked,
+    check_32_result_json_matches_the_engine_that_produced_it,
+    check_33_every_test_function_is_actually_called,
 ]
 
 
