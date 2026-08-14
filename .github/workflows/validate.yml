@@ -20,7 +20,7 @@ jobs:
       # fetches no tags at all — it would answer "this repository has no tags" for a repository
       # that has them and fail the build on the first correct release. The gate refuses to treat
       # an unanswerable question as a pass, so the answer has to actually be available here.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -85,7 +85,7 @@ jobs:
   validate-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0    # tags — see the note on the same line in the `validate` job
