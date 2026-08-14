@@ -56,7 +56,19 @@ jobs:
             assert d['version']=='2.1.0'; assert n, 'a self-scan with zero results means the \
             scan did not run, not that the code is clean'"
 
+      # `continue-on-error` is TEMPORARY and it is the honest setting today, not a shrug.
+      # Code scanning on a PRIVATE repository needs GitHub Advanced Security; without it this
+      # step fails with "Advanced Security must be enabled", and a workflow that is red on every
+      # push is a workflow everybody learns to ignore — which costs more than the signal is
+      # worth while the repository is closed. The scan and its assertions above still gate the
+      # build; only the upload is allowed to fail.
+      #
+      # THE CONSEQUENCE, STATED SO IT IS NOT DISCOVERED LATER: while this line is here, a green
+      # run does NOT prove code scanning accepted the document. That proof arrives the first
+      # time this step succeeds. Remove the line when the repository goes public — it is on the
+      # launch checklist for exactly that reason.
       - uses: github/codeql-action/upload-sarif@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef # codeql-bundle-v2.26.3
+        continue-on-error: true
         with:
           sarif_file: secaudit.sarif
           # Its own category, so these alerts sit beside CodeQL's rather than replacing them —
