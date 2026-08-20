@@ -1,0 +1,42 @@
+
+
+
+.yes{color:var(--ok);font-size:1.05rem}
+.no{color:var(--faint)}
+
+.fig{color:var(--accent);font-variant-numeric:tabular-nums;font-size:.86rem;
+  white-space:nowrap}
+#table td.lbl{white-space:normal;line-height:1.5}
+
+
+#quotes .reg{display:block}
+
+#quotes .reg li{display:block;padding:1.5rem 1.1rem;border-bottom:1px solid var(--line)}
+#quotes .reg li:last-child{border-bottom:0}
+#quotes .q{display:block;font-size:1.02rem;line-height:1.6;color:var(--ink);
+  text-wrap:pretty}
+#quotes .why{display:block;margin-top:.85rem;color:var(--muted);font-size:.84rem;
+  line-height:1.65;text-wrap:pretty}
+
+#quotes .gloss{display:block;margin-top:.55rem;padding-left:.9rem;
+  border-left:2px solid var(--line-2);color:var(--faint);font-size:.82rem;
+  line-height:1.6;text-wrap:pretty}
+
+
+.famrow.wide{display:block;padding:1.35rem 0;border-bottom:1px solid var(--line)}
+.famrow.wide:last-child{border-bottom:0}
+.famrow.wide .nm{display:block;font-weight:600;color:var(--ink);font-size:.98rem;
+  letter-spacing:-.01em}
+.famrow.wide .why{display:block;margin-top:.5rem;color:var(--muted);font-size:.86rem;
+  line-height:1.65;max-width:62ch;text-wrap:pretty}
+@media (min-width:52rem){
+  .famrow.wide{display:grid;grid-template-columns:minmax(11rem,16rem) 1fr;
+    gap:1.6rem;align-items:baseline}
+  .famrow.wide .nm{padding-top:.1rem}
+  .famrow.wide .why{margin-top:0}
+}
+
+
+.finale{padding:5.5rem 1.5rem}
+@media (min-width:62rem){.finale{padding:8rem 2rem}}
+.finale h2{max-width:26ch}

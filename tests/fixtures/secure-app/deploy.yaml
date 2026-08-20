@@ -1,0 +1,32 @@
+# SECURE COUNTERPART — SecAudit negative-control fixture. Not a real manifest.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      # S45 — Host namespaces not shared (CWE-668 fixed): the pod keeps its own network and
+      # process namespaces, which is what makes the container a boundary at all.
+      hostNetwork: false
+      hostPID: false
+      containers:
+        - name: api
+          image: example/api:1.4.2
+          securityContext:
+            # S46 — Unprivileged (CWE-250 fixed), running as a non-root user with a read-only
+            # root filesystem and every capability dropped.
+            privileged: false
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            # S47 — Escalation refused (CWE-250 fixed).
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: scratch
+              mountPath: /scratch
+      volumes:
+        # S48 — An ephemeral volume instead of the node filesystem (CWE-552 fixed).
+        - name: scratch
+          emptyDir: {}

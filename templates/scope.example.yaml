@@ -1,0 +1,52 @@
+# SecAudit scope & authorization file.
+# Copy to `scope.yaml` and fill in BEFORE requesting any ACTIVE testing.
+# Passive recon and source-code review do not require this file, but it's good practice.
+# NOTE: `scope.yaml` is gitignored — do not commit a filled-in copy. This is enforced, not
+# just advised: the PreToolUse guard asks git whether the file is tracked and refuses to accept
+# a committed one as authorization, since a file that arrives with a clone is not an assertion
+# the operator made. Use SECAUDIT_ACTIVE=1 if you have no git.
+
+authorization:
+  owner_name: "<site owner / company>"
+  approved_by: "<person who approved the test>"
+  approval_date: "<YYYY-MM-DD>"
+  testing_window: "<date/time range and timezone>"
+  i_am_authorized: false        # set true to confirm you own or are authorized to test
+
+in_scope:
+  domains:
+    - "https://example.com"
+    - "https://www.example.com"
+  subdomains_allowed: false
+  api_base_urls:
+    - "https://api.example.com"
+  source_code_available: false
+  repository_paths:
+    - "<local path or repo URL if available>"
+  cloud_assets:
+    - "<S3 bucket / storage account / CDN — only if explicitly allowed>"
+  test_accounts:
+    unauthenticated: true
+    low_privilege_user: "<username/email>"
+    second_low_privilege_user: "<username/email — needed for IDOR/BOLA tests>"
+    admin_test_user: "<only if explicitly allowed>"
+  excluded_paths:
+    - "/checkout/place-order"
+    - "/payments/*"
+    - "/delete-account"
+    - "/admin/destructive-actions/*"
+
+out_of_scope:
+  - "Any domain, IP, cloud account, or third-party system not listed in in_scope."
+  - "Social engineering, phishing, DoS, malware, persistence, spam, scraping, exfiltration."
+  - "Payments, production destructive actions, bulk actions, anything creating obligations."
+
+safety_limits:
+  max_request_rate_per_host: "1-3 requests/second"
+  max_concurrent_requests: 2
+  use_test_data_only: true
+  do_not_change_production_data: true
+  stop_on_errors_or_instability: true
+
+contacts:
+  emergency_contact: "<who to call if the target becomes unstable>"

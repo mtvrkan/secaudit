@@ -1,0 +1,42 @@
+# Example: run SecAudit in CI and publish findings to GitHub code scanning.
+# Copy this into .github/workflows/ of your own repository. It is inert here (under kit/examples/).
+#
+# Best practice — and something SecAudit itself flags: pin every third-party action to a full
+# commit SHA, not a mutable tag. The @vN tags below are for readability; replace them with SHAs.
+name: Security audit
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF to code scanning
+
+jobs:
+  secaudit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4          # pin to a full SHA in production
+
+      # Option A — use the bundled action (writes SARIF, gates on High+):
+      - name: SecAudit
+        id: audit
+        continue-on-error: true            # let the SARIF upload run even if the gate trips
+        uses: mtvrkan/secaudit/kit@main    # pin to a release SHA in production
+        with:
+          path: '.'
+          min-severity: 'high'
+          # backend: 'anthropic'           # optional Tier-1 enrichment
+        # env:
+        #   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3   # pin to a full SHA in production
+        with:
+          sarif_file: ${{ steps.audit.outputs.sarif-file }}
+
+      - name: Fail if the gate tripped
+        if: steps.audit.outcome == 'failure'
+        run: echo "SecAudit found High+ findings — see the Security tab." && exit 1

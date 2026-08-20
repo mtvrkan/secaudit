@@ -1,0 +1,78 @@
+{
+  "_comment": "A recorded model reply for the business-logic pass, replayed by ReplayBackend. It carries every shape the merge has to decide about, not only the ones that should land: two findings that must be merged, and four that must be refused for four different reasons. A fixture containing only well-formed items proves the happy path and nothing about the refusals, which is where the precision of this channel actually lives.",
+  "triage": [],
+  "extra": [
+    {
+      "title": "Password reset accepts an arbitrary account id",
+      "file": "app/admin.py",
+      "line": 4,
+      "severity": "High",
+      "note": "Repeated deliberately across replayed calls: the same discovery seen from two chunks must merge once."
+    }
+  ],
+  "logic": [
+    {
+      "class": "missing_ownership",
+      "handler": "update_order",
+      "file": "app/orders.py",
+      "line": 6,
+      "severity": "High",
+      "title": "Order loaded by a caller-supplied id with no ownership predicate",
+      "note": "True, and Tier 0 already reports it as AUTHZ-PY-IDOR. Must be refused as a restatement: two ids for one bug is an inflated finding count, not extra coverage."
+    },
+    {
+      "class": "workflow_skip",
+      "handler": "ship",
+      "file": "app/ship.py",
+      "line": 7,
+      "severity": "High",
+      "title": "Order marked shipped without checking it was paid",
+      "note": "The class the deterministic tier has no rule for at all — this is what the pass is for."
+    },
+    {
+      "class": "trusted_client_value",
+      "handler": "checkout",
+      "file": "app/checkout.py",
+      "line": 7,
+      "severity": "Critical",
+      "title": "Charge amount computed from a client-supplied price",
+      "note": "Severity is deliberately Critical here: an unverified model claim must be clamped below a proven Tier-0 Critical."
+    },
+    {
+      "class": "missing_authorization",
+      "handler": "promote",
+      "file": "app/admin.py",
+      "line": 4,
+      "severity": "High",
+      "title": "Role escalation endpoint with no caller",
+      "note": "Tier 0 already reports this handler under CWE-306; this must be refused as a restatement."
+    },
+    {
+      "class": "race_window",
+      "handler": "ship",
+      "file": "app/ship.py",
+      "line": 6,
+      "severity": "Medium",
+      "title": "Read-then-write with no transaction",
+      "note": "A class the pass does not define. Must be dropped and counted, never stamped with a fallback CWE."
+    },
+    {
+      "class": "missing_ownership",
+      "handler": "invisible",
+      "file": "app/never-sent.py",
+      "line": 3,
+      "severity": "High",
+      "title": "Flaw in a file the model was not shown",
+      "note": "Must be refused as ungrounded."
+    },
+    {
+      "class": "missing_ownership",
+      "handler": "ship",
+      "file": "app/ship.py",
+      "line": 900,
+      "severity": "Medium",
+      "title": "Line outside every handler span",
+      "note": "Names a real file and a line in no handler at all. Must be refused."
+    }
+  ]
+}

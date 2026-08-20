@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secaudit-kit"
+version = "1.0.0"
+description = "Self-running, provider-agnostic security audit — deterministic Tier-0 core plus optional pluggable LLM enrichment (Claude/OpenAI/Ollama). Not tied to Claude."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "mtvrkan" }]
+keywords = ["security", "audit", "sast", "owasp", "cwe", "vulnerability-scanner",
+            "secrets-detection", "dependency-audit", "appsec", "ci", "mcp", "sbom",
+            "cyclonedx", "openvex", "cra", "taint-analysis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Security",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+# Zero runtime dependencies — the core uses only the standard library (urllib for the optional
+# LLM backends). Installed scanners (semgrep/osv/gitleaks) and LLM providers are used if present.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/mtvrkan/secaudit"
+Repository = "https://github.com/mtvrkan/secaudit"
+
+[project.scripts]
+secaudit = "secaudit_core.cli:main"
+# The MCP entry point every non-Claude client's config points at. Same engine as the CLI and
+# the plugin — a second implementation per harness is how two clients end up disagreeing about
+# whether a file is safe.
+secaudit-mcp = "secaudit_mcp.server:main"
+
+[tool.setuptools]
+# Every subpackage, listed explicitly rather than by `find:` so the wheel contents are
+# readable here. `secaudit_core.taint` is a package (it was one 2,000-line module until
+# it was split); with the old two-entry list the wheel would have installed a
+# `secaudit_core` whose import of `.taint` fails — a break that no test in a source
+# checkout can see, because a checkout has the directory either way.
+packages = ["secaudit_core", "secaudit_core.structural", "secaudit_core.taint",
+            "secaudit_mcp"]
+
+# The locale bundles are data the renderer reads at runtime, so they must travel in the wheel.
+# Without this they exist only in a checkout and `--lang tr` silently renders English on every
+# installed copy — a failure indistinguishable from a translation nobody wrote.
+[tool.setuptools.package-data]
+secaudit_core = ["locales/*.json"]

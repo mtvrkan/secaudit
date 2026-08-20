@@ -1,0 +1,35 @@
+version: 2
+
+# The package ships zero runtime dependencies and the suite runs on the standard library, so
+# there is deliberately no `pip` ecosystem entry here — there is no manifest for it to watch,
+# and adding one would invite a bot to propose the first dependency this project has refused to
+# take. `scripts/check_packaging.py` fails the build if that ever changes silently.
+#
+# What DOES need watching is the other half of the supply chain: this repository pins every
+# GitHub Action to a full commit SHA, and a SHA is immutable — which is the point, and also the
+# problem. A pinned action never updates, including past the advisory that made the update
+# necessary, and nothing in a diff shows that a 40-hex string is now eighteen months old.
+# Dependabot is what turns that silence into a pull request.
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    labels:
+      - dependencies
+      - ci
+
+  # The image the Docker build starts from, for the same reason.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci"
+    labels:
+      - dependencies
+      - docker

@@ -1,0 +1,12 @@
+{
+  "name": "vulnerable-app-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "INTENTIONALLY VULNERABLE test fixture for SecAudit self-testing. Do not deploy.",
+  "dependencies": {
+    "lodash": "4.17.15",
+    "minimist": "1.2.0",
+    "marked": "0.3.6",
+    "express": "4.16.0"
+  }
+}

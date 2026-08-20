@@ -1,0 +1,42 @@
+name: 'SecAudit'
+description: 'Self-running security audit (deterministic Tier-0, optional LLM enrichment). Writes SARIF for GitHub code scanning and can gate the build on severity.'
+branding:
+  icon: 'shield'
+  color: 'purple'
+inputs:
+  path:
+    description: 'File or directory to audit.'
+    required: false
+    default: '.'
+  backend:
+    description: 'LLM enrichment backend: none | anthropic | openai | ollama (default none = pure Tier 0).'
+    required: false
+    default: 'none'
+  min-severity:
+    description: 'Fail the job if a finding at/above this severity exists (low|medium|high|critical). Empty = never fail.'
+    required: false
+    default: ''
+  sarif-file:
+    description: 'Path to write the SARIF report to.'
+    required: false
+    default: 'secaudit.sarif'
+outputs:
+  sarif-file:
+    description: 'Path of the written SARIF report.'
+    value: ${{ inputs.sarif-file }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Run SecAudit
+      shell: bash
+      env:
+        # The core is zero-dependency stdlib; expose it on PYTHONPATH from the action's dir.
+        PYTHONPATH: ${{ github.action_path }}
+      run: |
+        args=()
+        if [ -n "${{ inputs.min-severity }}" ]; then args+=(--min "${{ inputs.min-severity }}"); fi
+        # Single scan: write SARIF and set the exit code from the severity gate. The SARIF file
+        # is written before any non-zero exit, so an upload step with `if: always()` still runs.
+        python3 -m secaudit_core.cli "${{ inputs.path }}" \
+          --backend "${{ inputs.backend }}" \
+          --format sarif -o "${{ inputs.sarif-file }}" "${args[@]}"

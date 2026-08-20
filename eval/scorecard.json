@@ -1,0 +1,999 @@
+{
+  "overall": {
+    "tp": 61,
+    "fn": 1,
+    "fp": 0,
+    "precision": 1.0,
+    "recall": 0.9839,
+    "f1": 0.9919,
+    "f3": 0.9855
+  },
+  "by_class": {
+    "Action pinned to a mutable ref": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Agent code-execution tool exposed": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Agent shell tool exposed": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "App Transport Security disabled": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Broken JWT verification (`alg:none`, no sig/exp)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Broken access control (IDOR)": {
+      "tp": 0,
+      "fn": 1,
+      "fp": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "f3": 0.0
+    },
+    "Command execution sink (PHP)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Container misconfig": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Database publicly accessible": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Disabled TLS certificate verification": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Disabled TLS certificate verification (Go)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Dynamic code execution (Ruby)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Flutter accepts any TLS certificate": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Hardcoded Google API key": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Hardcoded Stripe secret key": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Hardcoded secret": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Host namespaces shared": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Improper output handling → XSS": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Insecure deserialization (C#)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Insecure deserialization (Java)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Insecure deserialization (PHP)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Insecure deserialization (Ruby)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Insecure deserialization (pickle)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Insecure deserialization → code injection": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "LLM output flows into a code-exec sink": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "LangChain dangerous execution enabled": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Mass assignment": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "OS command execution (Go)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "OS command execution (Java)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "OS command injection": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "OS command injection (Python)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "OS command injection across a MODULE boundary": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "OS command injection across a function boundary": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Open redirect": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Over-broad IAM policy": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Path traversal": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Permissive CORS + credentials": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Privilege escalation allowed": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Privileged container": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Prototype pollution": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Public-read storage ACL": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Remote script piped into a shell": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SQL injection": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SQL injection (C#)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SQL injection (Go)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SQL injection (Java)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SQL injection (PHP)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SQL injection across a function boundary": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SQL injection via a destructured request binding": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "SSRF": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Security group open to the world": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Server-side template injection": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Shell interpreter re-introduced (Rust)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Storage encryption disabled": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "Weak password hashing": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "WebView JavaScript bridge": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "WebView JavaScript enabled": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "World-readable file mode": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "XXE (XML external entities)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "`mem::transmute` with no checks (Rust)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "`unsafe` without a safety comment (Rust)": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "hostPath volume mount": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    }
+  },
+  "by_language": {
+    "csharp": {
+      "tp": 2,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "dart": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "docker": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "go": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "java": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "javascript": {
+      "tp": 17,
+      "fn": 1,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 0.9444,
+      "f1": 0.9714,
+      "f3": 0.9497
+    },
+    "json": {
+      "tp": 2,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "kotlin": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "php": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "plist": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "python": {
+      "tp": 9,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "ruby": {
+      "tp": 2,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "rust": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "terraform": {
+      "tp": 5,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "yaml": {
+      "tp": 6,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    }
+  },
+  "by_cwe": {
+    "CWE-1321": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-1336": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-1357": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-22": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-250": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-284": {
+      "tp": 2,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-295": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-311": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-319": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-327": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-347": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-494": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-502": {
+      "tp": 6,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-552": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-601": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-611": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-639": {
+      "tp": 0,
+      "fn": 1,
+      "fp": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "f3": 0.0
+    },
+    "CWE-668": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-704": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-732": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-749": {
+      "tp": 2,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-758": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-78": {
+      "tp": 9,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-79": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-798": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-89": {
+      "tp": 7,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-915": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-918": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-94": {
+      "tp": 3,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-942": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    },
+    "CWE-95": {
+      "tp": 1,
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "f3": 1.0
+    }
+  },
+  "misses": [
+    "vulnerable-app:V3 — Broken access control (IDOR) (vulnerable-app/server.js:22)"
+  ],
+  "trap_hits": [],
+  "unlabelled_results": 7,
+  "labelled_vulnerabilities": 62,
+  "false_positive_traps": 62,
+  "total_results": 74,
+  "corpus": "secaudit-fixtures",
+  "ground_truth_schema": "1.0.0"
+}

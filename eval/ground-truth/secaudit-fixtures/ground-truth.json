@@ -1,0 +1,2624 @@
+{
+  "schema_version": "1.0.0",
+  "repo_id": "secaudit-fixtures",
+  "repo_url": "https://github.com/mtvrkan/secaudit",
+  "type": "paired-synthetic",
+  "authorship": "human_authored",
+  "note": "Derived from the fixture marker comments and the golden-set table by eval/build_ground_truth.py — never edit this file by hand. Every `is_vulnerable: false` entry is a SAFE implementation of the same feature as its vulnerable twin, which is a far harder trap than unrelated clean code.",
+  "findings": [
+    {
+      "id": "vulnerable-app:V9",
+      "is_vulnerable": true,
+      "vulnerability_class": "Container misconfig",
+      "primary_cwe": "CWE-250",
+      "acceptable_cwes": [
+        "CWE-250",
+        "CWE-1104",
+        "CWE-798"
+      ],
+      "owasp": "A02",
+      "file": "Dockerfile",
+      "corpus": "vulnerable-app",
+      "language": "docker",
+      "location": {
+        "start_line": 2,
+        "end_line": 9
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Dockerfile` (root user, `node:latest`, secret in ENV)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V59",
+      "is_vulnerable": true,
+      "vulnerability_class": "App Transport Security disabled",
+      "primary_cwe": "CWE-319",
+      "acceptable_cwes": [
+        "CWE-319"
+      ],
+      "owasp": "A02",
+      "file": "Info.plist",
+      "corpus": "vulnerable-app",
+      "language": "plist",
+      "location": {
+        "start_line": 5,
+        "end_line": 13
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Info.plist` `NSAllowsArbitraryLoads`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V55",
+      "is_vulnerable": true,
+      "vulnerability_class": "WebView JavaScript bridge",
+      "primary_cwe": "CWE-749",
+      "acceptable_cwes": [
+        "CWE-749"
+      ],
+      "owasp": "A05",
+      "file": "Mobile.kt",
+      "corpus": "vulnerable-app",
+      "language": "kotlin",
+      "location": {
+        "start_line": 9,
+        "end_line": 12
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Mobile.kt` `setup` (`addJavascriptInterface`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V56",
+      "is_vulnerable": true,
+      "vulnerability_class": "WebView JavaScript enabled",
+      "primary_cwe": "CWE-749",
+      "acceptable_cwes": [
+        "CWE-749"
+      ],
+      "owasp": "A05",
+      "file": "Mobile.kt",
+      "corpus": "vulnerable-app",
+      "language": "kotlin",
+      "location": {
+        "start_line": 13,
+        "end_line": 16
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Mobile.kt` `setup` (`setJavaScriptEnabled(true)`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V57",
+      "is_vulnerable": true,
+      "vulnerability_class": "World-readable file mode",
+      "primary_cwe": "CWE-732",
+      "acceptable_cwes": [
+        "CWE-732"
+      ],
+      "owasp": "A04",
+      "file": "Mobile.kt",
+      "corpus": "vulnerable-app",
+      "language": "kotlin",
+      "location": {
+        "start_line": 17,
+        "end_line": 25
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Mobile.kt` `save` (`MODE_WORLD_READABLE`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V35",
+      "is_vulnerable": true,
+      "vulnerability_class": "Insecure deserialization (C#)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "Repository.cs",
+      "corpus": "vulnerable-app",
+      "language": "csharp",
+      "location": {
+        "start_line": 10,
+        "end_line": 17
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Repository.cs` `Load` (`BinaryFormatter`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V36",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection (C#)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "Repository.cs",
+      "corpus": "vulnerable-app",
+      "language": "csharp",
+      "location": {
+        "start_line": 18,
+        "end_line": 24
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Repository.cs` `Find` (concatenated `SqlCommand`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V27",
+      "is_vulnerable": true,
+      "vulnerability_class": "Insecure deserialization (Java)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "Service.java",
+      "corpus": "vulnerable-app",
+      "language": "java",
+      "location": {
+        "start_line": 9,
+        "end_line": 15
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Service.java` `load` (`ObjectInputStream`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V28",
+      "is_vulnerable": true,
+      "vulnerability_class": "OS command execution (Java)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "Service.java",
+      "corpus": "vulnerable-app",
+      "language": "java",
+      "location": {
+        "start_line": 16,
+        "end_line": 20
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Service.java` `convert` (`Runtime.getRuntime().exec`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V29",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection (Java)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "Service.java",
+      "corpus": "vulnerable-app",
+      "language": "java",
+      "location": {
+        "start_line": 21,
+        "end_line": 26
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`Service.java` `find` (concatenated `executeQuery`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V49",
+      "is_vulnerable": true,
+      "vulnerability_class": "LangChain dangerous execution enabled",
+      "primary_cwe": "CWE-94",
+      "acceptable_cwes": [
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 6,
+        "end_line": 12
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`agent.py` `build_chain` (`allow_dangerous_requests=True`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V50",
+      "is_vulnerable": true,
+      "vulnerability_class": "Agent code-execution tool exposed",
+      "primary_cwe": "CWE-94",
+      "acceptable_cwes": [
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 13,
+        "end_line": 18
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`agent.py` `tools_for` (`PythonREPLTool`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V51",
+      "is_vulnerable": true,
+      "vulnerability_class": "Agent shell tool exposed",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 19,
+        "end_line": 24
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`agent.py` `shell_tools` (`load_tools([\"terminal\"])`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V52",
+      "is_vulnerable": true,
+      "vulnerability_class": "LLM output flows into a code-exec sink",
+      "primary_cwe": "CWE-94",
+      "acceptable_cwes": [
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 25,
+        "end_line": 29
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`agent.py` `run_plan` (`eval(response…)`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V24",
+      "is_vulnerable": true,
+      "vulnerability_class": "Disabled TLS certificate verification (Go)",
+      "primary_cwe": "CWE-295",
+      "acceptable_cwes": [
+        "CWE-295"
+      ],
+      "owasp": "A02",
+      "file": "api.go",
+      "corpus": "vulnerable-app",
+      "language": "go",
+      "location": {
+        "start_line": 12,
+        "end_line": 19
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`api.go` `client` (`InsecureSkipVerify: true`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V25",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection (Go)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "api.go",
+      "corpus": "vulnerable-app",
+      "language": "go",
+      "location": {
+        "start_line": 20,
+        "end_line": 26
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`api.go` `lookup` (`fmt.Sprintf` into SQL)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V26",
+      "is_vulnerable": true,
+      "vulnerability_class": "OS command execution (Go)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "api.go",
+      "corpus": "vulnerable-app",
+      "language": "go",
+      "location": {
+        "start_line": 27,
+        "end_line": 31
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`api.go` `ping` (`exec.Command` with request value)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V10",
+      "is_vulnerable": true,
+      "vulnerability_class": "Broken JWT verification (`alg:none`, no sig/exp)",
+      "primary_cwe": "CWE-347",
+      "acceptable_cwes": [
+        "CWE-347"
+      ],
+      "owasp": "A07",
+      "file": "auth.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 7,
+        "end_line": 17
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`auth.js` `verifyToken`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V11",
+      "is_vulnerable": true,
+      "vulnerability_class": "Open redirect",
+      "primary_cwe": "CWE-601",
+      "acceptable_cwes": [
+        "CWE-601"
+      ],
+      "owasp": "A01",
+      "file": "auth.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 18,
+        "end_line": 23
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`auth.js` `redirect` (`?next=`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V12",
+      "is_vulnerable": true,
+      "vulnerability_class": "Path traversal",
+      "primary_cwe": "CWE-22",
+      "acceptable_cwes": [
+        "CWE-22"
+      ],
+      "owasp": "A01",
+      "file": "auth.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 24,
+        "end_line": 29
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`auth.js` `readDoc` (`?file=`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V13",
+      "is_vulnerable": true,
+      "vulnerability_class": "Mass assignment",
+      "primary_cwe": "CWE-915",
+      "acceptable_cwes": [
+        "CWE-915"
+      ],
+      "owasp": "A08",
+      "file": "auth.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 30,
+        "end_line": 37
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`auth.js` `updateProfile` (`Object.assign`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V8",
+      "is_vulnerable": true,
+      "vulnerability_class": "Improper output handling → XSS",
+      "primary_cwe": "CWE-79",
+      "acceptable_cwes": [
+        "CWE-79"
+      ],
+      "owasp": "LLM05",
+      "file": "chat.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 5,
+        "end_line": 26
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`chat.js` `renderMessage`/`loadHistory` (unsanitized `marked.parse`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V53",
+      "is_vulnerable": true,
+      "vulnerability_class": "Action pinned to a mutable ref",
+      "primary_cwe": "CWE-1357",
+      "acceptable_cwes": [
+        "CWE-1357"
+      ],
+      "owasp": "A03",
+      "file": "ci.yml",
+      "corpus": "vulnerable-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 8,
+        "end_line": 11
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`ci.yml` `tj-actions/changed-files@main`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V54",
+      "is_vulnerable": true,
+      "vulnerability_class": "Remote script piped into a shell",
+      "primary_cwe": "CWE-494",
+      "acceptable_cwes": [
+        "CWE-494"
+      ],
+      "owasp": "A03",
+      "file": "ci.yml",
+      "corpus": "vulnerable-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 12,
+        "end_line": 15
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`ci.yml` `curl …"
+      }
+    },
+    {
+      "id": "vulnerable-app:V60",
+      "is_vulnerable": true,
+      "vulnerability_class": "Hardcoded Stripe secret key",
+      "primary_cwe": "CWE-798",
+      "acceptable_cwes": [
+        "CWE-798"
+      ],
+      "owasp": "A07",
+      "file": "config.json",
+      "corpus": "vulnerable-app",
+      "language": "json",
+      "location": {
+        "start_line": 3,
+        "end_line": 4
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`config.json` `stripe_secret_key`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V61",
+      "is_vulnerable": true,
+      "vulnerability_class": "Hardcoded Google API key",
+      "primary_cwe": "CWE-798",
+      "acceptable_cwes": [
+        "CWE-798"
+      ],
+      "owasp": "A07",
+      "file": "config.json",
+      "corpus": "vulnerable-app",
+      "language": "json",
+      "location": {
+        "start_line": 5,
+        "end_line": 7
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`config.json` `google_api_key`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V45",
+      "is_vulnerable": true,
+      "vulnerability_class": "Host namespaces shared",
+      "primary_cwe": "CWE-668",
+      "acceptable_cwes": [
+        "CWE-668"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "vulnerable-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 9,
+        "end_line": 15
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`deploy.yaml` `hostNetwork: true`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V46",
+      "is_vulnerable": true,
+      "vulnerability_class": "Privileged container",
+      "primary_cwe": "CWE-250",
+      "acceptable_cwes": [
+        "CWE-250"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "vulnerable-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 16,
+        "end_line": 17
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`deploy.yaml` `privileged: true`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V47",
+      "is_vulnerable": true,
+      "vulnerability_class": "Privilege escalation allowed",
+      "primary_cwe": "CWE-250",
+      "acceptable_cwes": [
+        "CWE-250"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "vulnerable-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 18,
+        "end_line": 24
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`deploy.yaml` `allowPrivilegeEscalation: true`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V48",
+      "is_vulnerable": true,
+      "vulnerability_class": "hostPath volume mount",
+      "primary_cwe": "CWE-552",
+      "acceptable_cwes": [
+        "CWE-552"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "vulnerable-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 25,
+        "end_line": 28
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`deploy.yaml` `hostPath`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V30",
+      "is_vulnerable": true,
+      "vulnerability_class": "Command execution sink (PHP)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "index.php",
+      "corpus": "vulnerable-app",
+      "language": "php",
+      "location": {
+        "start_line": 4,
+        "end_line": 8
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`index.php` `archive` (`shell_exec`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V31",
+      "is_vulnerable": true,
+      "vulnerability_class": "Insecure deserialization (PHP)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "index.php",
+      "corpus": "vulnerable-app",
+      "language": "php",
+      "location": {
+        "start_line": 9,
+        "end_line": 14
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`index.php` `session_from_cookie` (`unserialize`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V32",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection (PHP)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "index.php",
+      "corpus": "vulnerable-app",
+      "language": "php",
+      "location": {
+        "start_line": 15,
+        "end_line": 18
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`index.php` `find_user` (`$_GET` in `mysqli_query`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V37",
+      "is_vulnerable": true,
+      "vulnerability_class": "`unsafe` without a safety comment (Rust)",
+      "primary_cwe": "CWE-758",
+      "acceptable_cwes": [
+        "CWE-758"
+      ],
+      "owasp": "A04",
+      "file": "lib.rs",
+      "corpus": "vulnerable-app",
+      "language": "rust",
+      "location": {
+        "start_line": 5,
+        "end_line": 12
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`lib.rs` `first_byte`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V38",
+      "is_vulnerable": true,
+      "vulnerability_class": "`mem::transmute` with no checks (Rust)",
+      "primary_cwe": "CWE-704",
+      "acceptable_cwes": [
+        "CWE-704"
+      ],
+      "owasp": "A04",
+      "file": "lib.rs",
+      "corpus": "vulnerable-app",
+      "language": "rust",
+      "location": {
+        "start_line": 13,
+        "end_line": 18
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`lib.rs` `as_floats`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V39",
+      "is_vulnerable": true,
+      "vulnerability_class": "Shell interpreter re-introduced (Rust)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "lib.rs",
+      "corpus": "vulnerable-app",
+      "language": "rust",
+      "location": {
+        "start_line": 19,
+        "end_line": 23
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`lib.rs` `run` (`Command::new(\"sh\").arg(\"-c\")`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V40",
+      "is_vulnerable": true,
+      "vulnerability_class": "Security group open to the world",
+      "primary_cwe": "CWE-284",
+      "acceptable_cwes": [
+        "CWE-284"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "vulnerable-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 3,
+        "end_line": 11
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`main.tf` `aws_security_group_rule.admin` (`0.0.0.0/0`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V41",
+      "is_vulnerable": true,
+      "vulnerability_class": "Public-read storage ACL",
+      "primary_cwe": "CWE-732",
+      "acceptable_cwes": [
+        "CWE-732"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "vulnerable-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 12,
+        "end_line": 17
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`main.tf` `aws_s3_bucket_acl.reports`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V42",
+      "is_vulnerable": true,
+      "vulnerability_class": "Over-broad IAM policy",
+      "primary_cwe": "CWE-732",
+      "acceptable_cwes": [
+        "CWE-732"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "vulnerable-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 18,
+        "end_line": 25
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`main.tf` `aws_iam_policy.app` (`Action`/`Resource` `*`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V43",
+      "is_vulnerable": true,
+      "vulnerability_class": "Storage encryption disabled",
+      "primary_cwe": "CWE-311",
+      "acceptable_cwes": [
+        "CWE-311"
+      ],
+      "owasp": "A02",
+      "file": "main.tf",
+      "corpus": "vulnerable-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 26,
+        "end_line": 32
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`main.tf` `aws_db_instance.primary`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V44",
+      "is_vulnerable": true,
+      "vulnerability_class": "Database publicly accessible",
+      "primary_cwe": "CWE-284",
+      "acceptable_cwes": [
+        "CWE-284"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "vulnerable-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 33,
+        "end_line": 37
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`main.tf` `aws_db_instance.replica`"
+      }
+    },
+    {
+      "id": "vulnerable-app:V58",
+      "is_vulnerable": true,
+      "vulnerability_class": "Flutter accepts any TLS certificate",
+      "primary_cwe": "CWE-295",
+      "acceptable_cwes": [
+        "CWE-295"
+      ],
+      "owasp": "A02",
+      "file": "net.dart",
+      "corpus": "vulnerable-app",
+      "language": "dart",
+      "location": {
+        "start_line": 4,
+        "end_line": 10
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`net.dart` `buildClient` (`badCertificateCallback`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V17",
+      "is_vulnerable": true,
+      "vulnerability_class": "XXE (XML external entities)",
+      "primary_cwe": "CWE-611",
+      "acceptable_cwes": [
+        "CWE-611"
+      ],
+      "owasp": "A05",
+      "file": "py_app.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 14,
+        "end_line": 20
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`py_app.py` `parse_xml` (`resolve_entities`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V18",
+      "is_vulnerable": true,
+      "vulnerability_class": "Disabled TLS certificate verification",
+      "primary_cwe": "CWE-295",
+      "acceptable_cwes": [
+        "CWE-295"
+      ],
+      "owasp": "A04",
+      "file": "py_app.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 21,
+        "end_line": 26
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`py_app.py` `fetch_secure` (`verify=False`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V19",
+      "is_vulnerable": true,
+      "vulnerability_class": "OS command injection (Python)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A05",
+      "file": "py_app.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 27,
+        "end_line": 32
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`py_app.py` `run_ping` (`shell=True`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V20",
+      "is_vulnerable": true,
+      "vulnerability_class": "Insecure deserialization (pickle)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "py_app.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 33,
+        "end_line": 38
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`py_app.py` `load_session` (`pickle.loads`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V21",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection across a function boundary",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "py_app.py",
+      "corpus": "vulnerable-app",
+      "language": "python",
+      "location": {
+        "start_line": 39,
+        "end_line": 48
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`py_app.py` `list_users` → `find_by_name` (concatenated query in the helper)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V1",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A05",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 11,
+        "end_line": 16
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/users` (string-concatenated query)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V2",
+      "is_vulnerable": true,
+      "vulnerability_class": "OS command injection",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A05",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 17,
+        "end_line": 21
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/ping` (`exec` with user input)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V3",
+      "is_vulnerable": true,
+      "vulnerability_class": "Broken access control (IDOR)",
+      "primary_cwe": "CWE-639",
+      "acceptable_cwes": [
+        "CWE-639"
+      ],
+      "owasp": "A01",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 22,
+        "end_line": 26
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/invoice/:id` (no ownership check)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V4",
+      "is_vulnerable": true,
+      "vulnerability_class": "Weak password hashing",
+      "primary_cwe": "CWE-327",
+      "acceptable_cwes": [
+        "CWE-327"
+      ],
+      "owasp": "A04",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 27,
+        "end_line": 31
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `hashPassword` (MD5, no salt)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V5",
+      "is_vulnerable": true,
+      "vulnerability_class": "Hardcoded secret",
+      "primary_cwe": "CWE-798",
+      "acceptable_cwes": [
+        "CWE-798"
+      ],
+      "owasp": "A07",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 32,
+        "end_line": 35
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `AWS_ACCESS_KEY_ID` (example values)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V6",
+      "is_vulnerable": true,
+      "vulnerability_class": "Permissive CORS + credentials",
+      "primary_cwe": "CWE-942",
+      "acceptable_cwes": [
+        "CWE-942"
+      ],
+      "owasp": "A02",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 36,
+        "end_line": 42
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `Access-Control-Allow-Origin` (reflects Origin)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V7",
+      "is_vulnerable": true,
+      "vulnerability_class": "SSRF",
+      "primary_cwe": "CWE-918",
+      "acceptable_cwes": [
+        "CWE-918"
+      ],
+      "owasp": "A01",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 43,
+        "end_line": 47
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/fetch` (no allowlist)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V22",
+      "is_vulnerable": true,
+      "vulnerability_class": "OS command injection across a function boundary",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 48,
+        "end_line": 59
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/archive` → `archiveLogs` (shell string built in the helper)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V23",
+      "is_vulnerable": true,
+      "vulnerability_class": "OS command injection across a MODULE boundary",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 60,
+        "end_line": 69
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/report` → `util.js` `runReport` (imported helper builds the shell string)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V62",
+      "is_vulnerable": true,
+      "vulnerability_class": "SQL injection via a destructured request binding",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 70,
+        "end_line": 80
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`server.js` `/search` (`const { term } = req.query`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V14",
+      "is_vulnerable": true,
+      "vulnerability_class": "Prototype pollution",
+      "primary_cwe": "CWE-1321",
+      "acceptable_cwes": [
+        "CWE-1321"
+      ],
+      "owasp": "A08",
+      "file": "util.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 5,
+        "end_line": 18
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`util.js` `merge` (no `__proto__` guard)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V15",
+      "is_vulnerable": true,
+      "vulnerability_class": "Insecure deserialization → code injection",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502",
+        "CWE-94",
+        "CWE-95"
+      ],
+      "owasp": "A08",
+      "file": "util.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 19,
+        "end_line": 24
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`util.js` `deserialize` (`eval`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V16",
+      "is_vulnerable": true,
+      "vulnerability_class": "Server-side template injection",
+      "primary_cwe": "CWE-1336",
+      "acceptable_cwes": [
+        "CWE-1336",
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "util.js",
+      "corpus": "vulnerable-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 25,
+        "end_line": 39
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`util.js` `render` (`new Function`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V33",
+      "is_vulnerable": true,
+      "vulnerability_class": "Insecure deserialization (Ruby)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "worker.rb",
+      "corpus": "vulnerable-app",
+      "language": "ruby",
+      "location": {
+        "start_line": 3,
+        "end_line": 8
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`worker.rb` `restore` (`Marshal.load`)"
+      }
+    },
+    {
+      "id": "vulnerable-app:V34",
+      "is_vulnerable": true,
+      "vulnerability_class": "Dynamic code execution (Ruby)",
+      "primary_cwe": "CWE-95",
+      "acceptable_cwes": [
+        "CWE-95"
+      ],
+      "owasp": "A03",
+      "file": "worker.rb",
+      "corpus": "vulnerable-app",
+      "language": "ruby",
+      "location": {
+        "start_line": 9,
+        "end_line": 12
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "`worker.rb` `apply_rule` (`eval`)"
+      }
+    },
+    {
+      "id": "secure-app:S9",
+      "is_vulnerable": false,
+      "vulnerability_class": "Container misconfig",
+      "primary_cwe": "CWE-250",
+      "acceptable_cwes": [
+        "CWE-250",
+        "CWE-1104",
+        "CWE-798"
+      ],
+      "owasp": "A02",
+      "file": "Dockerfile",
+      "corpus": "secure-app",
+      "language": "docker",
+      "location": {
+        "start_line": 3,
+        "end_line": 15
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Container misconfig — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S59",
+      "is_vulnerable": false,
+      "vulnerability_class": "App Transport Security disabled",
+      "primary_cwe": "CWE-319",
+      "acceptable_cwes": [
+        "CWE-319"
+      ],
+      "owasp": "A02",
+      "file": "Info.plist",
+      "corpus": "secure-app",
+      "language": "plist",
+      "location": {
+        "start_line": 5,
+        "end_line": 19
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of App Transport Security disabled — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S55",
+      "is_vulnerable": false,
+      "vulnerability_class": "WebView JavaScript bridge",
+      "primary_cwe": "CWE-749",
+      "acceptable_cwes": [
+        "CWE-749"
+      ],
+      "owasp": "A05",
+      "file": "Mobile.kt",
+      "corpus": "secure-app",
+      "language": "kotlin",
+      "location": {
+        "start_line": 9,
+        "end_line": 10
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of WebView JavaScript bridge — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S56",
+      "is_vulnerable": false,
+      "vulnerability_class": "WebView JavaScript enabled",
+      "primary_cwe": "CWE-749",
+      "acceptable_cwes": [
+        "CWE-749"
+      ],
+      "owasp": "A05",
+      "file": "Mobile.kt",
+      "corpus": "secure-app",
+      "language": "kotlin",
+      "location": {
+        "start_line": 11,
+        "end_line": 16
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of WebView JavaScript enabled — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S57",
+      "is_vulnerable": false,
+      "vulnerability_class": "World-readable file mode",
+      "primary_cwe": "CWE-732",
+      "acceptable_cwes": [
+        "CWE-732"
+      ],
+      "owasp": "A04",
+      "file": "Mobile.kt",
+      "corpus": "secure-app",
+      "language": "kotlin",
+      "location": {
+        "start_line": 17,
+        "end_line": 24
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of World-readable file mode — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S35",
+      "is_vulnerable": false,
+      "vulnerability_class": "Insecure deserialization (C#)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "Repository.cs",
+      "corpus": "secure-app",
+      "language": "csharp",
+      "location": {
+        "start_line": 10,
+        "end_line": 16
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Insecure deserialization (C#) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S36",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection (C#)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "Repository.cs",
+      "corpus": "secure-app",
+      "language": "csharp",
+      "location": {
+        "start_line": 17,
+        "end_line": 27
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection (C#) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S27",
+      "is_vulnerable": false,
+      "vulnerability_class": "Insecure deserialization (Java)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "Service.java",
+      "corpus": "secure-app",
+      "language": "java",
+      "location": {
+        "start_line": 11,
+        "end_line": 16
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Insecure deserialization (Java) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S28",
+      "is_vulnerable": false,
+      "vulnerability_class": "OS command execution (Java)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "Service.java",
+      "corpus": "secure-app",
+      "language": "java",
+      "location": {
+        "start_line": 17,
+        "end_line": 27
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of OS command execution (Java) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S29",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection (Java)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "Service.java",
+      "corpus": "secure-app",
+      "language": "java",
+      "location": {
+        "start_line": 28,
+        "end_line": 36
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection (Java) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S49",
+      "is_vulnerable": false,
+      "vulnerability_class": "LangChain dangerous execution enabled",
+      "primary_cwe": "CWE-94",
+      "acceptable_cwes": [
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 5,
+        "end_line": 11
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of LangChain dangerous execution enabled — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S50",
+      "is_vulnerable": false,
+      "vulnerability_class": "Agent code-execution tool exposed",
+      "primary_cwe": "CWE-94",
+      "acceptable_cwes": [
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 12,
+        "end_line": 24
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Agent code-execution tool exposed — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S51",
+      "is_vulnerable": false,
+      "vulnerability_class": "Agent shell tool exposed",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 25,
+        "end_line": 33
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Agent shell tool exposed — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S52",
+      "is_vulnerable": false,
+      "vulnerability_class": "LLM output flows into a code-exec sink",
+      "primary_cwe": "CWE-94",
+      "acceptable_cwes": [
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "agent.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 34,
+        "end_line": 40
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of LLM output flows into a code-exec sink — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S24",
+      "is_vulnerable": false,
+      "vulnerability_class": "Disabled TLS certificate verification (Go)",
+      "primary_cwe": "CWE-295",
+      "acceptable_cwes": [
+        "CWE-295"
+      ],
+      "owasp": "A02",
+      "file": "api.go",
+      "corpus": "secure-app",
+      "language": "go",
+      "location": {
+        "start_line": 12,
+        "end_line": 17
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Disabled TLS certificate verification (Go) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S25",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection (Go)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "api.go",
+      "corpus": "secure-app",
+      "language": "go",
+      "location": {
+        "start_line": 18,
+        "end_line": 23
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection (Go) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S26",
+      "is_vulnerable": false,
+      "vulnerability_class": "OS command execution (Go)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "api.go",
+      "corpus": "secure-app",
+      "language": "go",
+      "location": {
+        "start_line": 24,
+        "end_line": 39
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of OS command execution (Go) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S10",
+      "is_vulnerable": false,
+      "vulnerability_class": "Broken JWT verification (`alg:none`, no sig/exp)",
+      "primary_cwe": "CWE-347",
+      "acceptable_cwes": [
+        "CWE-347"
+      ],
+      "owasp": "A07",
+      "file": "auth.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 7,
+        "end_line": 24
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Broken JWT verification (`alg:none`, no sig/exp) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S11",
+      "is_vulnerable": false,
+      "vulnerability_class": "Open redirect",
+      "primary_cwe": "CWE-601",
+      "acceptable_cwes": [
+        "CWE-601"
+      ],
+      "owasp": "A01",
+      "file": "auth.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 25,
+        "end_line": 33
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Open redirect — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S12",
+      "is_vulnerable": false,
+      "vulnerability_class": "Path traversal",
+      "primary_cwe": "CWE-22",
+      "acceptable_cwes": [
+        "CWE-22"
+      ],
+      "owasp": "A01",
+      "file": "auth.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 34,
+        "end_line": 44
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Path traversal — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S13",
+      "is_vulnerable": false,
+      "vulnerability_class": "Mass assignment",
+      "primary_cwe": "CWE-915",
+      "acceptable_cwes": [
+        "CWE-915"
+      ],
+      "owasp": "A08",
+      "file": "auth.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 45,
+        "end_line": 55
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Mass assignment — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S8",
+      "is_vulnerable": false,
+      "vulnerability_class": "Improper output handling → XSS",
+      "primary_cwe": "CWE-79",
+      "acceptable_cwes": [
+        "CWE-79"
+      ],
+      "owasp": "LLM05",
+      "file": "chat.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 6,
+        "end_line": 21
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Improper output handling → XSS — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S53",
+      "is_vulnerable": false,
+      "vulnerability_class": "Action pinned to a mutable ref",
+      "primary_cwe": "CWE-1357",
+      "acceptable_cwes": [
+        "CWE-1357"
+      ],
+      "owasp": "A03",
+      "file": "ci.yml",
+      "corpus": "secure-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 8,
+        "end_line": 11
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Action pinned to a mutable ref — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S54",
+      "is_vulnerable": false,
+      "vulnerability_class": "Remote script piped into a shell",
+      "primary_cwe": "CWE-494",
+      "acceptable_cwes": [
+        "CWE-494"
+      ],
+      "owasp": "A03",
+      "file": "ci.yml",
+      "corpus": "secure-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 12,
+        "end_line": 18
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Remote script piped into a shell — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S60",
+      "is_vulnerable": false,
+      "vulnerability_class": "Hardcoded Stripe secret key",
+      "primary_cwe": "CWE-798",
+      "acceptable_cwes": [
+        "CWE-798"
+      ],
+      "owasp": "A07",
+      "file": "config.json",
+      "corpus": "secure-app",
+      "language": "json",
+      "location": {
+        "start_line": 3,
+        "end_line": 4
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Hardcoded Stripe secret key — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S61",
+      "is_vulnerable": false,
+      "vulnerability_class": "Hardcoded Google API key",
+      "primary_cwe": "CWE-798",
+      "acceptable_cwes": [
+        "CWE-798"
+      ],
+      "owasp": "A07",
+      "file": "config.json",
+      "corpus": "secure-app",
+      "language": "json",
+      "location": {
+        "start_line": 5,
+        "end_line": 7
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Hardcoded Google API key — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S45",
+      "is_vulnerable": false,
+      "vulnerability_class": "Host namespaces shared",
+      "primary_cwe": "CWE-668",
+      "acceptable_cwes": [
+        "CWE-668"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "secure-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 9,
+        "end_line": 16
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Host namespaces shared — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S46",
+      "is_vulnerable": false,
+      "vulnerability_class": "Privileged container",
+      "primary_cwe": "CWE-250",
+      "acceptable_cwes": [
+        "CWE-250"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "secure-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 17,
+        "end_line": 23
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Privileged container — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S47",
+      "is_vulnerable": false,
+      "vulnerability_class": "Privilege escalation allowed",
+      "primary_cwe": "CWE-250",
+      "acceptable_cwes": [
+        "CWE-250"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "secure-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 24,
+        "end_line": 29
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Privilege escalation allowed — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S48",
+      "is_vulnerable": false,
+      "vulnerability_class": "hostPath volume mount",
+      "primary_cwe": "CWE-552",
+      "acceptable_cwes": [
+        "CWE-552"
+      ],
+      "owasp": "A05",
+      "file": "deploy.yaml",
+      "corpus": "secure-app",
+      "language": "yaml",
+      "location": {
+        "start_line": 30,
+        "end_line": 32
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of hostPath volume mount — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S30",
+      "is_vulnerable": false,
+      "vulnerability_class": "Command execution sink (PHP)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "index.php",
+      "corpus": "secure-app",
+      "language": "php",
+      "location": {
+        "start_line": 4,
+        "end_line": 15
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Command execution sink (PHP) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S31",
+      "is_vulnerable": false,
+      "vulnerability_class": "Insecure deserialization (PHP)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "index.php",
+      "corpus": "secure-app",
+      "language": "php",
+      "location": {
+        "start_line": 16,
+        "end_line": 21
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Insecure deserialization (PHP) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S32",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection (PHP)",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "index.php",
+      "corpus": "secure-app",
+      "language": "php",
+      "location": {
+        "start_line": 22,
+        "end_line": 27
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection (PHP) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S37",
+      "is_vulnerable": false,
+      "vulnerability_class": "`unsafe` without a safety comment (Rust)",
+      "primary_cwe": "CWE-758",
+      "acceptable_cwes": [
+        "CWE-758"
+      ],
+      "owasp": "A04",
+      "file": "lib.rs",
+      "corpus": "secure-app",
+      "language": "rust",
+      "location": {
+        "start_line": 4,
+        "end_line": 9
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of `unsafe` without a safety comment (Rust) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S38",
+      "is_vulnerable": false,
+      "vulnerability_class": "`mem::transmute` with no checks (Rust)",
+      "primary_cwe": "CWE-704",
+      "acceptable_cwes": [
+        "CWE-704"
+      ],
+      "owasp": "A04",
+      "file": "lib.rs",
+      "corpus": "secure-app",
+      "language": "rust",
+      "location": {
+        "start_line": 10,
+        "end_line": 15
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of `mem::transmute` with no checks (Rust) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S39",
+      "is_vulnerable": false,
+      "vulnerability_class": "Shell interpreter re-introduced (Rust)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "lib.rs",
+      "corpus": "secure-app",
+      "language": "rust",
+      "location": {
+        "start_line": 16,
+        "end_line": 23
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Shell interpreter re-introduced (Rust) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S40",
+      "is_vulnerable": false,
+      "vulnerability_class": "Security group open to the world",
+      "primary_cwe": "CWE-284",
+      "acceptable_cwes": [
+        "CWE-284"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "secure-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 3,
+        "end_line": 12
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Security group open to the world — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S41",
+      "is_vulnerable": false,
+      "vulnerability_class": "Public-read storage ACL",
+      "primary_cwe": "CWE-732",
+      "acceptable_cwes": [
+        "CWE-732"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "secure-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 13,
+        "end_line": 19
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Public-read storage ACL — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S42",
+      "is_vulnerable": false,
+      "vulnerability_class": "Over-broad IAM policy",
+      "primary_cwe": "CWE-732",
+      "acceptable_cwes": [
+        "CWE-732"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "secure-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 20,
+        "end_line": 31
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Over-broad IAM policy — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S43",
+      "is_vulnerable": false,
+      "vulnerability_class": "Storage encryption disabled",
+      "primary_cwe": "CWE-311",
+      "acceptable_cwes": [
+        "CWE-311"
+      ],
+      "owasp": "A02",
+      "file": "main.tf",
+      "corpus": "secure-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 32,
+        "end_line": 38
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Storage encryption disabled — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S44",
+      "is_vulnerable": false,
+      "vulnerability_class": "Database publicly accessible",
+      "primary_cwe": "CWE-284",
+      "acceptable_cwes": [
+        "CWE-284"
+      ],
+      "owasp": "A01",
+      "file": "main.tf",
+      "corpus": "secure-app",
+      "language": "terraform",
+      "location": {
+        "start_line": 39,
+        "end_line": 43
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Database publicly accessible — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S58",
+      "is_vulnerable": false,
+      "vulnerability_class": "Flutter accepts any TLS certificate",
+      "primary_cwe": "CWE-295",
+      "acceptable_cwes": [
+        "CWE-295"
+      ],
+      "owasp": "A02",
+      "file": "net.dart",
+      "corpus": "secure-app",
+      "language": "dart",
+      "location": {
+        "start_line": 4,
+        "end_line": 10
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Flutter accepts any TLS certificate — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S17",
+      "is_vulnerable": false,
+      "vulnerability_class": "XXE (XML external entities)",
+      "primary_cwe": "CWE-611",
+      "acceptable_cwes": [
+        "CWE-611"
+      ],
+      "owasp": "A05",
+      "file": "py_app.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 13,
+        "end_line": 20
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of XXE (XML external entities) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S18",
+      "is_vulnerable": false,
+      "vulnerability_class": "Disabled TLS certificate verification",
+      "primary_cwe": "CWE-295",
+      "acceptable_cwes": [
+        "CWE-295"
+      ],
+      "owasp": "A04",
+      "file": "py_app.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 21,
+        "end_line": 26
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Disabled TLS certificate verification — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S19",
+      "is_vulnerable": false,
+      "vulnerability_class": "OS command injection (Python)",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A05",
+      "file": "py_app.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 27,
+        "end_line": 36
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of OS command injection (Python) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S20",
+      "is_vulnerable": false,
+      "vulnerability_class": "Insecure deserialization (pickle)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "py_app.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 37,
+        "end_line": 41
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Insecure deserialization (pickle) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S21",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection across a function boundary",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "py_app.py",
+      "corpus": "secure-app",
+      "language": "python",
+      "location": {
+        "start_line": 42,
+        "end_line": 51
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection across a function boundary — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S1",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A05",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 15,
+        "end_line": 19
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S2",
+      "is_vulnerable": false,
+      "vulnerability_class": "OS command injection",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A05",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 20,
+        "end_line": 28
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of OS command injection — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S3",
+      "is_vulnerable": false,
+      "vulnerability_class": "Broken access control (IDOR)",
+      "primary_cwe": "CWE-639",
+      "acceptable_cwes": [
+        "CWE-639"
+      ],
+      "owasp": "A01",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 29,
+        "end_line": 35
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Broken access control (IDOR) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S4",
+      "is_vulnerable": false,
+      "vulnerability_class": "Weak password hashing",
+      "primary_cwe": "CWE-327",
+      "acceptable_cwes": [
+        "CWE-327"
+      ],
+      "owasp": "A04",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 36,
+        "end_line": 42
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Weak password hashing — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S5",
+      "is_vulnerable": false,
+      "vulnerability_class": "Hardcoded secret",
+      "primary_cwe": "CWE-798",
+      "acceptable_cwes": [
+        "CWE-798"
+      ],
+      "owasp": "A07",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 43,
+        "end_line": 46
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Hardcoded secret — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S6",
+      "is_vulnerable": false,
+      "vulnerability_class": "Permissive CORS + credentials",
+      "primary_cwe": "CWE-942",
+      "acceptable_cwes": [
+        "CWE-942"
+      ],
+      "owasp": "A02",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 47,
+        "end_line": 57
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Permissive CORS + credentials — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S7",
+      "is_vulnerable": false,
+      "vulnerability_class": "SSRF",
+      "primary_cwe": "CWE-918",
+      "acceptable_cwes": [
+        "CWE-918"
+      ],
+      "owasp": "A01",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 58,
+        "end_line": 74
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SSRF — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S22",
+      "is_vulnerable": false,
+      "vulnerability_class": "OS command injection across a function boundary",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 75,
+        "end_line": 77
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of OS command injection across a function boundary — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S23",
+      "is_vulnerable": false,
+      "vulnerability_class": "OS command injection across a MODULE boundary",
+      "primary_cwe": "CWE-78",
+      "acceptable_cwes": [
+        "CWE-78"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 90,
+        "end_line": 90
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of OS command injection across a MODULE boundary — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S62",
+      "is_vulnerable": false,
+      "vulnerability_class": "SQL injection via a destructured request binding",
+      "primary_cwe": "CWE-89",
+      "acceptable_cwes": [
+        "CWE-89"
+      ],
+      "owasp": "A03",
+      "file": "server.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 102,
+        "end_line": 117
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of SQL injection via a destructured request binding — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S14",
+      "is_vulnerable": false,
+      "vulnerability_class": "Prototype pollution",
+      "primary_cwe": "CWE-1321",
+      "acceptable_cwes": [
+        "CWE-1321"
+      ],
+      "owasp": "A08",
+      "file": "util.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 6,
+        "end_line": 21
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Prototype pollution — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S15",
+      "is_vulnerable": false,
+      "vulnerability_class": "Insecure deserialization → code injection",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502",
+        "CWE-94",
+        "CWE-95"
+      ],
+      "owasp": "A08",
+      "file": "util.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 22,
+        "end_line": 27
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Insecure deserialization → code injection — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S16",
+      "is_vulnerable": false,
+      "vulnerability_class": "Server-side template injection",
+      "primary_cwe": "CWE-1336",
+      "acceptable_cwes": [
+        "CWE-1336",
+        "CWE-94"
+      ],
+      "owasp": "A05",
+      "file": "util.js",
+      "corpus": "secure-app",
+      "language": "javascript",
+      "location": {
+        "start_line": 28,
+        "end_line": 45
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Server-side template injection — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S33",
+      "is_vulnerable": false,
+      "vulnerability_class": "Insecure deserialization (Ruby)",
+      "primary_cwe": "CWE-502",
+      "acceptable_cwes": [
+        "CWE-502"
+      ],
+      "owasp": "A08",
+      "file": "worker.rb",
+      "corpus": "secure-app",
+      "language": "ruby",
+      "location": {
+        "start_line": 4,
+        "end_line": 9
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Insecure deserialization (Ruby) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    },
+    {
+      "id": "secure-app:S34",
+      "is_vulnerable": false,
+      "vulnerability_class": "Dynamic code execution (Ruby)",
+      "primary_cwe": "CWE-95",
+      "acceptable_cwes": [
+        "CWE-95"
+      ],
+      "owasp": "A03",
+      "file": "worker.rb",
+      "corpus": "secure-app",
+      "language": "ruby",
+      "location": {
+        "start_line": 10,
+        "end_line": 22
+      },
+      "evidence": {
+        "source": "secaudit-fixture",
+        "description": "Safe implementation of Dynamic code execution (Ruby) — a correct scanner stays quiet here (false-positive trap)."
+      }
+    }
+  ]
+}

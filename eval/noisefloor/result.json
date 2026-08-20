@@ -1,0 +1,181 @@
+{
+  "note": "Findings per 1,000 lines on twelve maintained projects that are NOT a vulnerability corpus. This is a NOISE FLOOR — an upper bound on how much a user is asked to read — and NOT a precision: nobody has adjudicated these findings and some may be real.",
+  "run_date": "2026-08-20",
+  "engine_digest": "sha256:8f426cd2c1196ae15e6d5460220e6fa5041bd473a6d66cc2ad2806c9f8fc0db9",
+  "engine_digest_note": "The engine that produced these scans, taken from the scan results rather than the working tree. Check 32 holds it against this tree so the published figure cannot outlive the code.",
+  "tier": "Tier 0 only (no dependency scan, no external scanners, no LLM)",
+  "repos_scored": 15,
+  "total_lines": 2674253,
+  "overall": {
+    "findings": 1119,
+    "per_1k_lines": 0.42,
+    "actionable": 243,
+    "actionable_per_1k_lines": 0.09,
+    "high_confidence": 82,
+    "high_confidence_per_1k_lines": 0.03
+  },
+  "by_repo": {
+    "pallets/flask": {
+      "lang": "python",
+      "sha": "d318b683471101618febed18996405ad26462110",
+      "lines": 18428,
+      "findings": 27,
+      "actionable": 3,
+      "high_confidence": 3,
+      "per_1k_lines": 1.47,
+      "actionable_per_1k_lines": 0.16
+    },
+    "psf/requests": {
+      "lang": "python",
+      "sha": "8068356288978c4f54661ae6f95afe0e0831885e",
+      "lines": 12069,
+      "findings": 14,
+      "actionable": 0,
+      "high_confidence": 0,
+      "per_1k_lines": 1.16,
+      "actionable_per_1k_lines": 0.0
+    },
+    "directus/directus": {
+      "lang": "typescript",
+      "sha": "06027c83fc09551e1db78c1ea6dc5f69a74ed38b",
+      "lines": 421471,
+      "findings": 315,
+      "actionable": 24,
+      "high_confidence": 7,
+      "per_1k_lines": 0.75,
+      "actionable_per_1k_lines": 0.06
+    },
+    "phpmyadmin/phpmyadmin": {
+      "lang": "php",
+      "sha": "11e127f3fa64adb099d765c4cae6de026954068c",
+      "lines": 325732,
+      "findings": 221,
+      "actionable": 53,
+      "high_confidence": 17,
+      "per_1k_lines": 0.68,
+      "actionable_per_1k_lines": 0.16
+    },
+    "TryGhost/Ghost": {
+      "lang": "javascript",
+      "sha": "083f23d02dd4d9dc9bed0535cb0129e0df12f23d",
+      "lines": 880271,
+      "findings": 415,
+      "actionable": 102,
+      "high_confidence": 38,
+      "per_1k_lines": 0.47,
+      "actionable_per_1k_lines": 0.12
+    },
+    "encode/httpx": {
+      "lang": "python",
+      "sha": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "lines": 17813,
+      "findings": 8,
+      "actionable": 2,
+      "high_confidence": 2,
+      "per_1k_lines": 0.45,
+      "actionable_per_1k_lines": 0.11
+    },
+    "fastapi/fastapi": {
+      "lang": "python",
+      "sha": "a1fa70d4237d50aae6586a0d9b229df583463d21",
+      "lines": 114593,
+      "findings": 52,
+      "actionable": 10,
+      "high_confidence": 8,
+      "per_1k_lines": 0.45,
+      "actionable_per_1k_lines": 0.09
+    },
+    "axios/axios": {
+      "lang": "javascript",
+      "sha": "e6824eec5fcf9da467a9792724396badc490c469",
+      "lines": 42510,
+      "findings": 11,
+      "actionable": 5,
+      "high_confidence": 0,
+      "per_1k_lines": 0.26,
+      "actionable_per_1k_lines": 0.12
+    },
+    "date-fns/date-fns": {
+      "lang": "javascript",
+      "sha": "a0a39220522ed1228445792c768ed887709aea5f",
+      "lines": 110419,
+      "findings": 11,
+      "actionable": 8,
+      "high_confidence": 1,
+      "per_1k_lines": 0.1,
+      "actionable_per_1k_lines": 0.07
+    },
+    "expressjs/express": {
+      "lang": "javascript",
+      "sha": "a3714473feb3d2908add734d340e7755fd85e0a3",
+      "lines": 21619,
+      "findings": 2,
+      "actionable": 0,
+      "high_confidence": 0,
+      "per_1k_lines": 0.09,
+      "actionable_per_1k_lines": 0.0
+    },
+    "laravel/framework": {
+      "lang": "php",
+      "sha": "90d01e88d6fac29e2a8d1319fd6eea106ded385e",
+      "lines": 554306,
+      "findings": 39,
+      "actionable": 36,
+      "high_confidence": 5,
+      "per_1k_lines": 0.07,
+      "actionable_per_1k_lines": 0.06
+    },
+    "PHPMailer/PHPMailer": {
+      "lang": "php",
+      "sha": "d8f8ed7580e8ad881ad069fb47ce8229caa8473d",
+      "lines": 19630,
+      "findings": 1,
+      "actionable": 0,
+      "high_confidence": 0,
+      "per_1k_lines": 0.05,
+      "actionable_per_1k_lines": 0.0
+    },
+    "sindresorhus/got": {
+      "lang": "javascript",
+      "sha": "e3924aa1e53a6ca3eb93a43618ce532442a89b40",
+      "lines": 44606,
+      "findings": 2,
+      "actionable": 0,
+      "high_confidence": 0,
+      "per_1k_lines": 0.04,
+      "actionable_per_1k_lines": 0.0
+    },
+    "guzzle/guzzle": {
+      "lang": "php",
+      "sha": "d1cbca76970939a9c2ced55b1e25ea26f34fc773",
+      "lines": 58969,
+      "findings": 1,
+      "actionable": 0,
+      "high_confidence": 1,
+      "per_1k_lines": 0.02,
+      "actionable_per_1k_lines": 0.0
+    },
+    "symfony/http-foundation": {
+      "lang": "php",
+      "sha": "a3cef50a1c6c37b60e0457d2152c2c572dc901cb",
+      "lines": 31817,
+      "findings": 0,
+      "actionable": 0,
+      "high_confidence": 0,
+      "per_1k_lines": 0.0,
+      "actionable_per_1k_lines": 0.0
+    }
+  },
+  "loudest_detectors": {
+    "SEC-SECRET-GENERIC": 268,
+    "SEC-JS-HTML-CONCAT": 263,
+    "REDOS-JS": 71,
+    "TAINT-JS-MASSASSIGN": 63,
+    "SEC-JS-RANDOM": 39,
+    "PROTO-JS-WRITE": 37,
+    "TAINT-JS-PATH": 37,
+    "SEC-PHP-UNSER": 32,
+    "TAINT-JS-XSS-DOM": 28,
+    "AUTHZ-JS-NOAUTH": 27
+  }
+}

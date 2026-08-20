@@ -1,0 +1,18 @@
+{
+  "triage": [
+    {"detector_id": "SEC-JS-SQLI", "file": "server.js", "line": 13,
+     "verdict": "confirmed", "severity": "Critical",
+     "note": "req.query.name flows unsanitized into the concatenated query; reachable from GET /users."},
+    {"detector_id": "SEC-PY-PICKLE", "file": "py_app.py", "line": 36,
+     "verdict": "confirmed", "severity": "Critical",
+     "note": "load_session unpickles an attacker-controlled cookie -> RCE via __reduce__."},
+    {"detector_id": "SEC-JS-SSRF", "file": "server.js", "line": 45,
+     "verdict": "plausible", "severity": "High",
+     "note": "user-supplied URL is fetched with no allowlist; confirm the endpoint is reachable."}
+  ],
+  "extra": [
+    {"title": "IDOR: missing ownership check on GET /invoice/:id", "file": "server.js",
+     "line": 24, "severity": "High",
+     "note": "the query filters by id only (no owner_id / session user) — any authenticated user can read any invoice. This is the V3 class the deterministic tier cannot detect."}
+  ]
+}

@@ -1,0 +1,165 @@
+name: Release
+
+# Publishes `secaudit-kit` to PyPI when a version tag is pushed.
+#
+# Trusted publishing (OIDC), not a stored API token: PyPI verifies the workflow identity
+# directly, so there is no long-lived credential in this repository to leak or rotate. That
+# matters more than usual here — a security scanner is exactly the kind of package worth
+# compromising, and a stolen token on one is a supply-chain incident for everyone who installs
+# it. Configure the publisher once at https://pypi.org/manage/account/publishing/.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The gates run again on the exact tagged commit. A green run on `main` is not evidence about
+  # a tag: the tag can point somewhere else, and "we tested it before tagging" is how an
+  # untested artefact ends up on PyPI.
+  validate:
+    uses: ./.github/workflows/validate.yml
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      # Every action here is pinned to a resolved commit SHA. Each was looked up through the
+      # GitHub API rather than written from memory: a pin has to be *resolved* to be real, and
+      # an unverified 40-hex string is worse than a tag — unverifiable, authoritative-looking,
+      # and a build failure at the worst moment. To re-resolve after a version bump:
+      #   gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq .object.sha
+      # If that returns an object of type `tag` it is an ANNOTATED tag, not a commit; follow it
+      # with `gh api repos/<owner>/<repo>/git/tags/<sha> --jq .object.sha` to get the commit.
+      # Pinning the tag object instead would not resolve to anything `uses:` can check out.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Check the tag matches the packaged version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          packaged=$(grep -m1 '^version' kit/pyproject.toml | cut -d'"' -f2)
+          if [ "$tag" != "$packaged" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match kit/pyproject.toml version $packaged."
+            echo "A release whose version is a guess is a release nobody can reason about."
+            exit 1
+          fi
+        if: startsWith(github.ref, 'refs/tags/v')
+
+      - name: Build
+        run: |
+          python3 -m pip install --upgrade build
+          python3 -m build kit --outdir dist
+
+      # The whole selling point is that installing this adds nothing to your dependency tree.
+      # An accidental `install_requires` would be discovered by users, not by us.
+      - name: Assert the wheel declares no runtime dependencies
+        run: python3 scripts/assert_no_runtime_deps.py dist
+
+      - name: Smoke-test the built wheel in a clean environment
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          /tmp/smoke/bin/secaudit tests/fixtures/vulnerable-app --no-deps --min critical \
+            && { echo "FAIL - the vulnerable fixture must trip a critical gate"; exit 1; } \
+            || echo "OK - installed console script finds the planted vulnerabilities."
+          /tmp/smoke/bin/secaudit tests/fixtures/secure-app --no-deps --min high \
+            || { echo "FAIL - the secure fixture must stay clean"; exit 1; }
+          echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+            | /tmp/smoke/bin/secaudit-mcp | head -c 200
+
+      # Dogfooded: the SBOM shipped with the release is produced by the tool being released.
+      # It is a short document, because the package genuinely has no runtime dependencies — that
+      # is the claim `assert_no_runtime_deps.py` enforces two steps up, and this is the same fact
+      # in the format a consumer's tooling reads.
+      # NOT into `dist/`. That directory is a packaging convention meaning "distributions", and
+      # tools glob it blindly: `pypa/gh-action-pypi-publish` runs `twine check` over everything
+      # in it and failed the 1.0.0 release with `InvalidDistribution: Unknown distribution
+      # format: 'sbom.cdx.json'` — after the wheel had built, been smoke-tested and been
+      # attested. The SBOMs get their own directory and their own artifact, so the publish job
+      # keeps pointing at a directory that contains only things PyPI can accept.
+      - name: Generate the release SBOM with the tool itself
+        run: |
+          set -euo pipefail
+          mkdir -p sbom
+          /tmp/smoke/bin/secaudit kit --format cyclonedx -o sbom/sbom.cdx.json
+          /tmp/smoke/bin/secaudit kit --format spdx      -o sbom/sbom.spdx.json
+          python3 -c "import json,sys; [json.load(open(p)) for p in sys.argv[1:]]" \
+            sbom/sbom.cdx.json sbom/sbom.spdx.json
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom
+          path: sbom/
+
+  # Attestation runs in its own job so the build never holds a token that can sign anything.
+  # Same reasoning that moved `pages: write` out of site.yml's build job: the step that compiles
+  # untrusted-ish input and the step that vouches for the output should not share a credential.
+  # An attestation binds to the artefact's digest, so signing a downloaded copy is signing the
+  # same bytes — the separation costs nothing.
+  attest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write          # OIDC — the signing identity is the workflow, not a stored key
+      attestations: write      # write the attestation to the repository's attestation store
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: sbom
+          path: sbom/
+
+      # SLSA build provenance: what built these files, from which commit, with which workflow.
+      # SHAs resolved through the GitHub API, per the note in the build job — never typed.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "dist/*.whl, dist/*.tar.gz"
+
+      - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: "dist/*.whl, dist/*.tar.gz"
+          sbom-path: sbom/sbom.cdx.json
+
+  publish:
+    needs: [build, attest]
+    runs-on: ubuntu-latest
+    # Naming an environment here does NOT by itself require anyone's approval — GitHub creates
+    # a missing environment on first use with no protection rules, and the job publishes
+    # straight through. The approval gate is a setting on the repository:
+    #   Settings -> Environments -> pypi -> Required reviewers
+    # It is worth adding, because this is the job that uploads a security scanner to a public
+    # index, and the environment name is also what the PyPI trusted publisher is bound to.
+    environment: pypi
+    permissions:
+      id-token: write          # OIDC for trusted publishing — no stored token
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+      # `@release/v1` is what this project's own README recommends, and it is a mutable
+      # branch — our own SEC-CI-MUTABLE-ACTION rule flags it, which is how this line came to be
+      # pinned. The action that uploads to PyPI is the last one worth taking on trust.
+      # v1.14.2 is an annotated tag, so this is the commit it dereferences to, not the tag object.
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

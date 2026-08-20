@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SECURE COUNTERPART — SecAudit negative-control fixture. Not a real app. -->
+<plist version="1.0">
+<dict>
+  <!-- S59 — App Transport Security left on (CWE-319 fixed): no global opt-out. A host that
+       genuinely cannot do TLS gets a narrow per-domain exception, not a blanket one. -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+      <key>legacy.internal.example</key>
+      <dict>
+        <key>NSExceptionMinimumTLSVersion</key>
+        <string>TLSv1.2</string>
+      </dict>
+    </dict>
+  </dict>
+</dict>
+</plist>

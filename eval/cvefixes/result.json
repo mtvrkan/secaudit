@@ -1,0 +1,1342 @@
+{
+ "note": "Scored by eval/cvefixes/score.py against lines deleted by each CVE's fix commit. Recall is the sound metric; precision is a LOWER BOUND and is not comparable to the RealVuln figure \u2014 see the module docstring.",
+ "benchmark": "CVEfixes v1.0.8 (DOI 10.5281/zenodo.13118970), CC-BY-4.0",
+ "citation": "Bhandari, Naseer & Moonen, PROMISE 2021",
+ "run_date": "2026-08-20",
+ "engine_digest": "sha256:8f426cd2c1196ae15e6d5460220e6fa5041bd473a6d66cc2ad2806c9f8fc0db9",
+ "line_tolerance": 10,
+ "labels_scored": 37019,
+ "cves_scanned": 3576,
+ "findings_total": 28191,
+ "headline": {
+  "what": "One label per vulnerable FILE \u2014 did anything fire at any hunk the fix touched. This is the reading comparable to how RealVuln and SecBench.js count, and the one to quote.",
+  "files": 12619,
+  "tp": 1977,
+  "recall": 0.1567,
+  "strict_recall": 0.0742,
+  "cves": 3576,
+  "cves_found": 876,
+  "cve_recall": 0.245
+ },
+ "headline_by_language": {
+  "JavaScript": {
+   "files": 2159,
+   "tp": 390,
+   "recall": 0.1806
+  },
+  "PHP": {
+   "files": 7722,
+   "tp": 1212,
+   "recall": 0.157
+  },
+  "Python": {
+   "files": 1207,
+   "tp": 240,
+   "recall": 0.1988
+  },
+  "TypeScript": {
+   "files": 1531,
+   "tp": 135,
+   "recall": 0.0882
+  }
+ },
+ "headline_by_seal": {
+  "sealed": {
+   "files": 2532,
+   "tp": 432,
+   "recall": 0.1706
+  },
+  "unsealed": {
+   "files": 10087,
+   "tp": 1545,
+   "recall": 0.1532
+  }
+ },
+ "overall": {
+  "tp": 4234,
+  "fn": 32785,
+  "recall": 0.1144,
+  "unmatched": 22270,
+  "precision_lower_bound": 0.1502,
+  "$comment": "Per-HUNK, kept as the strict floor. A fix that rewrites every query in a file deletes many hunks and describes one vulnerability, so this reading understates by however many hunks a fix happened to have. Do not compare it to RealVuln."
+ },
+ "strict": {
+  "tp": 1960,
+  "fn": 35059,
+  "recall": 0.0529
+ },
+ "strict_note": "`overall.recall` asks only whether a finding landed within 10 lines of the fixed hunk; `strict.recall` also requires the finding's CWE to be one the label accepts. Quote the strict figure. The loose one is kept beside it because the gap between them is itself the measurement \u2014 it is how much credit location alone was handing out.",
+ "by_seal": {
+  "sealed": {
+   "tp": 922,
+   "labels": 7253,
+   "recall": 0.1271,
+   "strict_recall": 0.0418
+  },
+  "unsealed": {
+   "tp": 3312,
+   "labels": 29766,
+   "recall": 0.1113,
+   "strict_recall": 0.0557
+  }
+ },
+ "by_seal_note": "The held-out slice, per eval/HELDOUT.md. Sealed on adoption, before this engine had scored one entry, so unlike the secbenchjs slice this one is a genuinely blind figure on its first run.",
+ "by_language": {
+  "JavaScript": {
+   "tp": 811,
+   "labels": 5600,
+   "recall": 0.1448
+  },
+  "PHP": {
+   "tp": 2793,
+   "labels": 23703,
+   "recall": 0.1178
+  },
+  "Python": {
+   "tp": 449,
+   "labels": 3606,
+   "recall": 0.1245
+  },
+  "TypeScript": {
+   "tp": 181,
+   "labels": 4110,
+   "recall": 0.044
+  }
+ },
+ "by_cwe": {
+  "CWE-79": {
+   "tp": 1597,
+   "labels": 9196,
+   "recall": 0.1737
+  },
+  "CWE-89": {
+   "tp": 858,
+   "labels": 8006,
+   "recall": 0.1072
+  },
+  "CWE-352": {
+   "tp": 77,
+   "labels": 1690,
+   "recall": 0.0456
+  },
+  "CWE-918": {
+   "tp": 140,
+   "labels": 1457,
+   "recall": 0.0961
+  },
+  "CWE-22": {
+   "tp": 275,
+   "labels": 1456,
+   "recall": 0.1889
+  },
+  "CWE-74": {
+   "tp": 32,
+   "labels": 1397,
+   "recall": 0.0229
+  },
+  "CWE-20": {
+   "tp": 63,
+   "labels": 1374,
+   "recall": 0.0459
+  },
+  "CWE-639": {
+   "tp": 0,
+   "labels": 1154,
+   "recall": 0.0
+  },
+  "CWE-94": {
+   "tp": 109,
+   "labels": 859,
+   "recall": 0.1269
+  },
+  "CWE-200": {
+   "tp": 51,
+   "labels": 829,
+   "recall": 0.0615
+  },
+  "CWE-770": {
+   "tp": 10,
+   "labels": 536,
+   "recall": 0.0187
+  },
+  "CWE-78": {
+   "tp": 79,
+   "labels": 518,
+   "recall": 0.1525
+  },
+  "CWE-400": {
+   "tp": 27,
+   "labels": 435,
+   "recall": 0.0621
+  },
+  "CWE-434": {
+   "tp": 31,
+   "labels": 364,
+   "recall": 0.0852
+  },
+  "CWE-863": {
+   "tp": 6,
+   "labels": 361,
+   "recall": 0.0166
+  },
+  "CWE-287": {
+   "tp": 20,
+   "labels": 338,
+   "recall": 0.0592
+  },
+  "CWE-1321": {
+   "tp": 49,
+   "labels": 300,
+   "recall": 0.1633
+  },
+  "CWE-707": {
+   "tp": 266,
+   "labels": 291,
+   "recall": 0.9141
+  },
+  "CWE-601": {
+   "tp": 50,
+   "labels": 284,
+   "recall": 0.1761
+  },
+  "CWE-285": {
+   "tp": 5,
+   "labels": 284,
+   "recall": 0.0176
+  },
+  "CWE-116": {
+   "tp": 105,
+   "labels": 256,
+   "recall": 0.4102
+  },
+  "CWE-284": {
+   "tp": 7,
+   "labels": 254,
+   "recall": 0.0276
+  },
+  "CWE-269": {
+   "tp": 3,
+   "labels": 245,
+   "recall": 0.0122
+  },
+  "CWE-125": {
+   "tp": 2,
+   "labels": 243,
+   "recall": 0.0082
+  },
+  "CWE-73": {
+   "tp": 7,
+   "labels": 230,
+   "recall": 0.0304
+  },
+  "CWE-264": {
+   "tp": 30,
+   "labels": 226,
+   "recall": 0.1327
+  },
+  "CWE-829": {
+   "tp": 10,
+   "labels": 225,
+   "recall": 0.0444
+  },
+  "CWE-502": {
+   "tp": 46,
+   "labels": 217,
+   "recall": 0.212
+  },
+  "CWE-862": {
+   "tp": 27,
+   "labels": 211,
+   "recall": 0.128
+  },
+  "CWE-732": {
+   "tp": 11,
+   "labels": 187,
+   "recall": 0.0588
+  },
+  "CWE-77": {
+   "tp": 38,
+   "labels": 180,
+   "recall": 0.2111
+  },
+  "CWE-307": {
+   "tp": 1,
+   "labels": 177,
+   "recall": 0.0056
+  },
+  "CWE-1333": {
+   "tp": 32,
+   "labels": 169,
+   "recall": 0.1893
+  },
+  "CWE-384": {
+   "tp": 7,
+   "labels": 154,
+   "recall": 0.0455
+  },
+  "CWE-1284": {
+   "tp": 0,
+   "labels": 120,
+   "recall": 0.0
+  },
+  "CWE-1236": {
+   "tp": 4,
+   "labels": 113,
+   "recall": 0.0354
+  },
+  "CWE-327": {
+   "tp": 1,
+   "labels": 104,
+   "recall": 0.0096
+  },
+  "CWE-613": {
+   "tp": 6,
+   "labels": 89,
+   "recall": 0.0674
+  },
+  "CWE-29": {
+   "tp": 6,
+   "labels": 85,
+   "recall": 0.0706
+  },
+  "CWE-331": {
+   "tp": 0,
+   "labels": 81,
+   "recall": 0.0
+  },
+  "CWE-476": {
+   "tp": 0,
+   "labels": 76,
+   "recall": 0.0
+  },
+  "CWE-521": {
+   "tp": 5,
+   "labels": 74,
+   "recall": 0.0676
+  },
+  "CWE-346": {
+   "tp": 6,
+   "labels": 71,
+   "recall": 0.0845
+  },
+  "CWE-640": {
+   "tp": 12,
+   "labels": 70,
+   "recall": 0.1714
+  },
+  "CWE-88": {
+   "tp": 1,
+   "labels": 66,
+   "recall": 0.0152
+  },
+  "CWE-436": {
+   "tp": 9,
+   "labels": 65,
+   "recall": 0.1385
+  },
+  "CWE-209": {
+   "tp": 3,
+   "labels": 65,
+   "recall": 0.0462
+  },
+  "CWE-670": {
+   "tp": 0,
+   "labels": 65,
+   "recall": 0.0
+  },
+  "CWE-330": {
+   "tp": 2,
+   "labels": 64,
+   "recall": 0.0312
+  },
+  "CWE-754": {
+   "tp": 5,
+   "labels": 62,
+   "recall": 0.0806
+  },
+  "CWE-59": {
+   "tp": 6,
+   "labels": 60,
+   "recall": 0.1
+  },
+  "CWE-347": {
+   "tp": 3,
+   "labels": 59,
+   "recall": 0.0508
+  },
+  "CWE-532": {
+   "tp": 2,
+   "labels": 56,
+   "recall": 0.0357
+  },
+  "CWE-693": {
+   "tp": 3,
+   "labels": 49,
+   "recall": 0.0612
+  },
+  "CWE-319": {
+   "tp": 0,
+   "labels": 47,
+   "recall": 0.0
+  },
+  "CWE-306": {
+   "tp": 6,
+   "labels": 46,
+   "recall": 0.1304
+  },
+  "CWE-295": {
+   "tp": 6,
+   "labels": 45,
+   "recall": 0.1333
+  },
+  "CWE-1103": {
+   "tp": 0,
+   "labels": 45,
+   "recall": 0.0
+  },
+  "CWE-212": {
+   "tp": 2,
+   "labels": 44,
+   "recall": 0.0455
+  },
+  "CWE-798": {
+   "tp": 8,
+   "labels": 42,
+   "recall": 0.1905
+  },
+  "CWE-203": {
+   "tp": 5,
+   "labels": 40,
+   "recall": 0.125
+  },
+  "CWE-611": {
+   "tp": 1,
+   "labels": 36,
+   "recall": 0.0278
+  },
+  "CWE-662": {
+   "tp": 4,
+   "labels": 36,
+   "recall": 0.1111
+  },
+  "CWE-522": {
+   "tp": 0,
+   "labels": 35,
+   "recall": 0.0
+  },
+  "CWE-843": {
+   "tp": 0,
+   "labels": 34,
+   "recall": 0.0
+  },
+  "CWE-444": {
+   "tp": 1,
+   "labels": 33,
+   "recall": 0.0303
+  },
+  "CWE-668": {
+   "tp": 1,
+   "labels": 33,
+   "recall": 0.0303
+  },
+  "CWE-190": {
+   "tp": 0,
+   "labels": 31,
+   "recall": 0.0
+  },
+  "CWE-697": {
+   "tp": 3,
+   "labels": 30,
+   "recall": 0.1
+  },
+  "CWE-913": {
+   "tp": 2,
+   "labels": 29,
+   "recall": 0.069
+  },
+  "CWE-167": {
+   "tp": 0,
+   "labels": 29,
+   "recall": 0.0
+  },
+  "CWE-281": {
+   "tp": 0,
+   "labels": 29,
+   "recall": 0.0
+  },
+  "CWE-311": {
+   "tp": 2,
+   "labels": 27,
+   "recall": 0.0741
+  },
+  "CWE-115": {
+   "tp": 0,
+   "labels": 25,
+   "recall": 0.0
+  },
+  "CWE-359": {
+   "tp": 0,
+   "labels": 24,
+   "recall": 0.0
+  },
+  "CWE-119": {
+   "tp": 0,
+   "labels": 22,
+   "recall": 0.0
+  },
+  "CWE-835": {
+   "tp": 0,
+   "labels": 22,
+   "recall": 0.0
+  },
+  "CWE-21": {
+   "tp": 4,
+   "labels": 21,
+   "recall": 0.1905
+  },
+  "CWE-290": {
+   "tp": 2,
+   "labels": 21,
+   "recall": 0.0952
+  },
+  "CWE-755": {
+   "tp": 0,
+   "labels": 20,
+   "recall": 0.0
+  },
+  "CWE-120": {
+   "tp": 0,
+   "labels": 19,
+   "recall": 0.0
+  },
+  "CWE-312": {
+   "tp": 1,
+   "labels": 19,
+   "recall": 0.0526
+  },
+  "CWE-320": {
+   "tp": 0,
+   "labels": 18,
+   "recall": 0.0
+  },
+  "CWE-23": {
+   "tp": 1,
+   "labels": 17,
+   "recall": 0.0588
+  },
+  "CWE-674": {
+   "tp": 2,
+   "labels": 16,
+   "recall": 0.125
+  },
+  "CWE-367": {
+   "tp": 3,
+   "labels": 16,
+   "recall": 0.1875
+  },
+  "CWE-255": {
+   "tp": 2,
+   "labels": 15,
+   "recall": 0.1333
+  },
+  "CWE-1188": {
+   "tp": 1,
+   "labels": 15,
+   "recall": 0.0667
+  },
+  "CWE-362": {
+   "tp": 0,
+   "labels": 15,
+   "recall": 0.0
+  },
+  "CWE-338": {
+   "tp": 1,
+   "labels": 14,
+   "recall": 0.0714
+  },
+  "CWE-310": {
+   "tp": 0,
+   "labels": 13,
+   "recall": 0.0
+  },
+  "CWE-276": {
+   "tp": 0,
+   "labels": 13,
+   "recall": 0.0
+  },
+  "CWE-345": {
+   "tp": 2,
+   "labels": 13,
+   "recall": 0.1538
+  },
+  "CWE-1021": {
+   "tp": 0,
+   "labels": 12,
+   "recall": 0.0
+  },
+  "CWE-672": {
+   "tp": 0,
+   "labels": 11,
+   "recall": 0.0
+  },
+  "CWE-916": {
+   "tp": 0,
+   "labels": 11,
+   "recall": 0.0
+  },
+  "CWE-254": {
+   "tp": 1,
+   "labels": 10,
+   "recall": 0.1
+  },
+  "CWE-326": {
+   "tp": 3,
+   "labels": 10,
+   "recall": 0.3
+  },
+  "CWE-787": {
+   "tp": 0,
+   "labels": 10,
+   "recall": 0.0
+  },
+  "CWE-178": {
+   "tp": 2,
+   "labels": 10,
+   "recall": 0.2
+  },
+  "CWE-922": {
+   "tp": 1,
+   "labels": 10,
+   "recall": 0.1
+  },
+  "CWE-416": {
+   "tp": 0,
+   "labels": 9,
+   "recall": 0.0
+  },
+  "CWE-552": {
+   "tp": 2,
+   "labels": 9,
+   "recall": 0.2222
+  },
+  "CWE-565": {
+   "tp": 0,
+   "labels": 9,
+   "recall": 0.0
+  },
+  "CWE-354": {
+   "tp": 0,
+   "labels": 9,
+   "recall": 0.0
+  },
+  "CWE-915": {
+   "tp": 1,
+   "labels": 9,
+   "recall": 0.1111
+  },
+  "CWE-610": {
+   "tp": 2,
+   "labels": 8,
+   "recall": 0.25
+  },
+  "CWE-19": {
+   "tp": 3,
+   "labels": 8,
+   "recall": 0.375
+  },
+  "CWE-185": {
+   "tp": 0,
+   "labels": 8,
+   "recall": 0.0
+  },
+  "CWE-36": {
+   "tp": 0,
+   "labels": 8,
+   "recall": 0.0
+  },
+  "CWE-150": {
+   "tp": 0,
+   "labels": 8,
+   "recall": 0.0
+  },
+  "CWE-80": {
+   "tp": 1,
+   "labels": 8,
+   "recall": 0.125
+  },
+  "CWE-921": {
+   "tp": 0,
+   "labels": 8,
+   "recall": 0.0
+  },
+  "CWE-620": {
+   "tp": 1,
+   "labels": 7,
+   "recall": 0.1429
+  },
+  "CWE-667": {
+   "tp": 0,
+   "labels": 7,
+   "recall": 0.0
+  },
+  "CWE-789": {
+   "tp": 0,
+   "labels": 7,
+   "recall": 0.0
+  },
+  "CWE-614": {
+   "tp": 0,
+   "labels": 7,
+   "recall": 0.0
+  },
+  "CWE-193": {
+   "tp": 0,
+   "labels": 7,
+   "recall": 0.0
+  },
+  "CWE-681": {
+   "tp": 3,
+   "labels": 6,
+   "recall": 0.5
+  },
+  "CWE-277": {
+   "tp": 0,
+   "labels": 6,
+   "recall": 0.0
+  },
+  "CWE-252": {
+   "tp": 1,
+   "labels": 6,
+   "recall": 0.1667
+  },
+  "CWE-304": {
+   "tp": 0,
+   "labels": 6,
+   "recall": 0.0
+  },
+  "CWE-776": {
+   "tp": 0,
+   "labels": 6,
+   "recall": 0.0
+  },
+  "CWE-399": {
+   "tp": 0,
+   "labels": 5,
+   "recall": 0.0
+  },
+  "CWE-93": {
+   "tp": 0,
+   "labels": 5,
+   "recall": 0.0
+  },
+  "CWE-404": {
+   "tp": 2,
+   "labels": 5,
+   "recall": 0.4
+  },
+  "CWE-684": {
+   "tp": 0,
+   "labels": 5,
+   "recall": 0.0
+  },
+  "CWE-494": {
+   "tp": 0,
+   "labels": 5,
+   "recall": 0.0
+  },
+  "CWE-840": {
+   "tp": 0,
+   "labels": 5,
+   "recall": 0.0
+  },
+  "CWE-98": {
+   "tp": 0,
+   "labels": 5,
+   "recall": 0.0
+  },
+  "CWE-764": {
+   "tp": 0,
+   "labels": 5,
+   "recall": 0.0
+  },
+  "CWE-95": {
+   "tp": 0,
+   "labels": 4,
+   "recall": 0.0
+  },
+  "CWE-641": {
+   "tp": 1,
+   "labels": 4,
+   "recall": 0.25
+  },
+  "CWE-248": {
+   "tp": 0,
+   "labels": 4,
+   "recall": 0.0
+  },
+  "CWE-91": {
+   "tp": 0,
+   "labels": 4,
+   "recall": 0.0
+  },
+  "CWE-1220": {
+   "tp": 0,
+   "labels": 4,
+   "recall": 0.0
+  },
+  "CWE-272": {
+   "tp": 0,
+   "labels": 4,
+   "recall": 0.0
+  },
+  "CWE-134": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-704": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-527": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-665": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-75": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-294": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-250": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-366": {
+   "tp": 2,
+   "labels": 3,
+   "recall": 0.6667
+  },
+  "CWE-917": {
+   "tp": 0,
+   "labels": 3,
+   "recall": 0.0
+  },
+  "CWE-534": {
+   "tp": 0,
+   "labels": 2,
+   "recall": 0.0
+  },
+  "CWE-834": {
+   "tp": 0,
+   "labels": 2,
+   "recall": 0.0
+  },
+  "CWE-267": {
+   "tp": 0,
+   "labels": 2,
+   "recall": 0.0
+  },
+  "CWE-706": {
+   "tp": 0,
+   "labels": 2,
+   "recall": 0.0
+  },
+  "CWE-526": {
+   "tp": 0,
+   "labels": 2,
+   "recall": 0.0
+  },
+  "CWE-393": {
+   "tp": 0,
+   "labels": 2,
+   "recall": 0.0
+  },
+  "CWE-90": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-335": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-425": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-172": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-1004": {
+   "tp": 1,
+   "labels": 1,
+   "recall": 1.0
+  },
+  "CWE-471": {
+   "tp": 1,
+   "labels": 1,
+   "recall": 1.0
+  },
+  "CWE-763": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-597": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-926": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-426": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-427": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-305": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-377": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-682": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-204": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-308": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-15": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-1336": {
+   "tp": 1,
+   "labels": 1,
+   "recall": 1.0
+  },
+  "CWE-821": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  },
+  "CWE-440": {
+   "tp": 0,
+   "labels": 1,
+   "recall": 0.0
+  }
+ },
+ "concentration": {
+  "TypeScript CWE-1284": {
+   "labels": 106,
+   "cves": 1,
+   "top_cve": "CVE-2022-21208",
+   "top_labels": 106,
+   "top_share": 1.0
+  },
+  "JavaScript CWE-707": {
+   "labels": 264,
+   "cves": 1,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 264,
+   "top_share": 1.0
+  },
+  "TypeScript CWE-285": {
+   "labels": 241,
+   "cves": 4,
+   "top_cve": "CVE-2023-52139",
+   "top_labels": 237,
+   "top_share": 0.983
+  },
+  "PHP CWE-400": {
+   "labels": 272,
+   "cves": 5,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 267,
+   "top_share": 0.982
+  },
+  "PHP CWE-829": {
+   "labels": 223,
+   "cves": 4,
+   "top_cve": "CVE-2023-2551",
+   "top_labels": 218,
+   "top_share": 0.978
+  },
+  "TypeScript CWE-269": {
+   "labels": 42,
+   "cves": 3,
+   "top_cve": "CVE-2023-51386",
+   "top_labels": 40,
+   "top_share": 0.952
+  },
+  "TypeScript CWE-770": {
+   "labels": 395,
+   "cves": 5,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 372,
+   "top_share": 0.942
+  },
+  "Python CWE-476": {
+   "labels": 76,
+   "cves": 3,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 71,
+   "top_share": 0.934
+  },
+  "JavaScript CWE-331": {
+   "labels": 45,
+   "cves": 2,
+   "top_cve": "CVE-2023-26154",
+   "top_labels": 41,
+   "top_share": 0.911
+  },
+  "PHP CWE-732": {
+   "labels": 147,
+   "cves": 6,
+   "top_cve": "CVE-2022-4630",
+   "top_labels": 132,
+   "top_share": 0.898
+  },
+  "TypeScript CWE-670": {
+   "labels": 58,
+   "cves": 3,
+   "top_cve": "CVE-2023-41058",
+   "top_labels": 51,
+   "top_share": 0.879
+  },
+  "PHP CWE-264": {
+   "labels": 187,
+   "cves": 8,
+   "top_cve": "CVE-2014-3772",
+   "top_labels": 163,
+   "top_share": 0.872
+  },
+  "Python CWE-352": {
+   "labels": 389,
+   "cves": 15,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 324,
+   "top_share": 0.833
+  },
+  "PHP CWE-73": {
+   "labels": 207,
+   "cves": 3,
+   "top_cve": "CVE-2023-1070",
+   "top_labels": 169,
+   "top_share": 0.816
+  },
+  "PHP CWE-307": {
+   "labels": 166,
+   "cves": 9,
+   "top_cve": "CVE-2021-41171",
+   "top_labels": 135,
+   "top_share": 0.813
+  },
+  "TypeScript CWE-20": {
+   "labels": 463,
+   "cves": 16,
+   "top_cve": "CVE-2023-5571",
+   "top_labels": 372,
+   "top_share": 0.803
+  },
+  "JavaScript CWE-269": {
+   "labels": 40,
+   "cves": 5,
+   "top_cve": "CVE-2023-51386",
+   "top_labels": 32,
+   "top_share": 0.8
+  },
+  "TypeScript CWE-918": {
+   "labels": 520,
+   "cves": 16,
+   "top_cve": "CVE-2023-5572",
+   "top_labels": 372,
+   "top_share": 0.715
+  },
+  "PHP CWE-116": {
+   "labels": 210,
+   "cves": 7,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 146,
+   "top_share": 0.695
+  },
+  "JavaScript CWE-384": {
+   "labels": 73,
+   "cves": 6,
+   "top_cve": "CVE-2016-0721",
+   "top_labels": 49,
+   "top_share": 0.671
+  },
+  "PHP CWE-77": {
+   "labels": 94,
+   "cves": 6,
+   "top_cve": "CVE-2023-6848",
+   "top_labels": 63,
+   "top_share": 0.67
+  },
+  "JavaScript CWE-347": {
+   "labels": 40,
+   "cves": 7,
+   "top_cve": "CVE-2022-25898",
+   "top_labels": 26,
+   "top_share": 0.65
+  },
+  "JavaScript CWE-89": {
+   "labels": 457,
+   "cves": 25,
+   "top_cve": "CVE-2016-10096",
+   "top_labels": 294,
+   "top_share": 0.643
+  },
+  "TypeScript CWE-863": {
+   "labels": 206,
+   "cves": 16,
+   "top_cve": "CVE-2020-15126",
+   "top_labels": 128,
+   "top_share": 0.621
+  },
+  "JavaScript CWE-434": {
+   "labels": 47,
+   "cves": 9,
+   "top_cve": "CVE-2022-1411",
+   "top_labels": 29,
+   "top_share": 0.617
+  },
+  "JavaScript CWE-22": {
+   "labels": 346,
+   "cves": 36,
+   "top_cve": "CVE-2019-10765",
+   "top_labels": 207,
+   "top_share": 0.598
+  },
+  "PHP CWE-327": {
+   "labels": 57,
+   "cves": 7,
+   "top_cve": "CVE-2020-11031",
+   "top_labels": 30,
+   "top_share": 0.526
+  },
+  "PHP CWE-29": {
+   "labels": 63,
+   "cves": 4,
+   "top_cve": "CVE-2023-1034",
+   "top_labels": 33,
+   "top_share": 0.524
+  },
+  "Python CWE-613": {
+   "labels": 46,
+   "cves": 4,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 23,
+   "top_share": 0.5
+  },
+  "TypeScript CWE-125": {
+   "labels": 151,
+   "cves": 3,
+   "top_cve": "CVE-2019-19274",
+   "top_labels": 75,
+   "top_share": 0.497
+  },
+  "PHP CWE-640": {
+   "labels": 65,
+   "cves": 11,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 32,
+   "top_share": 0.492
+  },
+  "TypeScript CWE-284": {
+   "labels": 119,
+   "cves": 7,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 57,
+   "top_share": 0.479
+  },
+  "JavaScript CWE-284": {
+   "labels": 67,
+   "cves": 8,
+   "top_cve": "CVE-2023-50928",
+   "top_labels": 32,
+   "top_share": 0.478
+  },
+  "PHP CWE-502": {
+   "labels": 130,
+   "cves": 16,
+   "top_cve": "CVE-2023-29006",
+   "top_labels": 62,
+   "top_share": 0.477
+  },
+  "Python CWE-59": {
+   "labels": 43,
+   "cves": 8,
+   "top_cve": "CVE-2015-6240",
+   "top_labels": 20,
+   "top_share": 0.465
+  },
+  "JavaScript CWE-74": {
+   "labels": 65,
+   "cves": 10,
+   "top_cve": "CVE-2019-10793",
+   "top_labels": 30,
+   "top_share": 0.462
+  },
+  "TypeScript CWE-400": {
+   "labels": 50,
+   "cves": 8,
+   "top_cve": "CVE-2022-24375",
+   "top_labels": 23,
+   "top_share": 0.46
+  },
+  "Python CWE-125": {
+   "labels": 79,
+   "cves": 3,
+   "top_cve": "CVE-2019-19274",
+   "top_labels": 36,
+   "top_share": 0.456
+  },
+  "PHP CWE-74": {
+   "labels": 1264,
+   "cves": 25,
+   "top_cve": "CVE-2016-8899",
+   "top_labels": 575,
+   "top_share": 0.455
+  },
+  "Python CWE-1333": {
+   "labels": 44,
+   "cves": 8,
+   "top_cve": "CVE-2021-3842",
+   "top_labels": 20,
+   "top_share": 0.455
+  },
+  "PHP CWE-22": {
+   "labels": 853,
+   "cves": 59,
+   "top_cve": "CVE-2021-27341",
+   "top_labels": 372,
+   "top_share": 0.436
+  },
+  "Python CWE-400": {
+   "labels": 53,
+   "cves": 10,
+   "top_cve": "CVE-2020-26257",
+   "top_labels": 23,
+   "top_share": 0.434
+  },
+  "Python CWE-918": {
+   "labels": 521,
+   "cves": 23,
+   "top_cve": "CVE-2022-0939",
+   "top_labels": 220,
+   "top_share": 0.422
+  },
+  "PHP CWE-1236": {
+   "labels": 76,
+   "cves": 9,
+   "top_cve": "CVE-2021-25960",
+   "top_labels": 32,
+   "top_share": 0.421
+  },
+  "JavaScript CWE-400": {
+   "labels": 60,
+   "cves": 16,
+   "top_cve": "CVE-2021-21306",
+   "top_labels": 25,
+   "top_share": 0.417
+  },
+  "Python CWE-94": {
+   "labels": 103,
+   "cves": 16,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 38,
+   "top_share": 0.369
+  },
+  "Python CWE-78": {
+   "labels": 82,
+   "cves": 17,
+   "top_cve": "CVE-2022-31137",
+   "top_labels": 30,
+   "top_share": 0.366
+  },
+  "TypeScript CWE-200": {
+   "labels": 78,
+   "cves": 6,
+   "top_cve": "CVE-2024-0765",
+   "top_labels": 28,
+   "top_share": 0.359
+  },
+  "Python CWE-74": {
+   "labels": 51,
+   "cves": 9,
+   "top_cve": "CVE-2023-29512",
+   "top_labels": 18,
+   "top_share": 0.353
+  },
+  "PHP CWE-78": {
+   "labels": 123,
+   "cves": 19,
+   "top_cve": "CVE-2017-6087",
+   "top_labels": 41,
+   "top_share": 0.333
+  },
+  "Python CWE-601": {
+   "labels": 138,
+   "cves": 20,
+   "top_cve": "CVE-2022-0869",
+   "top_labels": 43,
+   "top_share": 0.312
+  },
+  "PHP CWE-20": {
+   "labels": 649,
+   "cves": 45,
+   "top_cve": "(sealed entry \u2014 see eval/HELDOUT.md)",
+   "top_labels": 202,
+   "top_share": 0.311
+  },
+  "JavaScript CWE-601": {
+   "labels": 56,
+   "cves": 10,
+   "top_cve": "CVE-2022-0122",
+   "top_labels": 17,
+   "top_share": 0.304
+  }
+ },
+ "concentration_note": "How much of a language/CWE cell comes from ONE fix commit. A CVE fixed by a repository-wide refactor deletes lines in hundreds of files, and every one of them becomes a labelled entry here \u2014 so a cell can look like a broad detection failure while being three commits wearing many filenames. Reported because it changes how a reader should weigh the per-language table above, and because the direction it distorts in is not predictable: a huge commit can just as easily be caught by one rule and inflate a figure. `top_share` is the largest single CVE's share of that cell's labels; anything above 0.5 is one commit and should be read as one."
+}

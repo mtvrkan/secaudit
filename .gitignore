@@ -1,0 +1,71 @@
+# Audit output — never commit real reports (may contain sensitive target data)
+*_findings.md
+*_recon.md
+SECURITY_REPORT.md
+00_scope_and_safety.md
+scope.yaml
+scope.yml
+!templates/scope.example.yaml
+!examples/**
+
+# Scanner artifacts
+*.sarif
+tls.json
+sem.sarif
+bundle.js
+sbom*.json
+trivy*.json
+osv*.json
+gitleaks*.json
+
+# Secrets / env
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Node (if contributors add tooling)
+node_modules/
+
+# Python (tests/selftest.py bytecode cache)
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+# setuptools' in-place build directory. `scripts/check_install.py` cleans up after itself, but
+# any `pip install ./kit` or `pip wheel` without build isolation leaves one here, and an
+# untracked copy of the whole package next to the real one is the kind of thing that gets
+# grepped, found, and believed.
+kit/build/
+
+# Landing page — the template and generator ARE committed (they are small, and every number
+# on the page is derived from this repo at build time, so they cannot live apart from it).
+# Only the rendered output is ignored; CI publishes that to gh-pages.
+site/dist/
+
+# Coverage artefacts. The floor lives in pyproject.toml and is enforced in CI; the database
+# and any rendered report are per-run and mean nothing to anyone else.
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Linter and type-checker caches. Neither was here, and both were invisible on this machine
+# because a global ignore covered them — which is exactly the shape of bug this repository
+# keeps finding elsewhere: a property that holds because of the environment rather than
+# because of the tree. A contributor without that global config commits several hundred
+# binary cache files on their first PR, and the pre-commit hook has nothing to say about it.
+.mypy_cache/
+.ruff_cache/
+
+# The measurement runner takes this while it holds the four corpora; it is removed on exit.
+.measure.lock

@@ -1,0 +1,23 @@
+{
+  "note": "Widely used, actively maintained projects that are NOT a vulnerability corpus. Pinned by commit SHA, resolved from the remote and never typed from memory, so the measurement is reproducible: the same fifteen trees produce the same count on any machine. Chosen before any of them was scanned. The eight original trees were resolved on 2026-08-16 and the four PHP ones on 2026-08-19.",
+  "why_these": "The question this answers is 'how much noise does a clean checkout produce', so the set has to be code somebody maintains rather than code somebody planted. Two Python web frameworks, two Python libraries, two JavaScript web/HTTP libraries, two JavaScript utilities and — added 2026-08-19 — two PHP request layers, two PHP libraries, one PHP application and — added 2026-08-19 — two JavaScript/TypeScript applications: the shapes the rules are aimed at (request handlers, filesystem and subprocess calls) and the shapes they are not, together, because a set of only libraries would flatter the structural tier by giving it nothing to look at.",
+  "why_php_was_added": "PHP is 64% of the labels in eval/cvefixes/ and scores 3.5% there, so it is the largest gap this engine has — and until 2026-08-19 there was no corpus anywhere in this repository that could say what a PHP rule costs on code that is NOT vulnerable. RealVuln is Python, SecBench.js is JavaScript, and this floor had no PHP in it. The instrument goes in BEFORE the rules, which is the order that keeps the next round measurable rather than argued: a rule whose precision cannot be measured is a rule whose precision is a claim. phpmyadmin joined one round later for a reason the four libraries could not answer: a rule about `echo` and `<?=` is a rule about a TEMPLATE, and a framework, an HTTP layer, an HTTP client and a mailer contain none. It is a maintained, security-conscious PHP application of 248,000 lines, which is the shape those rules actually run against. Ghost and Directus joined for the identical reason one round later: the JavaScript structural rules ask what a request HANDLER does, and an HTTP framework, an HTTP client, a date library and a promise library mount no routes at all — so those rules had been measured against a corpus that could not contain their subject, and reported zero for it.",
+  "not_a_precision_claim": "A finding here is NOT automatically a false positive. These are real projects and nobody has adjudicated the findings; some may be real. The figure is a noise FLOOR — an upper bound on how much a user is asked to read — and the README says so in the same words.",
+  "repos": [
+    {"name": "pallets/flask",      "lang": "python",     "sha": "d318b683471101618febed18996405ad26462110"},
+    {"name": "fastapi/fastapi",    "lang": "python",     "sha": "a1fa70d4237d50aae6586a0d9b229df583463d21"},
+    {"name": "psf/requests",       "lang": "python",     "sha": "8068356288978c4f54661ae6f95afe0e0831885e"},
+    {"name": "encode/httpx",       "lang": "python",     "sha": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"},
+    {"name": "expressjs/express",  "lang": "javascript", "sha": "a3714473feb3d2908add734d340e7755fd85e0a3"},
+    {"name": "axios/axios",        "lang": "javascript", "sha": "e6824eec5fcf9da467a9792724396badc490c469"},
+    {"name": "sindresorhus/got",   "lang": "javascript", "sha": "e3924aa1e53a6ca3eb93a43618ce532442a89b40"},
+    {"name": "date-fns/date-fns",  "lang": "javascript", "sha": "a0a39220522ed1228445792c768ed887709aea5f"},
+    {"name": "laravel/framework",       "lang": "php",        "sha": "90d01e88d6fac29e2a8d1319fd6eea106ded385e"},
+    {"name": "symfony/http-foundation", "lang": "php",        "sha": "a3cef50a1c6c37b60e0457d2152c2c572dc901cb"},
+    {"name": "guzzle/guzzle",           "lang": "php",        "sha": "d1cbca76970939a9c2ced55b1e25ea26f34fc773"},
+    {"name": "PHPMailer/PHPMailer",     "lang": "php",        "sha": "d8f8ed7580e8ad881ad069fb47ce8229caa8473d"},
+    {"name": "phpmyadmin/phpmyadmin",   "lang": "php",        "sha": "11e127f3fa64adb099d765c4cae6de026954068c"},
+    {"name": "TryGhost/Ghost",          "lang": "javascript", "sha": "083f23d02dd4d9dc9bed0535cb0129e0df12f23d"},
+    {"name": "directus/directus",       "lang": "typescript", "sha": "06027c83fc09551e1db78c1ea6dc5f69a74ed38b"}
+  ]
+}

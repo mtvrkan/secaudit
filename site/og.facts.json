@@ -1,0 +1,7 @@
+{
+  "note": "The figures the committed social cards were rendered from. `--check` holds this against gen_site.facts() so a card cannot outlive its number, without needing the browser that drew it.",
+  "facts": {
+    "rv_f3": "61.2",
+    "rv_repos": "62"
+  }
+}

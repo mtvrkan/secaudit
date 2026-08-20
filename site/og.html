@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0 }
+  html, body { width: 1200px; height: 630px }
+  body {
+    position: relative;
+    overflow: hidden;
+    background: #131311;
+    color: #f2f0ea;
+    font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .glow { position: absolute; border-radius: 50%; pointer-events: none }
+  .glow-a {
+    width: 900px; height: 900px; left: -250px; top: -330px;
+    background: radial-gradient(circle, #ff7a45 0%, transparent 64%);
+    opacity: .26;
+  }
+  .glow-b {
+    width: 760px; height: 760px; right: -250px; bottom: -350px;
+    background: radial-gradient(circle, #ff7a45 0%, transparent 68%);
+    opacity: .16;
+  }
+  .card {
+    position: relative; height: 100%; padding: 88px 96px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .top { display: flex; align-items: center; gap: 20px }
+  .tile {
+    width: 60px; height: 60px; border-radius: 17px; display: grid; place-items: center;
+    background: #ff7a45; flex: none;
+  }
+  .tile svg { width: 30px; height: 40px; display: block }
+  .top span {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 25px; letter-spacing: .02em; color: #f2f0ea;
+  }
+  /* The break is authored, not left to the measure: the reference this is modelled on puts the
+     accent half on its own line, and a wrap point chosen by the box width lands wherever the
+     longest word happens to fall — the English card broke after "with a", leaving the italic
+     starting on a lone article. `{{h1size}}` is per language for the same reason: the Turkish
+     line is four characters longer than the English one and one size does not set both. */
+  h1 {
+    font-family: "Sitka Display", "Palatino Linotype", Georgia, serif;
+    font-size: {{h1size}}; font-weight: 600; line-height: 1.06; letter-spacing: -.025em;
+  }
+  h1 em { font-style: italic; color: #ff9a70 }
+  .foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 32px;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 22px; color: #a09c92;
+  }
+  .foot b { color: #ff9a70; font-weight: 400 }
+</style>
+</head>
+<body>
+<div class="glow glow-a"></div>
+<div class="glow glow-b"></div>
+
+<div class="card">
+  <div class="top"><span class="tile">{{mark}}</span><span>SecAudit</span></div>
+  <h1>{{headline}}</h1>
+  <div class="foot">
+    <span>{{domain}}</span>
+    <span><b>{{proof}}</b> · {{proof_note}}</span>
+  </div>
+</div>
+</body>
+</html>

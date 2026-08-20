@@ -1,0 +1,172 @@
+name: SecAudit
+description: >-
+  Deterministic security audit — taint analysis, 115 detectors, dependency reachability (VEX),
+  SBOM and compliance evidence. Zero runtime dependencies. Gates a pull request on what it
+  introduced, not on the debt it inherited.
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  path:
+    description: File or directory to audit.
+    required: false
+    default: "."
+  since:
+    description: >-
+      Git ref to compare against. When set, the gate fires only on findings the change
+      INTRODUCED. On a pull_request event, leave this empty to compare against the base branch
+      automatically. Set it to "off" to disable the comparison and audit the whole tree.
+    required: false
+    default: ""
+  fail-on:
+    description: >-
+      Minimum severity that fails the job — critical, high, medium or low. Set to "none" to
+      report without ever failing.
+    required: false
+    default: "high"
+  sarif:
+    description: Also write SARIF to this path, for upload to GitHub code scanning.
+    required: false
+    default: ""
+  sbom:
+    description: Also write a CycloneDX 1.6 SBOM to this path.
+    required: false
+    default: ""
+  comment:
+    description: >-
+      Post the result as a pull-request comment. Requires `pull-requests: write` and a token.
+      Off by default: a workflow should not gain write access to your PRs by accident.
+    required: false
+    default: "false"
+  token:
+    description: Token used to post the comment. Only read when `comment` is true.
+    required: false
+    default: ""
+
+outputs:
+  introduced:
+    description: Number of findings this change introduced (0 when not comparing).
+    value: ${{ steps.audit.outputs.introduced }}
+  total:
+    description: Total number of findings in the audited tree.
+    value: ${{ steps.audit.outputs.total }}
+  report:
+    description: Path to the Markdown report written by this action.
+    value: ${{ steps.audit.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    # No `pip install`. The action runs the code in the checkout, so the version audited and
+    # the version reviewed are the same commit — and there is no window where a compromised
+    # release of a security scanner runs with your repository already checked out.
+    - name: Resolve baseline
+      id: baseline
+      shell: bash
+      env:
+        SINCE: ${{ inputs.since }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        set -euo pipefail
+        if [ "$SINCE" = "off" ]; then
+          echo "ref=" >> "$GITHUB_OUTPUT"
+        elif [ -n "$SINCE" ]; then
+          echo "ref=$SINCE" >> "$GITHUB_OUTPUT"
+        elif [ -n "${BASE_SHA:-}" ]; then
+          # A pull request has an obvious baseline and using it is what makes the gate
+          # survivable. Needs the commit to be present locally: actions/checkout defaults to
+          # depth 1, so this is only reachable with fetch-depth: 0 (or an explicit fetch),
+          # and it degrades to a whole-tree audit rather than failing when it is not.
+          if git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "ref=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=SecAudit::Base commit $BASE_SHA is not in this checkout, so \
+        the audit covers the whole tree instead of just what this PR introduced. Add \
+        'fetch-depth: 0' to actions/checkout to gate on the diff."
+            echo "ref=" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          echo "ref=" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Audit
+      id: audit
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}/kit
+        TARGET: ${{ inputs.path }}
+        REF: ${{ steps.baseline.outputs.ref }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        SARIF_OUT: ${{ inputs.sarif }}
+        SBOM_OUT: ${{ inputs.sbom }}
+      run: |
+        set -uo pipefail
+        report="$RUNNER_TEMP/secaudit-report.md"
+        json="$RUNNER_TEMP/secaudit.json"
+
+        min=()
+        [ "$FAIL_ON" != "none" ] && min=(--min "$FAIL_ON")
+
+        # One scan produces both shapes via --summary. Running it twice would double the work
+        # (with --since, four tree scans) and let the number the gate used disagree with the
+        # number a reviewer reads.
+        since=()
+        [ -n "$REF" ] && since=(--since "$REF")
+
+        python3 -m secaudit_core.cli "$TARGET" "${since[@]}" \
+          --format json -o "$json" --summary "$report" "${min[@]}"
+        status=$?
+
+        if [ -n "$REF" ]; then
+          introduced=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['counts']['introduced'])" "$json")
+        else
+          introduced=0
+        fi
+
+        # Exit 2 is "the comparison could not be made", not "your code is unsafe". Failing the
+        # job on it would be right; reporting it as a security finding would not.
+        if [ "$status" -eq 2 ]; then
+          echo "::error title=SecAudit::Could not run the audit — see the log above."
+          exit 2
+        fi
+
+        total=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(len(d.get('findings', d.get('unchanged',[])+d.get('introduced',[]))))" "$json")
+        echo "introduced=$introduced" >> "$GITHUB_OUTPUT"
+        echo "total=$total" >> "$GITHUB_OUTPUT"
+        echo "report=$report" >> "$GITHUB_OUTPUT"
+        echo "status=$status" >> "$GITHUB_OUTPUT"
+
+        [ -n "$SARIF_OUT" ] && python3 -m secaudit_core.cli "$TARGET" --format sarif -o "$SARIF_OUT" >/dev/null
+        [ -n "$SBOM_OUT" ] && python3 -m secaudit_core.cli "$TARGET" --format cyclonedx -o "$SBOM_OUT" >/dev/null
+
+        cat "$report" >> "$GITHUB_STEP_SUMMARY"
+        exit 0
+
+    - name: Comment on the pull request
+      if: ${{ inputs.comment == 'true' && github.event.pull_request.number }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPORT: ${{ steps.audit.outputs.report }}
+        PR: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        if [ -z "${GH_TOKEN:-}" ]; then
+          echo "::warning title=SecAudit::comment: true but no token was supplied; skipping."
+          exit 0
+        fi
+        gh api "repos/$REPO/issues/$PR/comments" -f body="$(cat "$REPORT")" >/dev/null
+
+    # Last, so the report and the SARIF upload always happen even when the gate fails.
+    - name: Gate
+      shell: bash
+      env:
+        STATUS: ${{ steps.audit.outputs.status }}
+      run: |
+        if [ "$STATUS" != "0" ]; then
+          echo "::error title=SecAudit::This change introduced a finding at or above the \
+        configured severity. See the job summary."
+          exit 1
+        fi

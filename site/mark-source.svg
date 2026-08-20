@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="458" height="605" viewBox="0 0 458 605">
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="0.18" y2="1">
+      <stop offset="0%" stop-color="#FF9900"/>
+      <stop offset="55%" stop-color="#FF7900"/>
+      <stop offset="100%" stop-color="#FF5A00"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(-400,-220)" fill="url(#orange)">
+    <!-- Upper shield / S frame -->
+    <path d="
+      M 626 236
+      L 422 339
+      L 422 477
+      C 422 495, 432 509, 449 520
+      L 637 612
+      L 695 578
+      L 478 470
+      C 472 467, 469 461, 469 454
+      L 469 375
+      L 628 295
+      L 784 373
+      L 786 424
+      L 834 451
+      L 834 339
+      Z"/>
+
+    <!-- Main S + integrated check -->
+    <path d="
+      M 632 375
+      C 624 374, 617 375, 612 378
+      L 544 411
+      L 765 525
+      C 773 529, 778 535, 780 543
+      C 783 554, 780 568, 770 582
+      L 618 737
+      L 550 673
+      L 501 701
+      L 616 813
+      L 807 622
+      C 826 603, 834 583, 834 558
+      L 834 519
+      C 834 499, 826 483, 808 471
+      L 646 382
+      C 641 379, 636 376, 632 375
+      Z"/>
+  </g>
+</svg>

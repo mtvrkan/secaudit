@@ -1,0 +1,183 @@
+
+<main id="top" tabindex="-1">
+
+<section class="hero">
+  <div class="wrap heroinner split">
+    <div class="herocopy">
+      <span class="pill rv">{{eyebrow_parts}}</span>
+      <h1 class="rv lines" style="--i:1">{{head_lines}}</h1>
+      <p class="lede rv" style="--i:2">{{lede}}</p>
+      <div class="herocta rv" style="--i:3">
+        <a class="btn btn-1" href="{{repo}}">{{cta_repo}}<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+        <a class="btn btn-2" href="{{bench_page_href}}">{{cta_secondary}}</a>
+      </div>
+      <p class="ctanote rv" style="--i:4">{{cta_note}}</p>
+    </div>
+
+    <div class="herodemo">
+      <div class="panel glass rv" style="--i:2">
+        <div class="chrome"><span class="tl tl1"></span><span class="tl tl2"></span><span class="tl tl3"></span>
+          <span class="name">{{demo_head}}</span><span class="right">TAINT-JS-CMDI</span></div>
+        <div class="pbody">
+          <div class="codewrap">
+            <span class="rail" aria-hidden="true"></span>
+<pre class="code"><span class="ln">12</span><span class="kw">const</span> host = <span class="srcmark">req.query.host</span><span class="srcdot"></span>
+<span class="ln">13</span><span class="sinkmark"><span class="fn">exec</span>(<span class="str">'ping -c 1 '</span> + host)</span></pre>
+          </div>
+          <ul class="chips">
+            <li class="chip chip-crit" style="--i:0">CWE-78 · Critical</li>
+            <li class="chip" style="--i:1">L12 → L13 · argument 0</li>
+            <li class="chip chip-ok" style="--i:2">{{chip_proof}}</li>
+          </ul>
+        </div>
+        <p class="pfoot">{{demo_foot}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee" aria-hidden="true"><div class="marquee__track">{{cwe_marquee}}</div></div>
+
+<section class="sep" id="what">
+  <div class="wrap">
+    <p class="kicker rv"><span class="kd"></span>{{what_kicker}}</p>
+    <h2 class="rv">{{what_title}}</h2>
+    <p class="sub rv">{{what_sub}}</p>
+    <ul class="surfaces tail rv">{{what_cards}}</ul>
+  </div>
+</section>
+
+<section class="sep" id="numbers">
+  <div class="wrap">
+    <p class="kicker rv"><span class="kd"></span>{{numbers_kicker}}</p>
+    <h2 class="rv">{{numbers_title}}</h2>
+    <p class="sub rv">{{numbers_sub}}</p>
+    <div class="blocks tail">
+      <div class="block glass lead rv" style="--i:1">
+        <h3>{{external_title}}</h3>
+        <p class="why">{{external_why}}</p>
+
+        <ul class="stats">
+          <li class="stat big"><b data-count="{{rv_pct_f3}}">{{rv_pct_f3}}</b><span>{{label_rv_f3}}</span></li>
+          <li class="stat"><b data-count="{{rv_pct_precision}}">{{rv_pct_precision}}</b><span>{{label_precision}}</span></li>
+          <li class="stat"><b data-count="{{rv_pct_recall}}">{{rv_pct_recall}}</b><span>{{label_rv_recall}}</span></li>
+          <li class="stat"><b data-count="{{rv_repos}}">{{rv_repos}}</b><span>{{label_rv_repos}}</span></li>
+        </ul>
+      </div>
+      <div class="block glass rv" style="--i:2">
+        <h3>{{own_title}}</h3>
+        <p class="why">{{own_why}}</p>
+        <ul class="stats">
+          <li class="stat"><b data-count="{{pct_recall}}">{{pct_recall}}</b><span>{{label_recall}}</span></li>
+          <li class="stat"><b data-count="{{pct_precision}}">{{pct_precision}}</b><span>{{label_own_precision}}</span></li>
+          <li class="stat"><b data-count="{{pct_f3}}">{{pct_f3}}</b><span>{{label_f3}}</span></li>
+          <li class="stat"><b data-count="{{trap_fps}}">{{trap_fps}}</b><span>{{label_traps}}</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note rv">{{numbers_caveat}}</p>
+  </div>
+</section>
+
+<section class="sep" id="disclosure">
+  <div class="wrap">
+    <p class="kicker rv"><span class="kd"></span>{{runs_kicker}}<span class="tag">{{runs_tag}}</span></p>
+    <h2 class="rv">{{runs_title}}</h2>
+    <p class="sub rv">{{runs_sub}}</p>
+    <p class="note rv">{{runs_caveat}}</p>
+    {{bench_next}}
+  </div>
+</section>
+
+<section class="sep" id="langs">
+  <div class="wrap">
+    <p class="kicker rv"><span class="kd"></span>{{lang_kicker}}<span class="tag">{{languages}}</span></p>
+    <h2 class="rv">{{lang_title}}</h2>
+    <p class="sub rv">{{lang_body}}</p>
+    <ul class="langgrid tail rv">{{lang_rows}}</ul>
+    <p class="note rv">{{lang_foot}}</p>
+  </div>
+</section>
+
+<section class="sep" id="gate">
+  <div class="wrap split">
+    <div>
+      <p class="kicker rv"><span class="kd"></span>{{gate_kicker}}<span class="tag">PreToolUse</span></p>
+      <h2 class="rv">{{gate_title}}</h2>
+      <p class="sub rv">{{gate_body}}</p>
+    </div>
+    <div class="panel glass rv" style="margin-top:0">
+      <div class="chrome"><span class="tl tl1"></span><span class="tl tl2"></span><span class="tl tl3"></span>
+        <span class="name">{{gate_head}}</span></div>
+      <div class="pbody term">
+        <div><span class="p">$</span> <span class="typed" style="--ch:30ch">nuclei -u https://acme.example</span></div>
+        <p class="banner b-deny"><strong>BLOCKED</strong> — {{gate_blocked}}</p>
+        <p class="banner b-allow"><strong>ALLOWED</strong> — {{gate_allowed}}</p>
+      </div>
+      <p class="pfoot">{{gate_foot}}</p>
+    </div>
+  </div>
+</section>
+
+<section class="sep" id="evidence">
+  <div class="wrap split">
+    <div>
+      <p class="kicker rv"><span class="kd"></span>{{comp_kicker}}<span class="tag">{{cra_date}}</span></p>
+      <h2 class="rv">{{comp_title}}</h2>
+      <p class="sub rv">{{comp_body}}</p>
+      <p class="note rv" style="margin-top:1.8rem">{{comp_foot}}</p>
+    </div>
+    <div class="fan rv">{{comp_docs}}</div>
+  </div>
+</section>
+
+<section class="sep" id="miss">
+  <div class="wrap split">
+    <div>
+      <p class="kicker rv"><span class="kd"></span>{{miss_kicker}}</p>
+      <h2 class="rv">{{miss_title}}</h2>
+      <p class="sub rv">{{miss_body}}</p>
+      <p class="note rv" style="margin-top:1.8rem">{{miss_foot}}</p>
+    </div>
+    <ul class="miss rv">{{miss_items}}</ul>
+  </div>
+</section>
+
+<section class="sep" id="install">
+  <div class="wrap split">
+    <div>
+      <p class="kicker rv"><span class="kd"></span>{{install_kicker}}</p>
+      <h2 class="rv">{{install_title}}</h2>
+      <p class="sub rv">{{install_sub}}</p>
+      <ul class="stats tail" style="max-width:28rem">
+        <li class="stat rv"><b data-count="{{detectors}}">{{detectors}}</b><span>{{label_detectors}}</span></li>
+        <li class="stat rv" style="--i:1"><b data-count="{{golden}}">{{golden}}</b><span>{{label_golden}}</span></li>
+        <li class="stat rv" style="--i:2"><b data-count="{{gates}}">{{gates}}</b><span>{{label_gates}}</span></li>
+        <li class="stat rv" style="--i:3"><b data-count="{{asvs_cwes}}">{{asvs_cwes}}</b><span>{{label_asvs}}</span></li>
+      </ul>
+    </div>
+    <div class="rv">
+      <p class="sub" style="margin-top:0">{{install_plugin_sub}}</p>
+      <pre class="sh"><code>{{install_plugin}}</code></pre>
+      <p class="sub" style="margin-top:1.5rem">{{standalone_sub}}</p>
+      <pre class="sh"><code>{{install_cli}}</code></pre>
+
+      {{install_next}}
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="finale glass rv">
+      <h2>{{cta_title}}</h2>
+      <p class="sub">{{cta_body}}</p>
+      <div class="herocta" style="margin-bottom:0">
+        <a class="btn btn-1" href="{{repo}}">{{cta_repo}}<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+        <a class="btn btn-2" href="{{repo}}/blob/main/docs/getting-started.md">{{cta_docs}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>

@@ -1,0 +1,7 @@
+{
+  "_comment": "SECURE COUNTERPART — SecAudit negative-control fixture.",
+  "note_s60": " S60 - No hardcoded payment key (CWE-798 fixed): the name of an environment variable is not a credential, and rotating it does not require a commit.",
+  "stripe_secret_key_env": "STRIPE_SECRET_KEY",
+  "note_s61": " S61 - No hardcoded API key (CWE-798 fixed): resolved at runtime from the secret manager, and restricted by referrer and API on the provider side as well.",
+  "google_api_key_env": "GOOGLE_MAPS_API_KEY"
+}

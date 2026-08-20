@@ -1,0 +1,175 @@
+{
+  "note": "Scored by eval/secbenchjs/score.py against SecBench.js sink locations. Recall is the sound metric; precision is a LOWER BOUND and is not comparable to the RealVuln figure — see the module docstring and README.md.",
+  "benchmark": "SecBench.js (github.com/cristianstaicu/SecBench.js, ISC)",
+  "run_date": "2026-08-20",
+  "engine_digest": "sha256:8f426cd2c1196ae15e6d5460220e6fa5041bd473a6d66cc2ad2806c9f8fc0db9",
+  "engine_digest_note": "sha256 over every secaudit_core module that can change what the measured run emits, taken from the scan results themselves rather than from the working tree — this records the engine that produced these findings. Check 32 recomputes it and fails the build when it moves, because the figures then describe an engine that no longer exists. RealVuln's result.json had this from the round where a published precision of 0.5419 turned out to describe an engine that actually returned 0.4711; the SecBench figures are published in four documents and had nothing holding them to the code.",
+  "line_tolerance": 10,
+  "blind": false,
+  "blind_note": "This run is NOT blind. The engine has since been changed in response to what the blind run below reported, which is corpus-informed selection in exactly the way RealVuln's figure has been since its third run. Quote `blind_run` when the question is how this engine does on unseen code.",
+  "blind_run": {
+    "run_date": "2026-08-16",
+    "remeasured": "2026-08-17",
+    "note": "The only blind run. No rule in this engine had been written or selected by reading a SecBench.js label when this was measured. Re-measured on 2026-08-17 from a worktree at the commit that produced it, so that the scorer's corrected path matcher applies to it as well: with the original matcher it reproduces 128 / 573 and recall 0.2234 exactly, and the figures here are that run scored the way every figure in this file is scored now.",
+    "engine_digest": "sha256:e4ee787354b0e91a60d1214abb64841e0b6f8475233f1d0634f932c2bd6952cb",
+    "overall": {
+      "tp": 131,
+      "fn": 442,
+      "fp_unmatched": 2030,
+      "recall": 0.2286,
+      "precision_lower_bound": 0.0606
+    },
+    "overall_as_first_published": {
+      "tp": 128,
+      "fn": 445,
+      "fp_unmatched": 1966,
+      "recall": 0.2234,
+      "precision_lower_bound": 0.0611
+    },
+    "by_class": {
+      "code-injection": {
+        "tp": 19,
+        "labels": 33
+      },
+      "command-injection": {
+        "tp": 41,
+        "labels": 101
+      },
+      "path-traversal": {
+        "tp": 61,
+        "labels": 167
+      },
+      "prototype-pollution": {
+        "tp": 10,
+        "labels": 185
+      },
+      "redos": {
+        "tp": 0,
+        "labels": 87
+      }
+    },
+    "misses_by_cause": {
+      "no rule fired at the sink": 396,
+      "labelled file is not in the published package": 32,
+      "labelled file is ambiguous — the package holds more than one of that name": 4,
+      "sink is in a file type no detector claims": 2,
+      "sink is under build/, which the scanner skips as build output": 1,
+      "sink is under dist/, which the scanner skips as build output": 1
+    }
+  },
+  "entries_total": 600,
+  "packages_scanned": 575,
+  "labels_scored": 573,
+  "labels_without_a_sink_location": 27,
+  "packages_not_fetched": 25,
+  "packages_not_scanned": 0,
+  "overall": {
+    "tp": 312,
+    "fn": 261,
+    "fp_unmatched": 3369,
+    "recall": 0.5445,
+    "precision_lower_bound": 0.0848
+  },
+  "misses_by_cause": {
+    "no rule fired at the sink": 201,
+    "labelled file is not in the published package": 27,
+    "labelled file is ambiguous — the package holds more than one of that name": 4,
+    "sink is in a file type no detector claims": 2,
+    "sink is under build/, which the scanner skips as build output": 1,
+    "sink is under dist/, which the scanner skips as build output": 1
+  },
+  "sink_resolution": {
+    "exact": 481,
+    "resolved": 36,
+    "absent": 27,
+    "ambiguous": 4
+  },
+  "sink_resolution_note": "How each label's stated path was matched to a file in the package: `exact` it was already one, `resolved` a unique file matched it on component boundaries in one direction or the other, and the rest could not be resolved and are counted as misses under their own causes. See the module docstring.",
+  "by_class": {
+    "code-injection": {
+      "tp": 22,
+      "fn": 11,
+      "fp": 203,
+      "labels": 33,
+      "recall": 0.6667
+    },
+    "command-injection": {
+      "tp": 62,
+      "fn": 39,
+      "fp": 323,
+      "labels": 101,
+      "recall": 0.6139
+    },
+    "path-traversal": {
+      "tp": 128,
+      "fn": 39,
+      "fp": 400,
+      "labels": 167,
+      "recall": 0.7665
+    },
+    "prototype-pollution": {
+      "tp": 72,
+      "fn": 113,
+      "fp": 1589,
+      "labels": 185,
+      "recall": 0.3892
+    },
+    "redos": {
+      "tp": 28,
+      "fn": 59,
+      "fp": 854,
+      "labels": 87,
+      "recall": 0.3218
+    }
+  },
+  "by_seal": {
+    "sealed": {
+      "tp": 70,
+      "labels": 121,
+      "recall": 0.5785
+    },
+    "unsealed": {
+      "tp": 242,
+      "labels": 452,
+      "recall": 0.5354
+    }
+  },
+  "by_seal_note": "The held-out slice, per eval/HELDOUT.md. Sealed packages are scored but never inspected, and their names never appear in this file. Today this is a BASELINE and not a blind figure — they were in the corpus for the blind run and both tuned rounds. Its value is the next round: if `unsealed` moves and `sealed` does not, that round bought corpus fit rather than detection.",
+  "missed_samples": {
+    "code-injection": [
+      "hot-formula-parser_3.0.0 :: lib/grammar-parser/grammar-parser.js:258:31",
+      "is-my-json-valid_2.20.0 :: index.js:172:21",
+      "local-devices_2.0.0 :: src/index.js:114:13",
+      "safer-eval_1.3.1 :: lib/index.js:60:17",
+      "static-eval_1.1.1 :: index.js:118:20"
+    ],
+    "command-injection": [
+      "adb-driver_0.1.8 :: build/AdbDriver.js:26:25",
+      "apex-publish-static-files_2.0.0 :: index.js:54:25",
+      "apiconnect-cli-plugins_6.0.2 :: lib/plugin-loader.js:181:18",
+      "async-git_1.13.1 :: lib/reset/index.js:11:16",
+      "buns_1.1.6 :: lib/index.js:678:9"
+    ],
+    "path-traversal": [
+      "api-proxy_0.0.2 :: lib/static.js:40:9",
+      "asset-cache_0.0.6 :: lib/asset-cache.js:31:8",
+      "basic-static_2.0.2 :: basic-static.js:121:21",
+      "crud-file-server_0.7.0 :: crud-file-server.js:170:14",
+      "cyber-js_1.0.6 :: app.js:43:6"
+    ],
+    "prototype-pollution": [
+      "101_1.0.0 :: index.js:32:16",
+      "bodymen_1.0.0 :: dist/index.js:44:26",
+      "cached-path-relative_1.0.1 :: lib/index.js:39:19",
+      "component-flatten_1.0.1 :: index.js:56:26",
+      "confinit_0.3.0 :: index.ts:112:15"
+    ],
+    "redos": [
+      "ajv_5.2.2 :: util.js:143:14",
+      "browserslist_4.16.4 :: index.js:333:29",
+      "charset_1.0.0 :: charset.js:59:26",
+      "colors-cli_1.0.25 :: color-safe.js:60:23",
+      "content_3.0.5 :: index.js:84:34"
+    ]
+  }
+}

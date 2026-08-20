@@ -1,0 +1,70 @@
+name: Publish site
+
+# The page is regenerated from the repository on every push to main, so a figure on it can
+# never lag the code that produced it. `gen_site.py --check` also runs in the validation
+# workflow, which means a pull request that would publish a stale or hand-typed number fails
+# before it merges rather than after it is live.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Read-only for the workflow as a whole. The two write scopes Pages needs belong to the one job
+# that deploys, not to every job in the file: `build` runs a generator over repository content
+# and checks out the tree, and a token that can publish a site is not something a build step
+# should be holding while it does that.
+permissions:
+  contents: read
+
+# Never publish two builds at once; let an in-flight one finish rather than cancelling it,
+# since the second would only overwrite what the first is mid-way through uploading.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Render the page from repository facts
+        run: python3 scripts/gen_site.py
+        env:
+          PYTHONPATH: kit
+
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    # Pages on a PRIVATE repository needs a paid plan, so this job could not succeed before
+    # launch and was failing on every push — the same defect `self-scan.yml` was fixed for one
+    # workflow over, and a permanently red check is one everybody learns to ignore.
+    #
+    # A skip rather than `continue-on-error`, deliberately. `continue-on-error` on a job whose
+    # entire purpose IS the deploy would report green whether it published or not, including
+    # after the repository is public, which trades a visible non-problem for an invisible real
+    # one. Skipped is the truthful state: this cannot run yet, and nothing was hidden.
+    #
+    # It self-heals. The day the repository goes public the condition flips and the deploy runs
+    # with no edit to this file — so unlike step 4b there is nothing to remember to delete. What
+    # IS worth remembering is on the launch checklist: a job that has only ever skipped has never
+    # been proven, so the first real run is the proof. If `repository.private` is ever absent
+    # from the payload the expression evaluates true and the job runs, which is the right way
+    # round to fail — a loud deploy error beats silently never deploying again.
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write            # publish the uploaded artifact
+      id-token: write         # OIDC token deploy-pages exchanges for the deployment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
