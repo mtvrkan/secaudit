@@ -1952,6 +1952,16 @@ def build(page: str, lang: str, data: dict) -> str:
 
     html = _TOKEN.sub(lambda m: values[m.group(1)], template)
 
+    # Comments come out here, before the hash is taken — not at write time, which is where this
+    # used to happen and where it broke the site. `strip_comments` rewrites the inside of the
+    # `<script>` block, and its line filter drops the script's trailing newline whether or not
+    # there was a comment to remove. So the policy named the hash of a script that was never
+    # written, Chrome refused to run the one that was, and every reveal, counter, typed line,
+    # nav-pill and sticky-header state died with no error anywhere on the page. What is hashed
+    # is now what is written; `verify` re-derives the hash from the shipped bytes and fails the
+    # build if the two ever part company again.
+    html = strip_comments(html)
+
     # A Content-Security-Policy, and the hash in it is computed from the script it is describing
     # rather than pasted beside it. GitHub Pages cannot set response headers, so this is the meta
     # form: `frame-ancestors` and `report-uri` are header-only and deliberately absent rather
@@ -2022,6 +2032,23 @@ def verify(name: str, page: str, data: dict) -> list[str]:
     if "__CSP_" in page:
         problems.append("the CSP marker survived into the output — the policy would name a "
                         "hash that matches nothing and block the page's own script")
+
+    # The hash, recomputed from the script this page actually ships. A marker that was replaced
+    # is not the same claim as a hash that matches: the build hashed the script and then edited
+    # it — `strip_comments` ran afterwards and took one byte, the script's trailing newline —
+    # and the result was a valid-looking policy naming bytes that were nowhere in the file.
+    # Chrome blocked the inline script on every page and said so only in a console nobody had
+    # open; the site simply had no animation, no scroll state and a header that never went
+    # opaque. Derived from the output rather than trusted, like every other figure here.
+    shipped = re.search(r"<script>(.*?)</script>", page, re.S)
+    declared = re.search(r"script-src '([^']*)'", page)
+    if shipped and declared:
+        digest = base64.b64encode(
+            hashlib.sha256(shipped.group(1).encode("utf-8")).digest()).decode()
+        if declared.group(1) != f"sha256-{digest}":
+            problems.append(f"the CSP names {declared.group(1)} and the script this page ships "
+                            f"hashes to sha256-{digest} — the browser would block it, and every "
+                            f"reveal, counter and sticky-header state would silently not run")
 
     # The shell's two composition tokens are substituted by a plain string replace, which has no
     # idea what a CSS comment is: a comment that spelled the main-element token out was replaced
@@ -2229,7 +2256,7 @@ def main(argv: list[str]) -> int:
         out = os.path.join(DIST, *rel.split("/"))
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "w", encoding="utf-8") as f:
-            f.write(strip_comments(html))
+            f.write(html)
     # A custom domain needs CNAME on the published branch, and it must agree with ORIGIN —
     # one produces the other, so they cannot disagree.
     with open(os.path.join(DIST, "CNAME"), "w", encoding="utf-8") as f:

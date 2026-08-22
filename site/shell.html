@@ -80,9 +80,10 @@
   transform:translateY(-160%);transition:transform .2s cubic-bezier(.22,1,.36,1)}
 .skip:focus-visible{transform:none}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;
+  overflow-x:hidden;overflow-x:clip}
 body{
-  margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden;
+  margin:0;background:var(--bg);color:var(--ink);
   font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI Variable Text","Segoe UI",
     Roboto,Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;

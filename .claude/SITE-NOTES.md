@@ -734,3 +734,24 @@ narrows instead of stranding dead space under it.
 Verified by measurement rather than by eye: `numSpread` and `labSpread` are 0 for all three rows on
 the landing page, and an alignment audit over every page in both languages — comparing the first
 text element of each same-class sibling on a shared visual row — reports nothing above 2px.
+
+### `site/shell.html` — where the horizontal clip lives, and why it is not on `body`
+
+`body{overflow-x:hidden}` is the line that stops a wide element from opening a sideways scrollbar,
+and on a page whose header is `position:sticky` it is also the line that stops the header from
+sticking. Setting `overflow` on `body` while `html` stays `visible` makes `body` a scroll container
+of its own, and a sticky child pins to the nearest scrollport rather than to the viewport. Chrome
+happens to keep the header pinned anyway; WebKit does not, so on an iPhone the topbar scrolled up
+and away with the content and every other browser looked fine — which is why it survived so long.
+
+The clip moved to the root instead, where the viewport takes it and no new scroll container is
+created:
+
+```css
+html{overflow-x:hidden;overflow-x:clip}
+```
+
+Both declarations on purpose, in that order. `clip` is the correct one — it clips without implying
+scrollability at all — and it is Safari 16+; a browser that does not know it drops the line and
+keeps `hidden`, which on `html` propagates to the viewport and leaves sticky alone. `body` now
+declares no `overflow` at all: one element owns the decision.
