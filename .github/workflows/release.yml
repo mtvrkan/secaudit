@@ -162,4 +162,4 @@ jobs:
       # branch — our own SEC-CI-MUTABLE-ACTION rule flags it, which is how this line came to be
       # pinned. The action that uploads to PyPI is the last one worth taking on trust.
       # v1.14.2 is an annotated tag, so this is the commit it dereferences to, not the tag object.
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
