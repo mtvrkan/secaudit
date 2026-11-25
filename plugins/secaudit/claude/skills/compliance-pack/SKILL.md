@@ -40,7 +40,7 @@ conformity assessment here, no Article 13 risk assessment and no legal opinion.
 
 ## What the mappings will and will not claim
 
-Read [`docs/compliance.md`](../../../../docs/compliance.md) before answering a question about
+Read [`docs/compliance.md`](../../../../../docs/compliance.md) before answering a question about
 coverage. The short version, because it is the part users push back on:
 
 - **ASVS 5.0** — chapter level (V1–V17). Requirement level is not attempted: ASVS moved external

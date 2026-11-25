@@ -16,14 +16,14 @@ and all local static analysis (SAST / dependency / secret scanners) are never bl
 need no gate. The probe-payload check is high-precision (common OWASP canaries only); an
 obfuscated/encoded payload or a `WebFetch`-tool GET is not shell-visible and still relies on
 the skill's authorization discipline — this is defense-in-depth, not a complete WAF.
-See [`../../../docs/authorization.md`](../../../docs/authorization.md).
+See [`../../../docs/authorization.md`](../../../../docs/authorization.md).
 
 ### Asserting authorization (to allow active testing)
 
 Either of:
 
 - a `scope.yaml` in the working directory containing `i_am_authorized: true`, **kept untracked
-  by git** (start from [`../../../templates/scope.example.yaml`](../../../templates/scope.example.yaml)), or
+  by git** (start from [`../../../templates/scope.example.yaml`](../../../../templates/scope.example.yaml)), or
 - the environment variable `SECAUDIT_ACTIVE=1` for the session.
 
 A `scope.yaml` that is committed to the repository is ignored: it arrived with a clone, so it
@@ -56,6 +56,17 @@ interpreter is genuinely absent (stdin still intact for the next one). The deny 
 carries both the modern `permissionDecision: deny` and the legacy `decision: block` fields so
 any Claude Code version honors it.
 
+### Under Codex
+
+The Codex plugin in [`../../codex/`](../../codex) carries a generated copy of this folder's
+`hooks.json` and of the guard itself, unchanged apart from the root variable (`${PLUGIN_ROOT}`).
+Codex registers the hook under the same `Bash` matcher, and the guard's
+`permissionDecision: deny` reply is a valid PreToolUse output by the schema Codex 0.172 ships.
+Two differences are worth knowing. Codex does not run a
+plugin's hook until the user has reviewed it in `/hooks`, so on a fresh install the gate is the
+skill's own discipline until that is done. And a command may arrive as an argv list rather than
+a string; the guard reads both, and the self-test asserts it.
+
 ### Fail-open is intentional (and bounded)
 
 The guard **fails open** on a malformed/unparseable PreToolUse payload so a bad payload can
@@ -69,9 +80,9 @@ deterministic layer.
 ### Self-test
 
 ```
-python3 plugins/secaudit/hooks/active-scan-guard.py --selftest
+python3 plugins/secaudit/claude/hooks/active-scan-guard.py --selftest
 ```
 
 Asserts the active patterns block and passive/local ones pass while unauthorized, and that
 `SECAUDIT_ACTIVE=1` lets an active command through. Wired into CI
-([`../../../.github/workflows/validate.yml`](../../../.github/workflows/validate.yml)).
+([`../../../.github/workflows/validate.yml`](../../../../.github/workflows/validate.yml)).

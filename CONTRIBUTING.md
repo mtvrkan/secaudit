@@ -34,9 +34,11 @@ python3 scripts/run_checks.py --list   # what each gate is and how to run it alo
 
 Two gates deserve a note, because they fail in ways that look like a bug and are not:
 
-- **`check_repo.py` (checks 11–20)** — manifests, plugin layout, frontmatter, the
+- **`check_repo.py` (checks 11–20, and 46)** — manifests, plugin layout, frontmatter, the
   command-allowlist subset rule, dangling references, relative links, hook wiring, stray
-  secrets.
+  secrets. **If you change anything under `plugins/secaudit/claude/`, check 46 will fail until
+  you run `python3 scripts/gen_codex.py`** — the Codex plugin in `plugins/secaudit/codex/` is
+  generated from it and is held to it. Never edit the generated files.
 - **`check_consistency.py` (checks 01–10)** — recomputes every number the docs state about
   the kit from the detector table, the golden set and the shipped plugin tree. **If you add a
   detector or a golden finding, a stated count somewhere will now be wrong and the gate will
@@ -54,7 +56,7 @@ two are kept in sync by hand.
 3. If you touch a manifest (`plugin.json`, `marketplace.json`), validate it:
    ```bash
    claude plugin validate . --strict
-   claude plugin validate ./plugins/secaudit --strict
+   claude plugin validate ./plugins/secaudit/claude --strict
    ```
    `--strict` turns unknown-field warnings into errors. `scripts/check_repo.py` runs the same
    field-strictness rules offline, so you get the answer without the CLI.

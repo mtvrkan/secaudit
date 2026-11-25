@@ -1,6 +1,6 @@
 # SecAudit Kit — self-running, provider-agnostic core
 
-The Claude Code plugin (in [`../plugins/secaudit`](../plugins/secaudit)) drives an audit
+The Claude Code plugin (in [`../plugins/secaudit/claude`](../plugins/secaudit/claude)) drives an audit
 *inside a Claude Code session*. This `kit/` is the **standalone** counterpart: a dependency-free
 Python CLI that runs on its own — in CI, cron, or a shell — and is **not tied to Claude**.
 

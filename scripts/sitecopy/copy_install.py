@@ -79,7 +79,7 @@ INSTALL_COPY: dict[str, dict[str, str]] = {
         "s1_verify": "Then type `/secaudit`. The command should appear with its argument hint — "
                      "if it does not, the marketplace was added but the plugin was not "
                      "installed.",
-        "s1_cmd_head": "plugins/secaudit/commands/",
+        "s1_cmd_head": "plugins/secaudit/claude/commands/",
 
         "s2_kicker": "2 / {surfaces}",
         "s2_tag": "no key, no network",
@@ -226,7 +226,7 @@ INSTALL_COPY: dict[str, dict[str, str]] = {
                    "bir host'a ulaşmaz.",
         "s1_verify": "Sonra `/secaudit` yazın. Komut, argüman ipucuyla birlikte görünmeli — "
                      "görünmüyorsa marketplace eklenmiş ama eklenti kurulmamıştır.",
-        "s1_cmd_head": "plugins/secaudit/commands/",
+        "s1_cmd_head": "plugins/secaudit/claude/commands/",
 
         "s2_kicker": "2 / {surfaces}",
         "s2_tag": "anahtar yok, ağ yok",

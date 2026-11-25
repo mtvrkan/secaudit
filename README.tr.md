@@ -177,6 +177,20 @@ Hepsi bu. Başlamak için kurulacak araç yok — SecAudit yalnızca Claude ile 
 taramalar için isteğe bağlı olarak önerilen araçları kurun (`semgrep`, `osv-scanner`, `gitleaks`,
 `testssl.sh`).
 
+**Ya da [Codex](https://developers.openai.com/codex) içinde.** Depo, Claude Code eklentisinden
+üretilen ikinci bir eklenti taşır — aynı skill'ler, aynı yetkilendirme hook'u ve adıyla
+çağırdığınız skill'ler olarak dört komut (`$secaudit`, `$secaudit-code`, `$secaudit-deps`,
+`$secaudit-passive`):
+
+```bash
+codex plugin marketplace add mtvrkan/secaudit
+codex plugin add secaudit@secaudit-kit
+```
+
+Codex, bir eklentinin hook'unu siz `/hooks` içinde inceleyene kadar çalıştırmaz; doğrulayıcı
+ajan da ayrıca kurulur. İki adım ve neyin neye karşılık geldiği:
+[`plugins/secaudit/codex/README.md`](plugins/secaudit/codex/README.md).
+
 ## Kullanım
 
 ```bash

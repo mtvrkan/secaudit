@@ -1,0 +1,44 @@
+{
+  "name": "secaudit",
+  "version": "1.0.0",
+  "description": "Authorized, defensive security audit engine for Codex. Scans a live URL or source-code repo for known (CVE/dependency) and unknown (logic/code) vulnerabilities across the OWASP Web/API/LLM/Mobile Top 10 and CWE Top 25, using installed scanners (semgrep, trivy, osv-scanner, gitleaks, testssl.sh) when available and LLM analysis otherwise. Produces a prioritized, remediation-focused report. Safe/passive by default; active testing requires explicit authorization.",
+  "author": {
+    "name": "mtvrkan",
+    "url": "https://github.com/mtvrkan"
+  },
+  "homepage": "https://github.com/mtvrkan/secaudit",
+  "repository": "https://github.com/mtvrkan/secaudit",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "audit",
+    "vulnerability-scanner",
+    "owasp",
+    "sast",
+    "dependency-audit",
+    "pentest",
+    "appsec",
+    "cve",
+    "secrets-detection"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "SecAudit",
+    "shortDescription": "Authorized, defensive security audit tooling for Codex",
+    "longDescription": "Authorized, defensive security audit engine: scans a live URL or a source-code repo for known (CVE/dependency) and unknown (logic/code) vulnerabilities and produces a prioritized, remediation-focused report. Safe by default; active testing requires authorization.",
+    "developerName": "mtvrkan",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/mtvrkan/secaudit",
+    "defaultPrompt": [
+      "Run $secaudit-code on this repository",
+      "Run $secaudit-deps to check dependencies and secrets",
+      "Run $secaudit-passive against a URL I own"
+    ]
+  }
+}

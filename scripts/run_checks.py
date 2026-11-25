@@ -36,7 +36,7 @@ GATES: list[tuple[str, list[str], bool]] = [
     ("language coverage matrix is current", ["scripts/gen_language_matrix.py", "--check"], True),
     ("what-we-miss page is current", ["scripts/gen_what_we_miss.py", "--check"], False),
     ("example report is a live scan", ["scripts/gen_example_report.py", "--check"], False),
-    ("authorization hook self-test", ["plugins/secaudit/hooks/active-scan-guard.py", "--selftest"], True),
+    ("authorization hook self-test", ["plugins/secaudit/claude/hooks/active-scan-guard.py", "--selftest"], True),
     # The measurement runner cannot be gated by running it — four corpora is an hour. What can be
     # gated is that it still works: the lock is exclusive, every committed result file renders in
     # the delta table, and no module is unclassified in the digest. A runner nobody tests is one

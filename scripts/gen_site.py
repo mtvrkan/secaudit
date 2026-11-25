@@ -168,7 +168,7 @@ def repro_commands() -> str:
 
 MARKETPLACE = os.path.join(REPO, ".claude-plugin", "marketplace.json")
 PYPROJECT = os.path.join(REPO, "kit", "pyproject.toml")
-COMMANDS_DIR = os.path.join(REPO, "plugins", "secaudit", "commands")
+COMMANDS_DIR = os.path.join(REPO, "plugins", "secaudit", "claude", "commands")
 ACTION_YML = os.path.join(REPO, "action.yml")
 DOCKERFILE = os.path.join(REPO, "Dockerfile")
 HOOKS_YML = os.path.join(REPO, ".pre-commit-hooks.yaml")
@@ -210,14 +210,14 @@ def plugin_commands() -> list:
         desc = re.search(r"^description:\s*(.+)$", text, re.M)
         hint = re.search(r"^argument-hint:\s*(.+)$", text, re.M)
         if not desc:
-            raise SystemExit(f"gen-site: plugins/secaudit/commands/{name} has no "
+            raise SystemExit(f"gen-site: plugins/secaudit/claude/commands/{name} has no "
                              f"`description:` in its frontmatter — Claude Code would list the "
                              f"command unexplained and so would this page")
         out.append(("/" + name[:-3],
                     hint.group(1).strip().strip('"') if hint else "",
                     desc.group(1).strip()))
     if not out:
-        raise SystemExit("gen-site: plugins/secaudit/commands/ holds no commands")
+        raise SystemExit("gen-site: plugins/secaudit/claude/commands/ holds no commands")
     return out
 
 

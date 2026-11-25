@@ -135,7 +135,7 @@ trusted as the client driving it.
 
 Everything above is passive. The live-target track can send requests, and that is gated
 deterministically rather than by model discipline: a `PreToolUse` hook
-(`plugins/secaudit/hooks/active-scan-guard.py`) blocks offensive scanners, state-changing HTTP
+(`plugins/secaudit/claude/hooks/active-scan-guard.py`) blocks offensive scanners, state-changing HTTP
 methods, and read-only requests carrying probe payloads, unless authorization is asserted by an
 untracked `scope.yaml` with `i_am_authorized: true` or `SECAUDIT_ACTIVE=1`.
 

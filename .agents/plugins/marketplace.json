@@ -1,0 +1,20 @@
+{
+  "name": "secaudit-kit",
+  "interface": {
+    "displayName": "SecAudit"
+  },
+  "plugins": [
+    {
+      "name": "secaudit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/secaudit/codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Coding"
+    }
+  ]
+}

@@ -26,7 +26,7 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KIT = os.path.join(REPO, "kit")
-PLUGIN = os.path.join(REPO, "plugins", "secaudit")
+PLUGIN = os.path.join(REPO, "plugins", "secaudit", "claude")
 SKILL_DIR = os.path.join(PLUGIN, "skills", "security-audit")
 REFS = os.path.join(SKILL_DIR, "references")
 

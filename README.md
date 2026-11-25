@@ -176,18 +176,32 @@ scans, optionally install the [recommended tools](docs/tooling-setup.md) (`semgr
 
 ```bash
 git clone https://github.com/mtvrkan/secaudit
-cp -r secaudit/plugins/secaudit/skills/*   ~/.claude/skills/
-cp -r secaudit/plugins/secaudit/commands/* ~/.claude/commands/
-cp -r secaudit/plugins/secaudit/agents/*   ~/.claude/agents/
+cp -r secaudit/plugins/secaudit/claude/skills/*   ~/.claude/skills/
+cp -r secaudit/plugins/secaudit/claude/commands/* ~/.claude/commands/
+cp -r secaudit/plugins/secaudit/claude/agents/*   ~/.claude/agents/
 ```
 
 > Manual install copies the skill, commands, and agent — but **not** the PreToolUse
 > `hooks/`, which the marketplace install wires automatically. Without the hook, the
 > passive/active authorization gate falls back to model discipline only (the deterministic,
 > harness-level block on active scanners and probe payloads is not active). To keep it, also
-> register `plugins/secaudit/hooks/active-scan-guard.py` as a PreToolUse hook — see
-> [`hooks/README.md`](plugins/secaudit/hooks/README.md).
+> register `plugins/secaudit/claude/hooks/active-scan-guard.py` as a PreToolUse hook — see
+> [`hooks/README.md`](plugins/secaudit/claude/hooks/README.md).
 </details>
+
+**Or in [Codex](https://developers.openai.com/codex).** The repository carries a second plugin
+for it, generated from the Claude Code one — the same skills, the same authorization hook, and
+the four commands as skills you call by name (`$secaudit`, `$secaudit-code`, `$secaudit-deps`,
+`$secaudit-passive`):
+
+```bash
+codex plugin marketplace add mtvrkan/secaudit
+codex plugin add secaudit@secaudit-kit
+```
+
+Codex does not run a plugin's hook until you have reviewed it in `/hooks`, and the verifier
+agent is installed separately. Both steps, and what maps to what:
+[`plugins/secaudit/codex/README.md`](plugins/secaudit/codex/README.md).
 
 ## Usage
 

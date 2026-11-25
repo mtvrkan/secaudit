@@ -180,14 +180,28 @@ def active_reason(cmd: str) -> str | None:
     return None
 
 
+def command_text(payload: dict) -> str:
+    """The shell command of a PreToolUse payload, as the one string the patterns read.
+
+    Claude Code sends `tool_input.command` as a string. Codex runs this same hook and may send
+    an argv list instead, and a list handed to a regex is a TypeError — which the `||` chain in
+    hooks.json would answer by re-running the guard on an empty stdin and allowing the command.
+    That is a block lost without a word, so the shape is normalised here, and anything that is
+    not a command at all reads as an empty one (nothing to gate) rather than raising."""
+    tool_input = payload.get("tool_input")
+    cmd = tool_input.get("command") if isinstance(tool_input, dict) else None
+    if isinstance(cmd, (list, tuple)):
+        return " ".join(str(part) for part in cmd)
+    return cmd if isinstance(cmd, str) else ""
+
+
 def decide(payload: dict) -> int:
     """Core decision (no I/O) for a PreToolUse payload: 0 = allow, 2 = block.
     This is the internal decision signal (asserted by the self-test); the process
     itself always exits 0 and signals a block via a JSON deny decision — see `main`."""
     if payload.get("tool_name") != "Bash":
         return 0
-    cmd = (payload.get("tool_input") or {}).get("command", "") or ""
-    if not active_reason(cmd):
+    if not active_reason(command_text(payload)):
         return 0
     return 0 if authorized() else 2
 
@@ -340,6 +354,16 @@ def selftest() -> int:
             fails.append(f"[should ALLOW] {c}")
     if decide({"tool_name": "Read", "tool_input": {"file_path": "x"}}) != 0:
         fails.append("[should ALLOW] non-Bash tool")
+    # The same command as an argv list, which is how Codex may deliver it to this hook. Before
+    # `command_text` this raised, and the hooks.json fallback chain turned the crash into an allow.
+    if decide({"tool_name": "Bash", "tool_input": {"command": ["nmap", "-sV", "x.com"]}}) != 2:
+        fails.append("[should BLOCK] an active command delivered as an argv list")
+    if decide({"tool_name": "Bash", "tool_input": {"command": ["curl", "-I", "https://x.com/"]}}) != 0:
+        fails.append("[should ALLOW] a passive command delivered as an argv list")
+    for shapeless in ({"tool_name": "Bash"}, {"tool_name": "Bash", "tool_input": "nmap x.com"},
+                      {"tool_name": "Bash", "tool_input": {"command": None}}):
+        if decide(shapeless) != 0:
+            fails.append(f"[should ALLOW] a payload with no readable command: {shapeless}")
     # Authorized env must let an active command through.
     os.environ["SECAUDIT_ACTIVE"] = "1"
     if decide(_bash("nuclei -u https://x.com")) != 0:
@@ -412,10 +436,9 @@ def main() -> int:
         payload = json.load(sys.stdin)
     except Exception:
         return 0  # can't parse -> never interfere
-    if payload.get("tool_name") != "Bash":
+    if not isinstance(payload, dict) or payload.get("tool_name") != "Bash":
         return 0
-    cmd = (payload.get("tool_input") or {}).get("command", "") or ""
-    reason = active_reason(cmd)
+    reason = active_reason(command_text(payload))
     if not reason:
         return 0            # passive / non-matching -> allow
     if os.environ.get("SECAUDIT_ACTIVE") == "1":

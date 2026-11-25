@@ -658,7 +658,7 @@ that table point at a phase the document did not contain.
   tag with the digest-pinning command documented: a digest has to be *resolved* to be real,
   and one typed from memory is unverifiable and fails at build time.
 - ✅ **Live-target depth (G11)** — phase P10 of the audit skill, with
-  [`references/browser-driven.md`](plugins/secaudit/skills/security-audit/references/browser-driven.md):
+  [`references/browser-driven.md`](plugins/secaudit/claude/skills/security-audit/references/browser-driven.md):
   SPA/DOM XSS, auth-flow walking, post-login surface discovery and the two-role replay that
   decides broken access control, all behind the same authorization gate and passive by default.
   *Revised from the plan:* the browser comes from the harness, not from the package. Shipping

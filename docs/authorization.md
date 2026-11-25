@@ -37,7 +37,7 @@ which is the one channel a repository cannot supply.
 ## Deterministic enforcement (PreToolUse hook)
 
 The passive/active boundary is not left to model discipline alone. The plugin ships a
-**PreToolUse hook** (`plugins/secaudit/hooks/active-scan-guard.py`) that runs before every
+**PreToolUse hook** (`plugins/secaudit/claude/hooks/active-scan-guard.py`) that runs before every
 `Bash` call and **blocks** these active patterns at the harness level:
 
 - offensive/active scanners (`nuclei`, `nmap`, `sqlmap`, ZAP, `hydra`, `ffuf`, `nikto`, …),
